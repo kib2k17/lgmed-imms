@@ -1,0 +1,26 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Sortable column header.
+   {% include "components/th_sort.html" with field="title" label="Program" %}
+
+   aria-sort tells assistive technology the current ordering; the caret is a
+   redundant visual cue, never the only one.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+{% sort_state field as state %}
+<th scope="col" class="{{ th_class|default:'' }}" {% if state %}aria-sort="{% if state == 'asc' %}ascending{% else %}descending{% endif %}"{% endif %}>
+  <a href="?{% sort_link field %}" class="table-sort">
+    <span>{{ label }}</span>
+    {% if state == "asc" %}
+      {% icon "chevron-down" "size-3 rotate-180 text-brand-700" %}
+      <span class="sr-only">(sorted ascending, activate to sort descending)</span>
+    {% elif state == "desc" %}
+      {% icon "chevron-down" "size-3 text-brand-700" %}
+      <span class="sr-only">(sorted descending, activate to sort ascending)</span>
+    {% else %}
+      {% icon "chevron-down" "size-3 text-slate-300" %}
+      <span class="sr-only">(activate to sort by {{ label|lower }})</span>
+    {% endif %}
+  </a>
+</th>

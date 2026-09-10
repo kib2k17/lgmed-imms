@@ -1,0 +1,62 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Pagination for Django Paginator page objects.
+   Usage: {% include "includes/pagination.html" with page_obj=page_obj label="programs" %}
+   Links preserve the active search, filters and sort via {% query_string %}.
+   --------------------------------------------------------------------------- 
+{% endcomment %}
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <nav class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 sm:px-5"
+       aria-label="Pagination for {{ label|default:'results' }}">
+
+    <p class="text-meta text-slate-600">
+      Showing <span class="font-semibold text-slate-900">{{ page_obj.start_index }}</span>&ndash;<span
+      class="font-semibold text-slate-900">{{ page_obj.end_index }}</span>
+      of <span class="font-semibold text-slate-900">{{ page_obj.paginator.count }}</span>
+      {{ label|default:"results" }}
+    </p>
+
+    <ul class="flex items-center gap-1">
+      <li>
+        {% if page_obj.has_previous %}
+          <a href="?{% query_string page=page_obj.previous_page_number %}" class="btn btn-secondary btn-sm" rel="prev">
+            {% icon "chevron-left" "size-3.5" %}<span class="hidden sm:inline">Previous</span>
+            <span class="sr-only">Go to previous page</span>
+          </a>
+        {% else %}
+          <span class="btn btn-secondary btn-sm opacity-50" aria-disabled="true">
+            {% icon "chevron-left" "size-3.5" %}<span class="hidden sm:inline">Previous</span>
+          </span>
+        {% endif %}
+      </li>
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if num == page_obj.number %}
+          <li><span aria-current="page"
+                    class="grid size-8 place-items-center rounded-md border border-brand-600 bg-brand-600 text-xs font-semibold text-white">
+            <span class="sr-only">Page </span>{{ num }}</span></li>
+        {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:-2 and num <= page_obj.number|add:2 %}
+          <li><a href="?{% query_string page=num %}"
+                 class="grid size-8 place-items-center rounded-md border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
+            <span class="sr-only">Go to page </span>{{ num }}</a></li>
+        {% elif num == page_obj.number|add:-3 or num == page_obj.number|add:3 %}
+          <li><span class="px-1 text-slate-400" aria-hidden="true">&hellip;</span></li>
+        {% endif %}
+      {% endfor %}
+
+      <li>
+        {% if page_obj.has_next %}
+          <a href="?{% query_string page=page_obj.next_page_number %}" class="btn btn-secondary btn-sm" rel="next">
+            <span class="hidden sm:inline">Next</span>{% icon "chevron-right" "size-3.5" %}
+            <span class="sr-only">Go to next page</span>
+          </a>
+        {% else %}
+          <span class="btn btn-secondary btn-sm opacity-50" aria-disabled="true">
+            <span class="hidden sm:inline">Next</span>{% icon "chevron-right" "size-3.5" %}
+          </span>
+        {% endif %}
+      </li>
+    </ul>
+  </nav>
+{% endif %}

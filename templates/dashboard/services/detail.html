@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="service-heading">
+        <div class="card-header">
+          <h2 id="service-heading" class="card-title">Service Description</h2>
+          {% if record.is_published %}
+            {% status_badge "published" "Published" %}
+          {% else %}
+            {% status_badge "draft" "Not published" %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-6">
+          <p class="text-sm leading-relaxed whitespace-pre-line text-slate-700">
+            {{ record.description|default:"No description recorded." }}
+          </p>
+
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Who may avail</h3>
+            <p class="mt-2 text-sm text-slate-700">{{ record.clients|default:"Not specified." }}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="requirements-heading">
+        <div class="card-header">
+          <h2 id="requirements-heading" class="card-title">Requirements</h2>
+        </div>
+        <div class="card-body">
+          {% if record.requirement_list %}
+            <ol class="space-y-2.5">
+              {% for requirement in record.requirement_list %}
+                <li class="flex items-start gap-3 text-sm text-slate-700">
+                  <span aria-hidden="true"
+                        class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand-50 text-[0.625rem] font-bold text-brand-800">
+                    {{ forloop.counter }}
+                  </span>
+                  <span>{{ requirement }}</span>
+                </li>
+              {% endfor %}
+            </ol>
+          {% else %}
+            <p class="text-sm text-slate-500">No requirements have been recorded for this service.</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Service Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Classification</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_service_type_display }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Processing time</dt>
+              <dd class="mt-1 flex items-center gap-2 text-sm text-slate-900">
+                <span class="text-slate-400">{% icon "clock" "size-4" %}</span>
+                {{ record.processing_time|default:"Not specified" }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Fees</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.fees|default:"None" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Responsible office</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.responsible_office }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Responsible person</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.responsible_person|default:"Not recorded" }}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Frontline Service?" message="This action cannot be undone. The service will be removed from the internal system and from the public website." detail=record confirm_label="Delete Service" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

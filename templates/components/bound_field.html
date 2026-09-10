@@ -1,0 +1,44 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One form field: label, required marker, control, help text, validation
+   message. The widget already carries its classes and aria-describedby from
+   GovModelForm, so this partial only supplies the surrounding structure.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+{% if field.field.widget.input_type == "checkbox" %}
+  <div class="flex items-start gap-2.5">
+    <div class="mt-0.5">{{ field }}</div>
+    <div class="min-w-0">
+      <label for="{{ field.id_for_label }}" class="text-sm font-medium text-slate-800">{{ field.label }}</label>
+      {% if field.help_text %}
+        <p id="id_{{ field.name }}-help" class="form-help mt-0.5">{{ field.help_text }}</p>
+      {% endif %}
+      {% for error in field.errors %}
+        <p id="id_{{ field.name }}-error" class="form-error" role="alert">
+          {% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span>
+        </p>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+  <label for="{{ field.id_for_label }}" class="form-label">
+    {{ field.label }}
+    {% if field.field.required %}
+      <span class="required-mark" aria-hidden="true">*</span>
+      <span class="sr-only">(required)</span>
+    {% endif %}
+  </label>
+
+  {{ field }}
+
+  {% if field.help_text %}
+    <p id="id_{{ field.name }}-help" class="form-help">{{ field.help_text }}</p>
+  {% endif %}
+
+  {% for error in field.errors %}
+    <p id="id_{{ field.name }}-error" class="form-error" role="alert">
+      {% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span>
+    </p>
+  {% endfor %}
+{% endif %}

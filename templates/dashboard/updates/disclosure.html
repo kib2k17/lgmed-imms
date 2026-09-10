@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The Chief's control over what the public website is showing.
+
+   The form and the answer sit on one screen: the panel on the right lists the
+   weeks the current setting actually selects, so the Chief never has to open
+   the public site to find out what the public is looking at.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="{% url 'updates:period_list' %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Reporting weeks</span>
+  </a>
+  <a href="{% url 'core:public_updates' %}" class="btn btn-secondary" target="_blank" rel="noopener">
+    {% icon "external" "size-4" %}<span class="hidden sm:inline">View the public page</span>
+    <span class="sr-only">(opens in a new tab)</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    {# ---- The control --------------------------------------------------- #}
+    <div class="xl:col-span-2">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div role="alert" class="mb-5 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+            <span class="mt-0.5 shrink-0 text-red-700">{% icon "error" "size-5" %}</span>
+            <div>
+              <p class="font-semibold">The disclosure window could not be saved</p>
+              {% for error in form.non_field_errors %}<p class="mt-0.5">{{ error }}</p>{% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <section class="card mb-4" aria-labelledby="scope-heading">
+          <div class="card-header">
+            <div>
+              <h2 id="scope-heading" class="card-title">What This Controls</h2>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="text-sm leading-relaxed text-slate-700">
+              Publishing a week says it <em>may</em> be disclosed. This says how
+              much of the published record is on the public website right now.
+            </p>
+            <p class="mt-3 flex items-start gap-2 text-meta leading-relaxed text-slate-600">
+              <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-3.5" %}</span>
+              <span>
+                Nothing here can disclose a week you have not reviewed and
+                published. The window narrows what the public sees; it can
+                never widen it.
+              </span>
+            </p>
+          </div>
+        </section>
+
+        <div class="space-y-5">
+          {% for title, fields in form.get_sections %}
+            <section class="card" aria-labelledby="section-{{ forloop.counter }}">
+              <div class="card-header">
+                <h2 id="section-{{ forloop.counter }}" class="card-title">{{ title }}</h2>
+              </div>
+              <div class="card-body">
+                <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                  {% for field in fields %}
+                    <div class="{% if field.is_wide %}sm:col-span-2{% endif %}" data-field="{{ field.name }}">
+                      {% include "components/bound_field.html" with field=field form=form %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </section>
+          {% endfor %}
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-5">
+          <p class="mr-auto text-meta text-slate-500">
+            The change takes effect on the public website immediately.
+          </p>
+          <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">
+            {% icon "check" "size-4" %}{{ submit_label }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {# ---- What it currently selects ------------------------------------- #}
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="showing-heading">
+        <div class="card-header">
+          <div class="min-w-0">
+            <h2 id="showing-heading" class="card-title">Showing Now</h2>
+            <p class="mt-0.5 text-meta text-slate-500">{{ disclosure.describe }}</p>
+          </div>
+        </div>
+        {% if showing %}
+          <ul class="divide-y divide-slate-100">
+            {% for week in showing %}
+              <li class="flex items-center justify-between gap-3 px-4 py-3">
+                <div class="min-w-0">
+                  <a href="{{ week.get_absolute_url }}" class="text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                    {{ week.label }}
+                  </a>
+                  {% if week.theme %}
+                    <p class="mt-0.5 text-meta text-slate-500">{{ week.theme }}</p>
+                  {% endif %}
+                </div>
+                <a href="{% url 'core:public_update_week' week.pk %}"
+                   class="btn btn-ghost btn-sm shrink-0" target="_blank" rel="noopener">
+                  {% icon "external" "size-3.5" %}
+                  <span class="sr-only">View {{ week.label }} on the public website (opens in a new tab)</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% include "components/empty_state.html" with icon="view-off" title="Nothing is being shown" message="No published week falls inside the current window, so the public accomplishments page is empty." %}
+        {% endif %}
+      </section>
+
+      <section class="card" aria-labelledby="eligible-heading">
+        <div class="card-header">
+          <h2 id="eligible-heading" class="card-title">Eligible Weeks</h2>
+        </div>
+        <div class="card-body">
+          <p class="text-3xl leading-none font-bold text-slate-900 tabular">
+            {{ published_count|intcomma }}
+          </p>
+          <p class="mt-2 text-meta leading-relaxed text-slate-500">
+            week{{ published_count|pluralize }} reviewed and published in total.
+            {{ showing|length }} of them
+            {{ showing|length|pluralize:"is,are" }} on the public website under
+            the current window.
+          </p>
+        </div>
+      </section>
+
+      {% if disclosure.updated_by %}
+        <section class="card" aria-labelledby="provenance-heading">
+          <div class="card-header">
+            <h2 id="provenance-heading" class="card-title">Last Changed</h2>
+          </div>
+          <div class="card-body">
+            <p class="text-sm text-slate-900">{{ disclosure.updated_by.get_display_name }}</p>
+            <p class="text-meta text-slate-500">{{ disclosure.updated_at|date:"j F Y, g:i A" }}</p>
+          </div>
+        </section>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

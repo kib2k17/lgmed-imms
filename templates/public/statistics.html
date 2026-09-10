@@ -1,0 +1,189 @@
+{% extends "public_base.html" %}
+{% load ui humanize %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+
+    {# ---- Headline figures ---------------------------------------------- #}
+    <section aria-labelledby="headline-heading">
+      <h2 id="headline-heading" class="sr-only">Headline figures</h2>
+      <dl class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Local government units</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ summary.lgus|intcomma }}</dd>
+          <dd class="mt-1 text-meta text-slate-500">
+            {{ summary.provinces }} provinces &middot; {{ summary.cities }} cities &middot;
+            {{ summary.municipalities }} municipalities
+          </dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Monitoring activities</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ figures.monitoring_this_year|intcomma }}</dd>
+          <dd class="mt-1 text-meta text-slate-500">Conducted in {{ figures.year }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGUs monitored</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ figures.lgus_covered|intcomma }}</dd>
+          <dd class="mt-1 text-meta text-slate-500">Distinct LGUs reached in {{ figures.year }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Published documents</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ summary.documents|intcomma }}</dd>
+          <dd class="mt-1 text-meta text-slate-500">{{ summary.reports }} published report{{ summary.reports|pluralize }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <div class="mt-10 grid gap-8 lg:grid-cols-2">
+
+      {# ---- Coverage by province ---------------------------------------- #}
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="coverage-heading">
+        <div class="border-b border-slate-200 px-4 py-3 sm:px-5">
+          <h2 id="coverage-heading" class="text-card-title font-semibold text-slate-900">Coverage by province</h2>
+          <p class="mt-0.5 text-meta text-slate-500">Cities and municipalities under each province</p>
+        </div>
+        {% if figures.by_province %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Local government units by province</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Province</th>
+                  <th scope="col" class="text-right">Cities</th>
+                  <th scope="col" class="text-right">Municipalities</th>
+                  <th scope="col" class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in figures.by_province %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      {{ row.province__name|default:"Not assigned" }}
+                    </th>
+                    <td class="text-right tabular">{{ row.cities }}</td>
+                    <td class="text-right tabular">{{ row.municipalities }}</td>
+                    <td class="text-right font-semibold text-slate-900 tabular">{{ row.total }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="lgu" title="No coverage figures yet" message="Figures appear here once local government units are recorded." %}
+        {% endif %}
+      </section>
+
+      {# ---- Monitoring by status ---------------------------------------- #}
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="monitoring-heading">
+        <div class="border-b border-slate-200 px-4 py-3 sm:px-5">
+          <h2 id="monitoring-heading" class="text-card-title font-semibold text-slate-900">Monitoring activities by status</h2>
+          <p class="mt-0.5 text-meta text-slate-500">For the year {{ figures.year }}</p>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Monitoring activities by status for {{ figures.year }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-right">Activities</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in figures.monitoring_by_status %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">{{ row.label }}</th>
+                  <td class="text-right font-semibold text-slate-900 tabular">{{ row.count }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {# ---- Programs by category ---------------------------------------- #}
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="programs-heading">
+        <div class="border-b border-slate-200 px-4 py-3 sm:px-5">
+          <h2 id="programs-heading" class="text-card-title font-semibold text-slate-900">Programs by category</h2>
+          <p class="mt-0.5 text-meta text-slate-500">All programs and projects on record</p>
+        </div>
+        {% if figures.programs_by_category %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Programs by category</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Category</th>
+                  <th scope="col" class="text-right">Programs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in figures.programs_by_category %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      {{ row.category__name|default:"Uncategorised" }}
+                    </th>
+                    <td class="text-right font-semibold text-slate-900 tabular">{{ row.total }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="border-t border-slate-200 px-4 py-3 sm:px-5">
+            <a href="{% url 'core:public_programs' %}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+              View the programs{% icon "chevron-right" "size-3.5" %}
+            </a>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="programs" title="No programs recorded yet" message="Programs appear here once they are encoded." %}
+        {% endif %}
+      </section>
+
+      {# ---- Documents by type ------------------------------------------- #}
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="documents-heading">
+        <div class="border-b border-slate-200 px-4 py-3 sm:px-5">
+          <h2 id="documents-heading" class="text-card-title font-semibold text-slate-900">Public documents by type</h2>
+          <p class="mt-0.5 text-meta text-slate-500">Issuances available in the document library</p>
+        </div>
+        {% if figures.documents_by_type %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Public documents by type</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Document type</th>
+                  <th scope="col" class="text-right">Documents</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in figures.documents_by_type %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      {{ row.document_type__name }}
+                    </th>
+                    <td class="text-right font-semibold text-slate-900 tabular">{{ row.total }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="border-t border-slate-200 px-4 py-3 sm:px-5">
+            <a href="{% url 'core:public_documents' %}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+              Open the document library{% icon "chevron-right" "size-3.5" %}
+            </a>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="documents" title="No public documents yet" message="Issuances released for public access are counted here." %}
+        {% endif %}
+      </section>
+    </div>
+
+    <p class="mt-8 text-meta text-slate-500">
+      Figures are counted from the Division's records and change as new activities,
+      programs and issuances are encoded.
+    </p>
+  </div>
+{% endblock %}

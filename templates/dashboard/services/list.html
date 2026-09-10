@@ -1,0 +1,39 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="name" label="Service" %}
+  {% include "components/th_sort.html" with field="service_type" label="Type" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="hidden xl:table-cell">Clients</th>
+  {% include "components/th_sort.html" with field="processing_time" label="Processing time" th_class="hidden md:table-cell" %}
+  <th scope="col" class="hidden lg:table-cell">Fees</th>
+  <th scope="col">Publication</th>
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.name }}</a>
+        {% if record.responsible_person %}
+          <span class="block text-meta font-normal text-slate-500">{{ record.responsible_person }}</span>
+        {% endif %}
+      </th>
+      <td class="hidden sm:table-cell">{{ record.get_service_type_display }}</td>
+      <td class="hidden text-slate-500 xl:table-cell">{{ record.clients|truncatechars:40|default:"&mdash;" }}</td>
+      <td class="hidden md:table-cell">{{ record.processing_time|default:"&mdash;" }}</td>
+      <td class="hidden lg:table-cell">{{ record.fees|default:"None" }}</td>
+      <td>
+        {% if record.is_published %}
+          {% status_badge "published" "Published" %}
+        {% else %}
+          {% status_badge "draft" "Not published" %}
+        {% endif %}
+      </td>
+      <td class="text-right whitespace-nowrap">
+        {% include "components/row_actions.html" with record=record %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

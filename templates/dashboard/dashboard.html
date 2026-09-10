@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% load static ui humanize %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'reports:list' %}?export=csv" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Export reports</span>
+  </a>
+  {% if user.can_encode %}
+    <a href="{% url 'monitoring:create' %}" class="btn btn-primary">
+      {% icon "plus" "size-4" %}New monitoring record
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  {# ---- Summary figures ------------------------------------------------ #}
+  <section aria-labelledby="summary-heading">
+    <h2 id="summary-heading" class="sr-only">Summary figures</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      {% for card in summary_cards %}
+        {% include "components/stat_card.html" with card=card %}
+      {% endfor %}
+    </div>
+    <p class="mt-3 text-meta text-slate-500">
+      Figures as of {{ as_of|date:"j F Y, g:i A" }} (Philippine Standard Time).
+    </p>
+  </section>
+
+  {# ---- Charts --------------------------------------------------------- #}
+  <section class="mt-6" aria-labelledby="analytics-heading">
+    <h2 id="analytics-heading" class="sr-only">Analytics</h2>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {% for chart in charts %}
+        <div class="{% if chart.span == 2 %}lg:col-span-2{% else %}lg:col-span-1{% endif %}">
+          {% include "components/chart_card.html" with id=chart.id title=chart.title subtitle=chart.subtitle legend_note=chart.legend_note height="h-64" table_headers=chart.headers table_rows=chart.rows has_data=chart.has_data %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---- Operational lists ---------------------------------------------- #}
+  <div class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+
+    {# Recent monitoring activity #}
+    <section class="card flex flex-col xl:col-span-2" aria-labelledby="recent-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="recent-heading" class="card-title">Recent Monitoring Activities</h2>
+          <p class="mt-0.5 text-meta text-slate-500">Latest records across the region</p>
+        </div>
+        <a href="{% url 'monitoring:list' %}" class="btn btn-secondary btn-sm">
+          View all{% icon "chevron-right" "size-3.5" %}
+        </a>
+      </div>
+
+      {% if recent_monitoring %}
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">The most recent monitoring activities</caption>
+            <thead>
+              <tr>
+                <th scope="col">LGU</th>
+                <th scope="col" class="hidden md:table-cell">Activity</th>
+                <th scope="col" class="hidden sm:table-cell">Date</th>
+                <th scope="col" class="hidden lg:table-cell">Team</th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in recent_monitoring %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                    <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.lgu.name }}</a>
+                    <span class="block text-meta font-normal text-slate-500">{{ record.lgu.province.name }}</span>
+                  </th>
+                  <td class="hidden md:table-cell">{{ record.title }}</td>
+                  <td class="hidden whitespace-nowrap sm:table-cell">
+                    <time datetime="{{ record.monitoring_date|date:'Y-m-d' }}">{{ record.monitoring_date|date:"j M Y" }}</time>
+                  </td>
+                  <td class="hidden text-slate-500 lg:table-cell">{{ record.monitoring_team|truncatechars:24 }}</td>
+                  <td>
+                    {% if record.is_overdue %}
+                      {% status_badge "overdue" "Overdue" %}
+                    {% else %}
+                      {% status_badge record.status record.get_status_display %}
+                    {% endif %}
+                  </td>
+                  <td class="text-right">
+                    <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+                      {% icon "view" "size-3.5" %}<span class="hidden sm:inline">View</span>
+                      <span class="sr-only">{{ record.title }} for {{ record.lgu.name }}</span>
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% if user.can_encode %}
+          {% url 'monitoring:create' as create_url %}
+          {% include "components/empty_state.html" with icon="monitoring" title="No monitoring activities yet" message="Monitoring records appear here as soon as they are encoded." action_url=create_url action_label="New monitoring record" %}
+        {% else %}
+          {% include "components/empty_state.html" with icon="monitoring" title="No monitoring activities yet" message="Monitoring records appear here as soon as they are encoded." %}
+        {% endif %}
+      {% endif %}
+    </section>
+
+    {# Right rail #}
+    <div class="flex flex-col gap-4">
+
+      {# Requires attention #}
+      <section class="card" aria-labelledby="attention-heading">
+        <div class="card-header">
+          <h2 id="attention-heading" class="card-title">Requires Attention</h2>
+        </div>
+        {% if pending_actions %}
+          <ul class="divide-y divide-slate-100">
+            {% for item in pending_actions %}
+              <li>
+                <a href="{{ item.url }}" class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 sm:px-5">
+                  <span class="mt-0.5 text-lg font-bold text-slate-900 tabular">{{ item.count }}</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-medium text-slate-900">{{ item.label }}</span>
+                    <span class="mt-1 flex flex-wrap items-center gap-2">
+                      {% status_badge item.status %}
+                      <span class="text-meta text-slate-500">{{ item.detail }}</span>
+                    </span>
+                  </span>
+                  <span class="mt-1 shrink-0 text-slate-400">{% icon "chevron-right" "size-4" %}</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="flex items-center gap-3 px-4 py-6 sm:px-5">
+            <span aria-hidden="true" class="grid size-9 shrink-0 place-items-center rounded-md bg-green-50 text-green-700">
+              {% icon "check-circle" "size-4" %}
+            </span>
+            <p class="text-sm text-slate-600">Nothing is awaiting action. All records are up to date.</p>
+          </div>
+        {% endif %}
+      </section>
+
+      {# Upcoming activities #}
+      <section class="card flex-1" aria-labelledby="upcoming-heading">
+        <div class="card-header">
+          <h2 id="upcoming-heading" class="card-title">Upcoming Activities</h2>
+          <a href="{% url 'activities:list' %}" class="text-meta font-medium text-brand-700 hover:underline">Calendar</a>
+        </div>
+        {% if upcoming_activities %}
+          <ul class="divide-y divide-slate-100">
+            {% for activity in upcoming_activities %}
+              <li>
+                <a href="{{ activity.get_absolute_url }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 sm:px-5">
+                  <time datetime="{{ activity.start_date|date:'Y-m-d' }}"
+                        class="grid size-11 shrink-0 place-items-center rounded-md border border-slate-200 bg-slate-50 text-center leading-none">
+                    <span class="block text-[0.625rem] font-semibold tracking-wide text-slate-500 uppercase">{{ activity.start_date|date:"M" }}</span>
+                    <span class="mt-0.5 block text-sm font-bold text-slate-900">{{ activity.start_date|date:"j" }}</span>
+                  </time>
+                  <span class="min-w-0">
+                    <span class="block text-sm font-medium text-slate-900">{{ activity.title }}</span>
+                    <span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-meta text-slate-500">
+                      <span class="inline-flex items-center gap-1">{% icon "user" "size-3" %}{{ activity.responsible_label }}</span>
+                      {% if activity.start_time %}
+                        <span class="inline-flex items-center gap-1">{% icon "clock" "size-3" %}{{ activity.start_time|time:"g:i A" }}</span>
+                      {% endif %}
+                      {% if activity.location %}
+                        <span class="inline-flex items-center gap-1">{% icon "map-pin" "size-3" %}{{ activity.location|truncatechars:30 }}</span>
+                      {% endif %}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            No activities are scheduled.
+          </p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+  <script id="dashboard-data" type="application/json">{{ charts_json|safe }}</script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var el = document.getElementById("dashboard-data");
+      window.LGMED.initCharts(JSON.parse(el.textContent));
+    });
+  </script>
+{% endblock %}

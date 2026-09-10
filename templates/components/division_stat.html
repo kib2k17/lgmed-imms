@@ -1,0 +1,43 @@
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One of the Division's headline figures, with the breakdown it is made of.
+   {% include "components/division_stat.html" with card=card %}
+
+   card = {label, value, parts: [{label, value, display, tone}], note}
+
+   A bare number invites the next question rather than answering it, so the
+   parts are printed under the figure - counted from the same population, so
+   they add up to it. The parts are a real table to a screen reader, not a
+   row of decorative text.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+<div class="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-5">
+  <p class="text-center text-4xl leading-none font-bold text-brand-800 tabular">
+    {{ card.value|intcomma }}
+  </p>
+  <p class="mt-2 text-center text-meta font-semibold tracking-wide text-slate-500 uppercase">
+    {{ card.label }}
+  </p>
+
+  {% if card.parts %}
+    <dl class="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+      {% for part in card.parts %}
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-meta leading-snug text-slate-600">{{ part.label }}</dt>
+          <dd class="shrink-0 text-meta font-semibold tabular
+                     {% if part.tone == 'success' %}text-green-700
+                     {% elif part.tone == 'warning' %}text-amber-700
+                     {% elif part.tone == 'info' %}text-brand-700
+                     {% else %}text-slate-900{% endif %}">
+            {% if part.display %}{{ part.display }}{% else %}{{ part.value|intcomma }}{% endif %}
+          </dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+  {% if card.note %}
+    <p class="mt-auto pt-3 text-meta leading-snug text-slate-500">{{ card.note }}</p>
+  {% endif %}
+</div>

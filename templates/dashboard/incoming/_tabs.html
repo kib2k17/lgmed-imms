@@ -1,0 +1,40 @@
+{% load ui %}
+{% comment %}
+ The three faces of the Incoming Monitoring module: the register itself, the
+ Division Chief's monitoring dashboard, and the reports. One sidebar entry
+ rather than three, because they are one job.
+
+ Pass `tab` as "list", "dashboard" or "reports".
+{% endcomment %}
+<nav aria-label="Incoming Monitoring sections" class="mb-4 no-print">
+  <ul class="flex flex-wrap gap-1 border-b border-slate-200">
+    <li>
+      <a href="{% url 'incoming:list' %}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                {% if tab == 'list' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if tab == "list" %}aria-current="page"{% endif %}>
+        {% icon "inbox" "size-4" %}Documents
+      </a>
+    </li>
+    {% if user.can_review_incoming %}
+      <li>
+        <a href="{% url 'incoming:dashboard' %}"
+           class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                  {% if tab == 'dashboard' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+           {% if tab == "dashboard" %}aria-current="page"{% endif %}>
+          {% icon "dashboard" "size-4" %}Monitoring dashboard
+        </a>
+      </li>
+    {% endif %}
+    {% if user.can_encode %}
+      <li>
+        <a href="{% url 'incoming:reports' %}"
+           class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                  {% if tab == 'reports' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+           {% if tab == "reports" %}aria-current="page"{% endif %}>
+          {% icon "reports" "size-4" %}Monitoring reports
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>

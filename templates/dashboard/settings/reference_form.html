@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <form method="post" novalidate class="max-w-2xl">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div role="alert" class="mb-5 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+        <span class="mt-0.5 shrink-0 text-red-700">{% icon "error" "size-5" %}</span>
+        <div>
+          <p class="font-semibold">This entry could not be saved</p>
+          {% for error in form.non_field_errors %}<p class="mt-0.5">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="flex items-center gap-2 card-title">
+          <span class="text-slate-400" aria-hidden="true">{% icon spec.icon "size-4" %}</span>
+          {{ spec.label }}
+        </h2>
+      </div>
+      <div class="card-body">
+        <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+          {% for field in form %}
+            <div class="{% if field.field.widget.input_type == 'checkbox' or forloop.first %}sm:col-span-2{% endif %}">
+              {% include "components/bound_field.html" with field=field form=form %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <div class="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-5">
+      <p class="mr-auto text-meta text-slate-500">
+        <span class="required-mark" aria-hidden="true">*</span> indicates a required field
+      </p>
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% icon "check" "size-4" %}{{ submit_label }}
+      </button>
+    </div>
+  </form>
+{% endblock %}

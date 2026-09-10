@@ -1,0 +1,143 @@
+{% extends "public_base.html" %}
+{% load ui %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    {% if total_count %}
+      <div class="grid gap-8 lg:grid-cols-4 lg:gap-10">
+
+        {# ---- Filters ---------------------------------------------------- #}
+        <aside class="lg:col-span-1" aria-labelledby="library-filters-heading">
+          <h2 id="library-filters-heading" class="text-card-title font-semibold text-slate-900">Browse the library</h2>
+
+          <form method="get" action="{{ request.path }}" class="mt-4" role="search">
+            <label for="library-search" class="form-label">Search documents</label>
+            <div class="flex gap-2">
+              <input type="search" id="library-search" name="q" value="{{ search_term }}"
+                     placeholder="Title or reference number" class="form-input">
+              <button type="submit" class="btn btn-primary px-2.5">
+                {% icon "search" "size-4" %}<span class="sr-only">Search the document library</span>
+              </button>
+            </div>
+            {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type }}">{% endif %}
+            {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+          </form>
+
+          <nav class="mt-7" aria-label="Filter by document type">
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Document type</h3>
+            <ul class="mt-2.5 space-y-0.5">
+              <li>
+                <a href="?{% query_string type=None page=None %}"
+                   class="flex items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-sm
+                          {% if not selected_type %}bg-brand-50 font-semibold text-brand-800{% else %}text-slate-700 hover:bg-slate-100{% endif %}"
+                   {% if not selected_type %}aria-current="true"{% endif %}>
+                  <span>All types</span>
+                  <span class="text-meta text-slate-500 tabular">{{ total_count }}</span>
+                </a>
+              </li>
+              {% for type in document_types %}
+                <li>
+                  <a href="?{% query_string type=type.id page=None %}"
+                     class="flex items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-sm
+                            {% if type.is_selected %}bg-brand-50 font-semibold text-brand-800{% else %}text-slate-700 hover:bg-slate-100{% endif %}"
+                     {% if type.is_selected %}aria-current="true"{% endif %}>
+                    <span>{{ type.name }}</span>
+                    <span class="text-meta text-slate-500 tabular">{{ type.total }}</span>
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </nav>
+
+          {% if years %}
+            <nav class="mt-7" aria-label="Filter by year">
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Year</h3>
+              <ul class="mt-2.5 flex flex-wrap gap-1.5">
+                <li>
+                  <a href="?{% query_string year=None page=None %}"
+                     class="inline-block rounded-md border px-2.5 py-1 text-[0.8125rem] font-medium
+                            {% if not selected_year %}border-brand-600 bg-brand-600 text-white{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %}">All</a>
+                </li>
+                {% for entry in years %}
+                  <li>
+                    <a href="?{% query_string year=entry.year page=None %}"
+                       class="inline-block rounded-md border px-2.5 py-1 text-[0.8125rem] font-medium tabular
+                              {% if entry.is_selected %}border-brand-600 bg-brand-600 text-white{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %}">{{ entry.year }}</a>
+                  </li>
+                {% endfor %}
+              </ul>
+            </nav>
+          {% endif %}
+
+          {% if is_filtered %}
+            <a href="{{ request.path }}" class="btn btn-secondary btn-sm mt-6">
+              {% icon "close" "size-3.5" %}Clear filters
+            </a>
+          {% endif %}
+        </aside>
+
+        {# ---- Results ---------------------------------------------------- #}
+        <div class="lg:col-span-3">
+          {% if documents %}
+            <p class="text-meta text-slate-500">
+              Showing {{ page_obj.start_index }}&ndash;{{ page_obj.end_index }} of
+              {{ page_obj.paginator.count }} document{{ page_obj.paginator.count|pluralize }}
+              {% if is_filtered %}matching the current filters{% endif %}
+            </p>
+
+            <div class="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <ul class="divide-y divide-slate-200">
+                {% for document in documents %}
+                  <li class="flex flex-wrap items-start justify-between gap-4 p-4 sm:p-5">
+                    <div class="min-w-0 flex-1">
+                      <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+                        <span class="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-semibold tracking-wide text-brand-800 uppercase">
+                          {{ document.document_type.name }}
+                        </span>
+                        <span class="text-slate-500 tabular">{{ document.year }}</span>
+                        {% if document.reference_number %}
+                          <span class="text-slate-500">{{ document.reference_number }}</span>
+                        {% endif %}
+                      </p>
+                      <h2 class="mt-2 text-card-title font-semibold text-slate-900">
+                        <a href="{{ document.file.url }}" class="hover:text-brand-700 hover:underline">{{ document.title }}</a>
+                      </h2>
+                      {% if document.description %}
+                        <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{{ document.description|truncatewords:40 }}</p>
+                      {% endif %}
+                      <p class="mt-2 text-meta text-slate-500">
+                        {{ document.file_type }} &middot; {{ document.file_size|filesize }}
+                      </p>
+                    </div>
+                    <a href="{{ document.file.url }}" class="btn btn-secondary btn-sm shrink-0">
+                      {% icon "download" "size-3.5" %}Download
+                      <span class="sr-only">{{ document.title }}, {{ document.file_type }}, {{ document.file_size|filesize }}</span>
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+              {% include "includes/pagination.html" with page_obj=page_obj label="documents" %}
+            </div>
+
+          {% else %}
+            <div class="rounded-lg border border-slate-200 bg-white">
+              {% include "components/empty_state.html" with icon="search" title="No matching documents" message="No documents match the current search and filters. Clear them to browse the whole library." %}
+              <div class="border-t border-slate-200 px-6 py-5 text-center">
+                <a href="{{ request.path }}" class="btn btn-secondary">Clear search and filters</a>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    {% else %}
+      <div class="rounded-lg border border-slate-200 bg-white">
+        {% include "components/empty_state.html" with icon="documents" title="No documents published yet" message="Memoranda, circulars, advisories and other issuances released for public access will be listed here." %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

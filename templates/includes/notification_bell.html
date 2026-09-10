@@ -1,0 +1,82 @@
+{% load ui %}
+{% comment %}
+ The header bell. The count is the signed-in user's genuinely unread
+ notifications; the dropdown shows the five most recent, because the bell is a
+ prompt to look rather than the place to work through a backlog.
+{% endcomment %}
+<div class="relative" data-menu>
+  <button type="button" class="btn btn-ghost relative px-2"
+          data-menu-button aria-expanded="false" aria-haspopup="true">
+    {% icon "bell" "size-5" %}
+    {% if unread_notifications %}
+      <span aria-hidden="true"
+            class="absolute top-1 right-1 grid min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.625rem] font-bold text-white">
+        {% if unread_notifications > 9 %}9+{% else %}{{ unread_notifications }}{% endif %}
+      </span>
+      <span class="sr-only">
+        Notifications, {{ unread_notifications }} unread
+      </span>
+    {% else %}
+      <span class="sr-only">Notifications, none unread</span>
+    {% endif %}
+  </button>
+
+  <div data-menu-panel hidden
+       class="absolute right-0 z-50 mt-1 w-80 origin-top-right rounded-lg border border-slate-200 bg-white shadow-overlay">
+    <div class="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
+      <h2 class="text-sm font-semibold text-slate-900">Notifications</h2>
+      {% if unread_notifications %}
+        <span class="text-meta text-slate-500">{{ unread_notifications }} unread</span>
+      {% endif %}
+    </div>
+
+    {% if recent_notifications %}
+      <ul class="max-h-96 divide-y divide-slate-100 overflow-y-auto">
+        {% for notification in recent_notifications %}
+          <li>
+            <a href="{% url 'notifications:open' notification.pk %}" class="block px-4 py-3 hover:bg-slate-50">
+              <span class="flex items-start gap-2.5">
+                <span aria-hidden="true"
+                      class="mt-0.5 shrink-0
+                             {% if notification.level == 'URGENT' %}text-red-600
+                             {% elif notification.level == 'ACTION' %}text-amber-600
+                             {% else %}text-blue-600{% endif %}">
+                  {% icon notification.icon "size-4" %}
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium text-slate-900">{{ notification.title }}</span>
+                  {% if notification.message %}
+                    <span class="block text-meta text-slate-500">{{ notification.message|truncatechars:80 }}</span>
+                  {% endif %}
+                  <span class="mt-0.5 block text-meta text-slate-400">{{ notification.created_at|timesince }} ago</span>
+                </span>
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="flex flex-col items-center px-4 py-8 text-center">
+        <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-green-50 text-green-700">
+          {% icon "check-circle" "size-5" %}
+        </span>
+        <p class="mt-3 text-sm font-medium text-slate-700">Nothing needs your attention</p>
+        <p class="mt-1 text-meta text-slate-500">New notifications will appear here.</p>
+      </div>
+    {% endif %}
+
+    <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-4 py-2">
+      <a href="{% url 'notifications:list' %}" class="text-sm font-medium text-brand-700 hover:underline">
+        View all notifications
+      </a>
+      {% if unread_notifications %}
+        <form method="post" action="{% url 'notifications:read_all' %}">
+          {% csrf_token %}
+          <button type="submit" class="text-meta font-medium text-slate-500 hover:text-slate-900 hover:underline">
+            Mark all read
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,108 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "components/mini_stat.html" with label="Entries held" value=summary.total %}
+    {% include "components/mini_stat.html" with label="Last 7 days" value=summary.week tone="info" %}
+    {% include "components/mini_stat.html" with label="Failed sign-ins (7d)" value=summary.failed_logins tone="danger" %}
+    {% include "components/mini_stat.html" with label="Deletions (7d)" value=summary.deletions tone="warning" %}
+  </div>
+
+  {% comment %}
+ The date range and the "needs attention" switch are specific to the log,
+     so they sit in their own bar above the shared search and filters. 
+{% endcomment %}
+  <form method="get" class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+    {% if request.GET.q %}<input type="hidden" name="q" value="{{ request.GET.q }}">{% endif %}
+    {% if request.GET.action %}<input type="hidden" name="action" value="{{ request.GET.action }}">{% endif %}
+    {% if request.GET.target_model %}<input type="hidden" name="target_model" value="{{ request.GET.target_model }}">{% endif %}
+    {% if request.GET.actor_label %}<input type="hidden" name="actor_label" value="{{ request.GET.actor_label }}">{% endif %}
+
+    <div>
+      <label for="audit-from" class="form-label">From date</label>
+      <input type="date" id="audit-from" name="from" value="{{ date_from }}" class="form-input w-44">
+    </div>
+    <div>
+      <label for="audit-to" class="form-label">To date</label>
+      <input type="date" id="audit-to" name="to" value="{{ date_to }}" class="form-input w-44">
+    </div>
+    <div class="flex items-center gap-2 pb-2">
+      <input type="checkbox" id="audit-notable" name="notable" value="1"
+             {% if notable_only %}checked{% endif %}
+             class="size-4 rounded border-slate-300 text-brand-600 focus:ring-2 focus:ring-brand-600/25">
+      <label for="audit-notable" class="text-sm text-slate-700">
+        Only entries needing attention
+      </label>
+    </div>
+    <button type="submit" class="btn btn-secondary">{% icon "filter" "size-4" %}Apply dates</button>
+    {% if date_from or date_to or notable_only %}
+      <a href="{{ request.path }}" class="btn btn-ghost">Clear</a>
+    {% endif %}
+    <p class="ml-auto max-w-xs text-meta leading-relaxed text-slate-500">
+      Entries needing attention are deletions, failed sign-ins, password
+      resets, role changes, deactivations and refused access.
+    </p>
+  </form>
+
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="timestamp" label="When" %}
+  {% include "components/th_sort.html" with field="actor_label" label="Actor" %}
+  {% include "components/th_sort.html" with field="action" label="Action" %}
+  {% include "components/th_sort.html" with field="target_model" label="Record type" th_class="hidden lg:table-cell" %}
+  <th scope="col" class="hidden md:table-cell">Record</th>
+  <th scope="col" class="hidden xl:table-cell">Origin</th>
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr class="{% if record.is_notable %}bg-amber-50/40{% endif %}">
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-normal whitespace-nowrap text-slate-700">
+        <a href="{{ record.get_absolute_url }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">
+          <time datetime="{{ record.timestamp|date:'c' }}">{{ record.timestamp|date:"j M Y" }}</time>
+        </a>
+        <span class="block text-meta text-slate-500">{{ record.timestamp|time:"g:i:s A" }}</span>
+      </th>
+      <td>
+        {{ record.actor_label }}
+        {% if record.actor_role %}
+          <span class="block text-meta text-slate-500">{{ record.actor_role }}</span>
+        {% endif %}
+      </td>
+      <td>{% status_badge record.status_tone record.get_action_display %}</td>
+      <td class="hidden text-slate-600 lg:table-cell">{{ record.target_model|default:"&mdash;" }}</td>
+      <td class="hidden md:table-cell">
+        {% if record.target_url %}
+          <a href="{{ record.target_url }}" class="text-brand-700 hover:underline">{{ record.target_label|truncatechars:44 }}</a>
+        {% elif record.target_label %}
+          {{ record.target_label|truncatechars:44 }}
+        {% else %}
+          <span class="text-slate-500">{{ record.detail|truncatechars:44 }}</span>
+        {% endif %}
+      </td>
+      <td class="hidden text-meta text-slate-500 xl:table-cell">{{ record.ip_address|default:"&mdash;" }}</td>
+      <td class="text-right whitespace-nowrap">
+        <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+          {% icon "view" "size-3.5" %}<span class="hidden sm:inline">View</span>
+          <span class="sr-only">audit entry from {{ record.timestamp|date:"j M Y, g:i A" }}</span>
+        </a>
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}
+
+{% block after_table %}
+  <p class="mt-4 flex items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-meta leading-relaxed text-slate-600">
+    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "lock" "size-4" %}</span>
+    <span>
+      The audit log is append-only. It has no edit or delete path in this
+      system &mdash; entries are written automatically when records change and
+      when accounts sign in, and are removed only by a documented retention
+      command run on the server.
+    </span>
+  </p>
+{% endblock %}

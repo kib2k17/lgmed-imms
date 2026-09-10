@@ -1,0 +1,77 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One activity as it appears inside a day cell.
+
+   A link to the record, first and always - scripting upgrades it to a preview
+   dialog by reading the data- attributes below, and if scripting is
+   unavailable the click still opens the activity. Nothing here is rendered
+   that the viewer is not permitted to see; the queryset settled that.
+
+   The title wraps rather than truncating. "1:30PM SGL..." tells a reader
+   nothing they came to the calendar for; three lines of a real title tells
+   them what the day holds without opening anything. The row grows to fit,
+   which is what a calendar with real entries in it should do.
+
+   Three lines is the ceiling, not the target: titles run to 255 characters in
+   the model, and one pathological entry should not push a week off the screen.
+   Anything longer is still in the tooltip, the dialog and the record.
+
+   The colour band names the activity type and the left edge marks priority.
+   Neither carries meaning on its own: the title is always the label, and the
+   preview spells out type, owner and status in words.
+
+   `relative z-10` lifts the chip above the day cell's overlay link, so a click
+   on an activity opens that activity while a click anywhere else in the box
+   opens the day. In the week strip, where there is no overlay, it does
+   nothing.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+<li>
+  <a href="{{ activity.get_absolute_url }}"
+     data-activity
+     data-title="{{ activity.title }}"
+     data-type="{{ activity.get_activity_type_display }}"
+     data-owner="{{ activity.owner_label }}"
+     data-assigned="{% if activity.is_delegated %}{{ activity.assigned_to.get_display_name }}{% endif %}"
+     data-section="{{ activity.section.name|default:'' }}"
+     data-when="{{ activity.start_date|date:'l, j F Y' }}{% if activity.end_date and activity.end_date != activity.start_date %} to {{ activity.end_date|date:'l, j F Y' }}{% endif %}"
+     data-time="{{ activity.time_label }}"
+     data-location="{{ activity.location|default:'' }}"
+     data-priority="{{ activity.get_priority_display }}"
+     data-status="{{ activity.get_status_display }}"
+     data-visibility="{{ activity.get_visibility_display }}"
+     data-description="{{ activity.description|truncatechars:240 }}"
+     data-url="{{ activity.get_absolute_url }}"
+     class="relative z-10 line-clamp-3 rounded border-l-2 px-1.5 py-0.5 text-meta leading-tight break-words hover:underline
+          {% if activity.activity_type == 'MONITORING' %}border-l-brand-600 bg-brand-50 text-brand-900
+          {% elif activity.activity_type == 'DEADLINE' %}border-l-red-600 bg-red-50 text-red-900
+          {% elif activity.activity_type == 'TRAINING' %}border-l-green-600 bg-green-50 text-green-900
+          {% elif activity.activity_type == 'FIELDWORK' %}border-l-amber-600 bg-amber-50 text-amber-900
+          {% elif activity.activity_type == 'LEAVE' %}border-l-slate-400 bg-slate-50 text-slate-600
+          {% else %}border-l-slate-400 bg-slate-100 text-slate-800{% endif %}
+          {% if activity.status == 'CANCELLED' %}line-through opacity-60{% endif %}"
+     title="{{ activity.title }} — {{ activity.owner_label }}{% if activity.start_time %} · {{ activity.time_label }}{% endif %}">
+    {% comment %}
+     The time is "1PM", not the localised "1p.m.", which spends five of the
+     roughly eighteen characters a day cell holds on punctuation. Minutes
+     appear only when there are any - and they must appear when there are:
+     the hour alone rendered a 9:45 briefing as "9AM", which is not a
+     shortening of the truth but a different time.
+
+     It is also the lighter of the two: in a day cell the title identifies the
+     activity and the hour is context.
+    {% endcomment %}
+    {% if activity.is_overdue %}<span class="font-bold text-red-700" aria-hidden="true">!</span>{% endif %}
+    {% if activity.start_time %}
+      <span class="font-medium opacity-70">
+        {% if activity.start_time.minute %}{{ activity.start_time|time:"g:iA" }}{% else %}{{ activity.start_time|time:"gA" }}{% endif %}
+      </span>
+    {% endif %}<span class="font-medium">{{ activity.title }}</span>
+    <span class="sr-only">
+      , {{ activity.get_activity_type_display }},
+      owned by {{ activity.owner_label }}{% if activity.is_delegated %}, assigned to {{ activity.assigned_to.get_display_name }}{% endif %},
+      {{ activity.get_status_display }}{% if activity.is_overdue %}, overdue{% endif %}
+    </span>
+  </a>
+</li>

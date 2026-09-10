@@ -1,0 +1,69 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Chart panel. The canvas is a graphic with an accessible name; the figures
+   behind it are also rendered as a real table inside a disclosure, so the data
+   is available to screen readers, to print, and when JavaScript is unavailable.
+
+   Pass has_data=False and the panel says so plainly instead of drawing an
+   empty axis - a chart of nothing reads as a chart that failed to load.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+<section class="card flex h-full flex-col" aria-labelledby="{{ id }}-title">
+  <div class="card-header">
+    <div class="min-w-0">
+      <h2 id="{{ id }}-title" class="card-title">{{ title }}</h2>
+      {% if subtitle %}<p class="mt-0.5 text-meta text-slate-500">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if legend_note %}
+      <p class="text-meta text-slate-500">{{ legend_note }}</p>
+    {% endif %}
+  </div>
+
+  <div class="flex-1 p-4 sm:p-5">
+    {% if has_data %}
+      <div class="relative {{ height|default:'h-64' }}">
+        <canvas id="{{ id }}" role="img"
+                aria-label="{{ title }}. {{ subtitle }} The figures are listed in the data table below the chart."></canvas>
+      </div>
+    {% else %}
+      <div class="flex {{ height|default:'h-64' }} flex-col items-center justify-center rounded-md border border-dashed border-slate-200 text-center">
+        <span aria-hidden="true" class="text-slate-300">{% icon "reports" "size-6" %}</span>
+        <p class="mt-2 text-sm font-medium text-slate-600">No data to chart yet</p>
+        <p class="mt-1 max-w-xs text-meta text-slate-500">
+          This chart appears once the underlying records have been encoded.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if table_headers and has_data %}
+    <details class="group border-t border-slate-200">
+      <summary class="flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-meta font-medium text-slate-600 hover:bg-slate-50 sm:px-5">
+        <span>View figures</span>
+        <span class="transition-transform group-open:rotate-180">{% icon "chevron-down" "size-3.5" %}</span>
+      </summary>
+      <div class="table-wrap border-t border-slate-100">
+        <table class="table">
+          <caption class="sr-only">{{ title }} &mdash; underlying figures</caption>
+          <thead>
+            <tr>{% for header in table_headers %}<th scope="col">{{ header }}</th>{% endfor %}</tr>
+          </thead>
+          <tbody>
+            {% for row in table_rows %}
+              <tr>
+                {% for cell in row %}
+                  {% if forloop.first %}
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2 text-left font-medium text-slate-700">{{ cell }}</th>
+                  {% else %}
+                    <td>{{ cell }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endif %}
+</section>

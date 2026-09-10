@@ -1,0 +1,71 @@
+{% extends "public_base.html" %}
+{% load ui %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+    {% if services %}
+      <p class="mb-6 text-[0.9375rem] leading-relaxed text-slate-600">
+        The requirements, processing times and fees below are published so that
+        anyone transacting with the Division knows what to expect before they
+        arrive.
+      </p>
+
+      <div class="space-y-5">
+        {% for service in services %}
+          <article class="rounded-lg border border-slate-200 bg-white" aria-labelledby="service-{{ service.pk }}">
+            <div class="border-b border-slate-200 px-5 py-4">
+              <h2 id="service-{{ service.pk }}" class="text-card-title font-semibold text-slate-900">{{ service.name }}</h2>
+              <p class="mt-1 text-meta text-slate-500">{{ service.get_service_type_display }}</p>
+            </div>
+
+            <div class="px-5 py-4">
+              {% if service.description %}
+                <p class="text-sm leading-relaxed text-slate-700">{{ service.description }}</p>
+              {% endif %}
+
+              <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Who may avail</dt>
+                  <dd class="mt-1 text-sm text-slate-800">{{ service.clients|default:"Not specified" }}</dd>
+                </div>
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Processing time</dt>
+                  <dd class="mt-1 text-sm text-slate-800">{{ service.processing_time|default:"Not specified" }}</dd>
+                </div>
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Fees</dt>
+                  <dd class="mt-1 text-sm text-slate-800">{{ service.fees|default:"None" }}</dd>
+                </div>
+              </dl>
+
+              {% if service.requirement_list %}
+                <div class="mt-5 border-t border-slate-100 pt-4">
+                  <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Requirements</h3>
+                  <ol class="mt-2.5 space-y-2">
+                    {% for requirement in service.requirement_list %}
+                      <li class="flex items-start gap-3 text-sm text-slate-700">
+                        <span aria-hidden="true"
+                              class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand-50 text-[0.625rem] font-bold text-brand-800">
+                          {{ forloop.counter }}
+                        </span>
+                        <span>{{ requirement }}</span>
+                      </li>
+                    {% endfor %}
+                  </ol>
+                </div>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="rounded-lg border border-slate-200 bg-white">
+        {% include "components/empty_state.html" with icon="services" title="No services published yet" message="The Division's frontline services will be published here. In the meantime, please use the contact details below." %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

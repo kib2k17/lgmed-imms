@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The work calendar.
+
+   Two navigations, deliberately separate, because they answer two different
+   questions: *whose* activities (scope) and *over what period* (period). The
+   grid, the week strip and the two lists are the same scoped queryset shown
+   four ways, so a filter applied in one carries into the others.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="?{% query_string export='csv' %}" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Export CSV</span>
+  </a>
+  {% if can_supervise %}
+    <a href="{% url 'activities:monitor' %}" class="btn btn-secondary">
+      {% icon "dashboard" "size-4" %}<span class="hidden sm:inline">Monitoring</span>
+    </a>
+  {% endif %}
+  {% if can_create %}
+    <a href="{% url create_url_name %}" class="btn btn-primary">
+      {% icon "plus" "size-4" %}{{ create_label }}
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  {# ---- The figures worth acting on ------------------------------------ #}
+  <div class="mb-4 grid grid-cols-2 gap-3 {% if can_supervise %}lg:grid-cols-6{% else %}lg:grid-cols-4{% endif %}">
+    {% include "components/mini_stat.html" with label="My open activities" value=summary.mine %}
+    {% include "components/mini_stat.html" with label="Assigned to me" value=summary.assigned tone="info" %}
+    {% include "components/mini_stat.html" with label="Mine, next 7 days" value=summary.upcoming tone="warning" %}
+    {% include "components/mini_stat.html" with label="Mine, overdue" value=summary.overdue tone="danger" %}
+    {% if can_supervise %}
+      {% include "components/mini_stat.html" with label="Office, open" value=summary.office_open %}
+      {% include "components/mini_stat.html" with label="Office, overdue" value=summary.office_overdue tone="danger" %}
+    {% endif %}
+  </div>
+
+  {# ---- Whose calendar -------------------------------------------------- #}
+  <nav aria-label="Whose activities to show" class="mb-3 no-print">
+    <ul class="flex flex-wrap gap-1 border-b border-slate-200">
+      {% for item in scopes %}
+        <li>
+          <a href="?{% query_string scope=item.value day=None page=None %}"
+             class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                    {% if scope == item.value %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+             {% if scope == item.value %}aria-current="page"{% endif %}>
+            {{ item.label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  {# ---- Over what period ------------------------------------------------ #}
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3 no-print">
+    <div class="inline-flex rounded-md border border-slate-300 bg-white shadow-xs" role="group"
+         aria-label="Calendar period">
+      {% for item in periods %}
+        <a href="?{% query_string period=item.value day=None page=None %}"
+           class="border-r border-slate-200 px-3 py-1.5 text-sm font-medium first:rounded-l-md last:rounded-r-md last:border-r-0
+                  {% if period == item.value %}bg-brand-700 text-white{% else %}text-slate-700 hover:bg-slate-50{% endif %}"
+           {% if period == item.value %}aria-current="true"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </div>
+
+    {% if show_month_grid %}
+      <div class="flex items-center gap-1">
+        <a href="?{% query_string year=prev_month|date:'Y' month=prev_month|date:'n' date=None day=None %}"
+           class="btn btn-secondary btn-sm" rel="prev">
+          {% icon "chevron-left" "size-3.5" %}<span class="sr-only">Previous month, {{ prev_month|date:"F Y" }}</span>
+        </a>
+        {% if not is_current_month %}
+          <a href="?{% query_string year=None month=None date=None day=None %}" class="btn btn-secondary btn-sm">Today</a>
+        {% endif %}
+        <a href="?{% query_string year=next_month|date:'Y' month=next_month|date:'n' date=None day=None %}"
+           class="btn btn-secondary btn-sm" rel="next">
+          {% icon "chevron-right" "size-3.5" %}<span class="sr-only">Next month, {{ next_month|date:"F Y" }}</span>
+        </a>
+      </div>
+    {% elif show_week_strip %}
+      <div class="flex items-center gap-1">
+        <a href="?{% query_string date=prev_week|date:'Y-m-d' year=None month=None day=None %}"
+           class="btn btn-secondary btn-sm" rel="prev">
+          {% icon "chevron-left" "size-3.5" %}<span class="sr-only">Previous week</span>
+        </a>
+        {% if not is_current_week %}
+          <a href="?{% query_string date=None year=None month=None day=None %}" class="btn btn-secondary btn-sm">This week</a>
+        {% endif %}
+        <a href="?{% query_string date=next_week|date:'Y-m-d' year=None month=None day=None %}"
+           class="btn btn-secondary btn-sm" rel="next">
+          {% icon "chevron-right" "size-3.5" %}<span class="sr-only">Next week</span>
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  {% comment %}
+   Search and filters run the full width, above both columns.
+
+   They used to sit inside the list card, which is a third of the page wide:
+   six controls that want a row each ended up stacked one per line and pushed
+   the activities they filter off the bottom of the screen. The filter bar is
+   about the whole view, not about the column it happened to be nested in.
+  {% endcomment %}
+  <section class="card mb-4 overflow-hidden" aria-label="Search and filter activities">
+    {% include "components/table_toolbar.html" with search_placeholder=search_placeholder filters=filters hidden_params=hidden_params standalone=True %}
+  </section>
+
+  {% comment %}
+   `items-start`, so a card is its own height.
+
+   Grid items stretch by default, which meant the month grid - always shorter
+   than a list of everything in the month - was inflated to match the list
+   beside it and carried a slab of empty card below its legend. The calendar
+   opts back into the stretch with `self-stretch` below, because it is the one
+   of the two that can actually use the height: its rows grow. A list cannot
+   fill space, so it is left alone.
+  {% endcomment %}
+  <div class="grid items-start gap-4 xl:grid-cols-3">
+
+    {# ---- Month grid --------------------------------------------------- #}
+    {% if show_month_grid %}
+      {% comment %}
+       The cap stops the stretch running away. A busy month for the Chief can
+       list forty activities beside a six-row grid, and matching that height
+       would give each day a cell the size of a postcard. Above the cap the
+       grid keeps its own height and the space below it is page, not an empty
+       card - which is what was wrong with it before.
+
+       64rem is comfortably above the grid's natural height, so the cap only
+       ever limits growth; it never squeezes the rows.
+      {% endcomment %}
+      <section class="card flex flex-col xl:col-span-2 xl:max-h-[64rem] xl:self-stretch"
+               aria-labelledby="calendar-heading">
+        <div class="card-header">
+          <div>
+            <h2 id="calendar-heading" class="card-title">{{ month|date:"F Y" }}</h2>
+            <p class="mt-0.5 text-meta text-slate-500">
+              {{ records|length }} activit{{ records|length|pluralize:"y,ies" }} &middot;
+              {% for item in scopes %}{% if scope == item.value %}{{ item.label }}{% endif %}{% endfor %}
+            </p>
+          </div>
+        </div>
+
+        <div class="table-wrap min-h-0 flex-1">
+          <table class="h-full w-full table-fixed border-collapse">
+            <caption class="sr-only">
+              Activities scheduled in {{ month|date:"F Y" }}, arranged as a month calendar.
+              Each day names the activities running on it and who owns them.
+            </caption>
+            <thead>
+              <tr>
+                {% for name in weekday_names %}
+                  <th scope="col" class="border-b border-slate-200 bg-slate-50 px-2 py-2 text-meta font-semibold tracking-wide text-slate-600 uppercase">
+                    <abbr title="{{ name }}day" class="no-underline">{{ name }}</abbr>
+                  </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for week in weeks %}
+                <tr>
+                  {% for day in week %}
+                    <td class="group/day relative h-28 border-b border-r border-slate-100 align-top transition-colors last:border-r-0 hover:bg-brand-50/70
+                               {% if not day.in_month %}bg-slate-50/60{% elif day.is_weekend %}bg-slate-50/40{% endif %}
+                               {% if day.is_today %}bg-brand-50{% endif %}
+                               {% if day.is_selected %}ring-2 ring-inset ring-brand-500{% endif %}">
+
+                      {% comment %}
+                       The whole box opens the day, not just the numeral.
+
+                       An overlay link rather than a wrapping one: a <td> cannot
+                       be an anchor, and the activity chips inside it are anchors
+                       of their own, which may not be nested. The chips are lifted
+                       above this overlay so they keep their own click; everything
+                       else in the cell belongs to the day.
+
+                       Scripting turns this into a dialog. Without it, it is an
+                       ordinary link to the same day, listed beside the grid.
+                      {% endcomment %}
+                      <a href="?{% query_string day=day.date|date:'Y-m-d' %}"
+                         data-day-open
+                         data-day="{{ day.date|date:'Y-m-d' }}"
+                         data-day-label="{{ day.date|date:'l, j F Y' }}"
+                         class="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-inset">
+                        <span class="sr-only">
+                          {{ day.date|date:"l, j F Y" }} &mdash;
+                          {% if day.activities %}
+                            open {{ day.activities|length }} activit{{ day.activities|length|pluralize:"y,ies" }}
+                          {% else %}
+                            nothing scheduled
+                          {% endif %}
+                        </span>
+                      </a>
+
+                      <div class="p-1.5">
+                        <div class="flex items-center justify-between">
+                          <p class="text-meta font-semibold
+                                    {% if day.is_today %}inline-grid size-5 place-items-center rounded-full bg-brand-700 text-white
+                                    {% elif day.in_month %}text-slate-700{% else %}text-slate-400{% endif %}">
+                            <time datetime="{{ day.date|date:'Y-m-d' }}">{{ day.date|date:"j" }}</time>
+                          </p>
+                          {% comment %}
+                           A quiet affordance. The whole box is clickable now, and
+                           an empty cell gives no sign of it; this appears on hover
+                           and on keyboard focus, and never in print.
+                          {% endcomment %}
+                          <span class="text-slate-400 opacity-0 transition-opacity group-hover/day:opacity-100 no-print"
+                                aria-hidden="true">{% icon "plus" "size-3.5" %}</span>
+                        </div>
+                        <ul class="mt-1 space-y-1">
+                          {% for activity in day.activities|slice:":3" %}
+                            {% include "dashboard/activities/_event.html" %}
+                          {% endfor %}
+                          {% if day.activities|length > 3 %}
+                            {# Not a link of its own any more - the cell around it is one. #}
+                            <li class="px-1.5 text-meta font-medium text-brand-700">
+                              +{{ day.activities|length|add:"-3" }} more
+                            </li>
+                          {% endif %}
+                        </ul>
+                      </div>
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %}
+         The full contents of each day, for the dialog to show.
+
+         A cell has room for three activities; the dialog has room for all of
+         them, and gets them from here rather than from a request of its own.
+         The server has already decided what this user may see, so shipping the
+         rest of the month with the page keeps the dialog instant and adds no
+         second endpoint that would have to repeat the permission checks.
+        {% endcomment %}
+        <div hidden data-day-panels>
+          {% for week in weeks %}
+            {% for day in week %}
+              {% if day.activities %}
+                <div data-day-panel="{{ day.date|date:'Y-m-d' }}">
+                  <ul class="divide-y divide-slate-100">
+                    {% for activity in day.activities %}
+                      {% include "dashboard/activities/_activity_row.html" %}
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+        </div>
+
+        {% include "dashboard/activities/_legend.html" %}
+      </section>
+
+    {# ---- Week strip ---------------------------------------------------- #}
+    {% elif show_week_strip %}
+      <section class="card xl:col-span-2" aria-labelledby="calendar-heading">
+        <div class="card-header">
+          <h2 id="calendar-heading" class="card-title">
+            {{ week_start|date:"j M" }} &ndash; {{ week_end|date:"j M Y" }}
+          </h2>
+          <p class="text-meta text-slate-500">{{ records|length }} activit{{ records|length|pluralize:"y,ies" }}</p>
+        </div>
+        <ul class="divide-y divide-slate-100">
+          {% for day in week_days %}
+            <li class="flex gap-3 px-4 py-3 sm:px-5 {% if day.is_today %}bg-brand-50{% elif day.is_weekend %}bg-slate-50/50{% endif %}">
+              <div class="w-24 shrink-0">
+                <p class="text-sm font-semibold {% if day.is_today %}text-brand-800{% else %}text-slate-900{% endif %}">
+                  {{ day.date|date:"D" }}
+                </p>
+                <p class="text-meta text-slate-500">
+                  <time datetime="{{ day.date|date:'Y-m-d' }}">{{ day.date|date:"j M" }}</time>
+                </p>
+                {% if can_create %}
+                  <a href="{% url 'activities:create' %}?date={{ day.date|date:'Y-m-d' }}"
+                     class="mt-1 inline-flex items-center gap-1 text-meta text-brand-700 hover:underline no-print">
+                    {% icon "plus" "size-3" %}Add
+                  </a>
+                {% endif %}
+              </div>
+              <div class="min-w-0 flex-1">
+                {% if day.activities %}
+                  <ul class="space-y-1">
+                    {% for activity in day.activities %}
+                      {% include "dashboard/activities/_event.html" %}
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <p class="text-meta text-slate-400">Nothing scheduled</p>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        {% include "dashboard/activities/_legend.html" %}
+      </section>
+    {% endif %}
+
+    {# ---- The list beside it -------------------------------------------- #}
+    <section class="card flex flex-col {% if not show_month_grid and not show_week_strip %}xl:col-span-3{% endif %}"
+             aria-labelledby="month-list-heading">
+      <div class="card-header">
+        <div class="min-w-0">
+          <h2 id="month-list-heading" class="card-title">
+            {% if selected_day %}{{ selected_day|date:"l, j F Y" }}
+            {% elif has_date_range %}Activities in the selected range
+            {% elif period == "upcoming" %}Upcoming activities
+            {% elif period == "overdue" %}Overdue activities
+            {% elif period == "week" %}This week's activities
+            {% else %}Activities in {{ month|date:"F" }}{% endif %}
+          </h2>
+          {% comment %}
+           The subtitle earns its line or it does not get one. "Owner shown on
+           every entry" described the rows rather than telling the reader
+           anything about them; the count does the job the heading cannot.
+          {% endcomment %}
+          <p class="mt-0.5 text-meta text-slate-500">
+            {% if selected_day %}{{ selected_activities|length }} activit{{ selected_activities|length|pluralize:"y,ies" }} on this day
+            {% elif has_date_range %}{{ date_from|default:"any date" }} to {{ date_to|default:"any date" }}
+            {% elif period == "upcoming" %}Within the next {{ upcoming_days }} days
+            {% elif period == "overdue" %}Past their date, not yet closed off
+            {% else %}{{ records|length }} activit{{ records|length|pluralize:"y,ies" }}{% endif %}
+          </p>
+        </div>
+        {% if selected_day %}
+          <div class="flex items-center gap-2">
+            {% if can_create %}
+              <a href="{% url 'activities:create' %}?date={{ selected_day|date:'Y-m-d' }}" class="btn btn-primary btn-sm">
+                {% icon "plus" "size-3.5" %}Add
+              </a>
+            {% endif %}
+            <a href="?{% query_string day=None %}" class="btn btn-ghost btn-sm">Clear day</a>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if selected_day %}
+        {% if selected_activities %}
+          <ul class="divide-y divide-slate-100">
+            {% for activity in selected_activities %}
+              {% include "dashboard/activities/_activity_row.html" %}
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% include "components/empty_state.html" with icon="calendar" title="Nothing on this day" message="No activities you can see are scheduled for this date." %}
+        {% endif %}
+
+      {% elif records %}
+        <ul class="divide-y divide-slate-100">
+          {% for activity in records %}
+            {% include "dashboard/activities/_activity_row.html" %}
+          {% endfor %}
+        </ul>
+        {% if page_obj %}
+          {% include "includes/pagination.html" with page_obj=page_obj label="activities" %}
+        {% endif %}
+
+      {% elif is_filtered %}
+        {% include "components/empty_state.html" with icon="search" title="No matching activities" message="No activities in this view match the current search and filters." %}
+      {% elif period == "overdue" %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing overdue" message="Every activity in this view is either completed, cancelled or still ahead of its date." %}
+      {% else %}
+        {% include "components/empty_state.html" with icon="calendar" title="Nothing scheduled" message="No activities are recorded for this period." %}
+      {% endif %}
+    </section>
+  </div>
+
+  {% comment %}
+   ---- The day dialog ------------------------------------------------------
+   Clicking a day opens this: what is already on that day, and a short form to
+   put something new on it. Adding is the thing people come to a calendar to
+   do, so the form is the point of the dialog and the existing activities are
+   the context that makes it safe to fill in - you can see the clash before you
+   create it.
+
+   The form is the real Django form, posted to the ordinary create URL with
+   `quick=1`. Nothing here is a shortcut past a permission: the view applies
+   the same ownership rules to this post as to the full page, and if the post
+   fails validation the full page renders with the errors on it.
+
+   Layout: exactly one thing scrolls. The heading and the buttons are pinned,
+   and the middle is the only scroll container, so Save is reachable without
+   scrolling to find it. The height cap lives on the wrapper rather than on the
+   <dialog>, and the flex column with it: an author `display:flex` on a dialog
+   beats the browser's own `dialog:not([open]) { display: none }` - author
+   styles outrank the user-agent sheet whatever the specificity - and the
+   dialog would then be on screen permanently, open or not.
+
+   Opened by scripting only. Without it, the day cell is a plain link to the
+   day beside the grid, and "Add Activity" at the top of the page still works.
+   --------------------------------------------------------------------------
+  {% endcomment %}
+  <dialog id="day-peek" aria-labelledby="day-peek-title"
+          class="m-auto w-[calc(100vw-2rem)] max-w-2xl overflow-hidden rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+    <div class="flex max-h-[85vh] flex-col">
+
+      {# ---- Pinned heading ---- #}
+      <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <div class="min-w-0">
+          <h2 id="day-peek-title" class="text-card-title font-semibold text-slate-900" data-day-title></h2>
+          <p class="mt-0.5 text-meta text-slate-500" data-day-count></p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm shrink-0" data-dialog-close>
+          {% icon "close" "size-4" %}<span class="sr-only">Close</span>
+        </button>
+      </div>
+
+      {# ---- The one scroll container ---- #}
+      <div class="min-h-0 flex-1 overflow-y-auto">
+
+        {# What is already on the day. Hidden when the day is empty. #}
+        <section data-day-existing hidden aria-label="Already scheduled">
+          <div class="border-b border-slate-200 bg-slate-50/70 px-5 py-2">
+            <h3 class="text-meta font-semibold tracking-wide text-slate-600 uppercase">Already on this day</h3>
+          </div>
+          <div class="border-b border-slate-200" data-day-body></div>
+        </section>
+
+        {% if quick_form %}
+          {% comment %}
+           The form ends here; its buttons are in the pinned footer below and
+           reach it through the `form` attribute, which is how
+           `components/modal.html` does the same thing.
+          {% endcomment %}
+          <form id="day-peek-form" method="post" action="{% url 'activities:create' %}"
+                novalidate data-day-form>
+            {% csrf_token %}
+            <input type="hidden" name="quick" value="1">
+            {% comment %}
+             Back to the calendar the activity was added from - this month,
+             this scope, this period. The view checks it is a URL on this host
+             before redirecting to it.
+            {% endcomment %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+            <div class="px-5 py-4">
+              <h3 class="mb-3 text-meta font-semibold tracking-wide text-slate-600 uppercase">Add an activity</h3>
+              <div class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                {% for title, fields in quick_form.get_sections %}
+                  {% for field in fields %}
+                    <div class="{% if field.is_wide %}sm:col-span-2{% endif %}" data-field="{{ field.name }}">
+                      {% include "components/bound_field.html" with field=field form=quick_form %}
+                    </div>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            </div>
+          </form>
+        {% endif %}
+      </div>
+
+      {# ---- Pinned buttons ---- #}
+      <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+        {% if quick_form %}
+          <a href="{% url 'activities:create' %}" class="mr-auto text-meta font-medium text-brand-700 hover:underline"
+             data-day-more>More options</a>
+        {% endif %}
+        <a href="{{ request.path }}" class="btn btn-ghost btn-sm" data-day-full>Show beside the calendar</a>
+        <button type="button" class="btn btn-secondary" data-dialog-close>
+          {% if quick_form %}Cancel{% else %}Close{% endif %}
+        </button>
+        {% if quick_form %}
+          <button type="submit" form="day-peek-form" class="btn btn-primary">
+            {% icon "check" "size-4" %}Save activity
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </dialog>
+
+  {# ---- Preview dialog, opened by scripting only ----------------------- #}
+  <dialog id="activity-peek" aria-labelledby="activity-peek-title"
+          class="m-auto w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+   <div class="flex max-h-[85vh] flex-col">
+    <div class="shrink-0 border-b border-slate-200 p-5">
+      <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase" data-peek="type"></p>
+      <h2 id="activity-peek-title" class="mt-1 text-card-title font-semibold text-slate-900" data-peek="title"></h2>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600" data-peek="description"></p>
+    </div>
+    <dl class="min-h-0 flex-1 grid gap-x-8 gap-y-3 overflow-y-auto p-5 sm:grid-cols-2">
+      <div>
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Owner</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="owner"></dd>
+      </div>
+      <div data-peek-row="assigned">
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assigned to</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="assigned"></dd>
+      </div>
+      <div data-peek-row="section">
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Division / section</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="section"></dd>
+      </div>
+      <div>
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="when"></dd>
+      </div>
+      <div>
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Time</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="time"></dd>
+      </div>
+      <div data-peek-row="location">
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Location</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="location"></dd>
+      </div>
+      <div>
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Status</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="status"></dd>
+      </div>
+      <div>
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Priority</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="priority"></dd>
+      </div>
+      <div>
+        <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Visibility</dt>
+        <dd class="mt-0.5 text-sm text-slate-900" data-peek="visibility"></dd>
+      </div>
+    </dl>
+    <div class="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+      <button type="button" class="btn btn-secondary" data-dialog-close>Close</button>
+      <a href="#" class="btn btn-primary" data-peek="url">Open activity</a>
+    </div>
+   </div>
+  </dialog>
+{% endblock %}

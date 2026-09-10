@@ -1,0 +1,110 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Search / filter bar above a data table.
+
+   {% include "components/table_toolbar.html" with
+        search_placeholder="Search programs..."
+        filters=filters %}       list of {name, label, options, selected}
+
+   A plain GET form: the resulting URL carries the search, filters and date
+   range, so it is shareable, bookmarkable and safe to paste into an email -
+   which is how government offices actually circulate a filtered view. The
+   active sort is preserved through a hidden field, and paging back to page 1
+   on a new search is deliberate.
+
+   The date range appears only for modules that declare a `date_field`; it is
+   folded away until used, so the common case stays a single row.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+{% comment %}
+ `standalone` drops the bottom rule: the divider exists to separate the toolbar
+ from the table beneath it, and a module that puts the toolbar in a card of its
+ own has nothing beneath it to separate from.
+{% endcomment %}
+<form method="get" {% if not standalone %}class="border-b border-slate-200"{% endif %}>
+  {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+  {% comment %}
+   Parameters that belong to the module's own navigation rather than to the
+   filters - which calendar is being looked at, and over what period. Without
+   these an Apply would silently throw the user back to the default view.
+  {% endcomment %}
+  {% for param in hidden_params %}
+    {% if param.value %}<input type="hidden" name="{{ param.name }}" value="{{ param.value }}">{% endif %}
+  {% endfor %}
+
+  <div class="flex flex-wrap items-end gap-3 p-4 sm:px-5">
+    <div class="min-w-0 flex-1 basis-64">
+      <label for="table-search" class="sr-only">{{ search_placeholder|default:"Search records" }}</label>
+      <div class="relative">
+        <span class="pointer-events-none absolute inset-y-0 left-0 grid w-9 place-items-center text-slate-400">
+          {% icon "search" "size-4" %}
+        </span>
+        <input type="search" id="table-search" name="q" value="{{ request.GET.q|default:'' }}"
+               placeholder="{{ search_placeholder|default:'Search records...' }}"
+               class="form-input pl-9">
+      </div>
+    </div>
+
+    {% for filter in filters %}
+      <div class="w-full sm:w-auto">
+        <label for="filter-{{ filter.name }}" class="sr-only">{{ filter.label }}</label>
+        <select id="filter-{{ filter.name }}" name="{{ filter.name }}" class="form-select w-full sm:w-44">
+          <option value="">{{ filter.label }}: All</option>
+          {% for value, text in filter.options %}
+            <option value="{{ value }}" {% if filter.selected == value|stringformat:"s" %}selected{% endif %}>{{ text }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endfor %}
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="submit" class="btn btn-secondary">
+        {% icon "filter" "size-4" %}Apply
+      </button>
+      {% if is_filtered %}
+        <a href="{{ request.path }}" class="btn btn-ghost">Clear</a>
+      {% endif %}
+    </div>
+
+    {% if is_filtered and total_count %}
+      <p class="ml-auto text-meta text-slate-500" role="status">
+        {{ page_obj.paginator.count|default:"0" }} of {{ total_count }} record{{ total_count|pluralize }}
+      </p>
+    {% endif %}
+  </div>
+
+  {% if date_field %}
+    <details class="border-t border-slate-100" {% if date_from or date_to %}open{% endif %}>
+      <summary class="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-meta font-medium text-slate-600 hover:bg-slate-50 sm:px-5">
+        {% icon "calendar" "size-3.5" %}
+        <span>
+          Date range
+          {% if date_from or date_to %}
+            <span class="ml-1 font-normal text-slate-500">
+              ({{ date_from|default:"any" }} to {{ date_to|default:"any" }})
+            </span>
+          {% endif %}
+        </span>
+      </summary>
+      <div class="flex flex-wrap items-end gap-3 border-t border-slate-100 bg-slate-50/60 p-4 sm:px-5">
+        <div>
+          <label for="range-from" class="form-label">{{ date_field_label }} from</label>
+          <input type="date" id="range-from" name="from" value="{{ date_from }}" class="form-input w-44">
+        </div>
+        <div>
+          <label for="range-to" class="form-label">{{ date_field_label }} to</label>
+          <input type="date" id="range-to" name="to" value="{{ date_to }}" class="form-input w-44">
+        </div>
+        <button type="submit" class="btn btn-secondary">Apply range</button>
+        {% if date_from or date_to %}
+          <a href="?{% query_string from=None to=None page=None %}" class="btn btn-ghost">Clear range</a>
+        {% endif %}
+        <p class="ml-auto max-w-sm text-meta leading-relaxed text-slate-500">
+          Leave either box empty for an open-ended range. The range is carried
+          into the CSV export.
+        </p>
+      </div>
+    </details>
+  {% endif %}
+</form>

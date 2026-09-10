@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Government data-entry form.
+
+   Sections come from the form's `fieldsets`; each field renders with its
+   label, required marker, help text and validation message. Two columns at
+   most, with textareas and any field listed in `wide_fields` spanning both -
+   never a dense row of inputs.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block content %}
+  <form method="post" enctype="multipart/form-data" novalidate class="max-w-4xl">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div role="alert" class="mb-5 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+        <span class="mt-0.5 shrink-0 text-red-700">{% icon "error" "size-5" %}</span>
+        <div>
+          <p class="font-semibold">This record could not be saved</p>
+          {% for error in form.non_field_errors %}<p class="mt-0.5">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="space-y-5">
+      {% for title, fields in form.get_sections %}
+        <section class="card" {% if title %}aria-labelledby="section-{{ forloop.counter }}"{% endif %}>
+          {% if title %}
+            <div class="card-header">
+              <h2 id="section-{{ forloop.counter }}" class="card-title">{{ title }}</h2>
+            </div>
+          {% endif %}
+
+          <div class="card-body">
+            <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+              {% for field in fields %}
+                <div class="{% if field.is_wide %}sm:col-span-2{% endif %}" data-field="{{ field.name }}">
+                  {% include "components/bound_field.html" with field=field form=form %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+
+    <div class="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-5">
+      <p class="mr-auto text-meta text-slate-500">
+        <span class="required-mark" aria-hidden="true">*</span> indicates a required field
+      </p>
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% icon "check" "size-4" %}{{ submit_label }}
+      </button>
+    </div>
+  </form>
+{% endblock %}

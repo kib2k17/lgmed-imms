@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="item-heading">
+        <div class="card-header">
+          <h2 id="item-heading" class="card-title">Published Text</h2>
+          {% if record.is_live %}
+            {% status_badge "published" "Published" %}
+          {% elif record.is_published %}
+            {% status_badge "pending" "Scheduled" %}
+          {% else %}
+            {% status_badge "draft" "Draft" %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-6">
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Lead paragraph</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-700">{{ record.summary }}</p>
+          </div>
+
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Full text</h3>
+            {% if record.paragraphs %}
+              <div class="mt-2 space-y-3 text-sm leading-relaxed text-slate-700">
+                {% for paragraph in record.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+              </div>
+            {% else %}
+              <p class="mt-2 text-sm text-slate-500">
+                No full text recorded. The lead paragraph alone is published.
+              </p>
+            {% endif %}
+          </div>
+
+          {% if record.source_url %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Read more at</h3>
+              <p class="mt-2 text-sm">
+                <a href="{{ record.source_url }}" rel="noopener noreferrer" target="_blank"
+                   class="inline-flex items-center gap-1.5 break-all text-brand-700 hover:underline">
+                  {% icon "external" "size-3.5" %}{{ record.source_url }}
+                  <span class="sr-only">(opens in a new tab)</span>
+                </a>
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="photo-heading">
+        <div class="card-header">
+          <h2 id="photo-heading" class="card-title">Photograph</h2>
+        </div>
+        <div class="card-body">
+          {% if record.image %}
+            <img src="{{ record.image.url }}" alt="{{ record.alt_text }}"
+                 class="w-full rounded-md border border-slate-200 object-cover">
+            <p class="mt-2 text-meta text-slate-500">
+              {{ record.image_alt|default:"No description recorded - the headline is used for screen readers." }}
+            </p>
+          {% else %}
+            <p class="text-sm text-slate-500">
+              No photograph uploaded. The item is published with a plain placeholder.
+            </p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="publication-heading">
+        <div class="card-header">
+          <h2 id="publication-heading" class="card-title">Publication Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Category</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_category_display }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date published</dt>
+              <dd class="mt-1 text-sm text-slate-900 tabular">{{ record.published_on|date:"j F Y" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Location</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.location|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Homepage</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.is_featured %}Featured as the lead story{% else %}Not featured{% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Public address</dt>
+              <dd class="mt-1 text-sm">
+                {% if record.is_live %}
+                  <a href="{{ record.get_public_url }}" class="break-all text-brand-700 hover:underline">
+                    {{ record.get_public_url }}
+                  </a>
+                {% else %}
+                  <span class="break-all text-slate-500">{{ record.get_public_url }}</span>
+                  <span class="mt-1 block text-meta text-slate-500">
+                    Reachable once the item is published and its date has arrived.
+                  </span>
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Announcement?" message="This action cannot be undone. The item will be removed from the internal system and from the public website." detail=record confirm_label="Delete Announcement" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

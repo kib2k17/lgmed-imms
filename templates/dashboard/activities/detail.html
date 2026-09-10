@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to calendar</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+  {% comment %}
+   Edit and Delete are offered on ownership, not on role. A Chief reading a
+   colleague's activity sees neither, and would be refused by the view if they
+   reached the URL another way.
+  {% endcomment %}
+  {% if can_edit %}
+    <a href="{{ record.get_absolute_url }}edit/" class="btn btn-primary">
+      {% icon "edit" "size-4" %}Edit
+    </a>
+  {% endif %}
+  {% if can_remove %}
+    <button type="button" class="btn btn-danger" data-dialog-open="delete-record">
+      {% icon "delete" "size-4" %}<span class="hidden sm:inline">Delete</span>
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+
+      {# ---- Who this belongs to ---------------------------------------- #}
+      <section class="card" aria-labelledby="ownership-heading">
+        <div class="card-header">
+          <h2 id="ownership-heading" class="card-title">Ownership</h2>
+          <span class="text-meta text-slate-500">Activity ID {{ record.pk }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="grid gap-x-8 gap-y-4 sm:grid-cols-3">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Owner</dt>
+              <dd class="mt-1 text-sm font-medium text-slate-900">{{ record.owner_label }}</dd>
+              {% if record.owner.position %}
+                <dd class="text-meta text-slate-500">{{ record.owner.position }}</dd>
+              {% endif %}
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Responsible</dt>
+              <dd class="mt-1 text-sm font-medium text-slate-900">
+                {{ record.responsible_label }}
+                {% if not record.is_delegated %}
+                  <span class="block text-meta font-normal text-slate-500">The owner carries this out</span>
+                {% else %}
+                  <span class="block text-meta font-normal text-brand-700">Assigned by the owner</span>
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Division / section</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {{ record.section.name|default:record.owner.section_label|default:"Not recorded" }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {# ---- The activity ------------------------------------------------ #}
+      <section class="card" aria-labelledby="activity-heading">
+        <div class="card-header">
+          <h2 id="activity-heading" class="card-title">Activity</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            {% status_badge record.status record.get_status_display %}
+            {% if record.is_overdue %}
+              <span class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-800">
+                {% icon "warning" "size-3" %}Overdue
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="text-sm leading-relaxed whitespace-pre-line text-slate-700">
+            {{ record.description|default:"No description recorded." }}
+          </p>
+
+          {% if record.participants %}
+            <div class="mt-6 border-t border-slate-200 pt-5">
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Participants</h3>
+              <p class="mt-2 text-sm text-slate-700">{{ record.participants }}</p>
+            </div>
+          {% endif %}
+
+          {% if record.remarks %}
+            <div class="mt-6 border-t border-slate-200 pt-5">
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Remarks</h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.remarks }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- Reporting on the work --------------------------------------- #}
+      {% if can_progress %}
+        <section class="card no-print" aria-labelledby="progress-heading">
+          <div class="card-header">
+            <h2 id="progress-heading" class="card-title">Report progress</h2>
+            <p class="text-meta text-slate-500">Recorded against your name</p>
+          </div>
+          <form method="post" action="{% url 'activities:progress' record.pk %}" class="card-body">
+            {% csrf_token %}
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label for="{{ progress_form.status.id_for_label }}" class="form-label">Status</label>
+                {{ progress_form.status }}
+              </div>
+              <div class="sm:col-span-2">
+                <label for="{{ progress_form.remarks.id_for_label }}" class="form-label">Remarks</label>
+                {{ progress_form.remarks }}
+              </div>
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button type="submit" class="btn btn-primary">{% icon "check" "size-4" %}Save update</button>
+            </div>
+          </form>
+        </section>
+      {% endif %}
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="schedule-heading">
+        <div class="card-header">
+          <h2 id="schedule-heading" class="card-title">Schedule</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                <time datetime="{{ record.start_date|date:'Y-m-d' }}">{{ record.start_date|date:"l, j F Y" }}</time>
+                {% if record.end_date and record.end_date != record.start_date %}
+                  <span class="block text-slate-500">
+                    to <time datetime="{{ record.end_date|date:'Y-m-d' }}">{{ record.end_date|date:"l, j F Y" }}</time>
+                  </span>
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Time</dt>
+              <dd class="mt-1 flex items-center gap-2 text-sm text-slate-900">
+                <span class="text-slate-400">{% icon "clock" "size-4" %}</span>{{ record.time_label }}
+              </dd>
+            </div>
+            {% if record.location %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Location</dt>
+                <dd class="mt-1 flex items-start gap-2 text-sm text-slate-900">
+                  <span class="mt-0.5 shrink-0 text-slate-400">{% icon "map-pin" "size-4" %}</span>{{ record.location }}
+                </dd>
+              </div>
+            {% endif %}
+            {% if record.lgu %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGU concerned</dt>
+                <dd class="mt-1 text-sm">
+                  <a href="{{ record.lgu.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">{{ record.lgu.name }}</a>
+                  <span class="block text-meta text-slate-500">{{ record.lgu.province.name }}</span>
+                </dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Type</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_activity_type_display }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Priority</dt>
+              <dd class="mt-1 text-sm {% if record.priority == 'URGENT' or record.priority == 'HIGH' %}font-semibold text-red-700{% else %}text-slate-900{% endif %}">
+                {{ record.get_priority_display }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="visibility-heading">
+        <div class="card-header">
+          <h2 id="visibility-heading" class="card-title">Visibility</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Who can see this</dt>
+              <dd class="mt-1 flex items-start gap-2 text-sm text-slate-900">
+                <span class="mt-0.5 shrink-0 text-slate-400">
+                  {% if record.visibility == "PRIVATE" %}{% icon "lock" "size-4" %}{% else %}{% icon "users" "size-4" %}{% endif %}
+                </span>
+                {{ record.get_visibility_display }}
+              </dd>
+              <dd class="mt-1.5 text-meta leading-relaxed text-slate-500">
+                Supervisors can always see this activity for monitoring purposes.
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Public calendar</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.is_published %}Shown on the public website{% else %}Internal only{% endif %}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if can_remove %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Activity?" message="This action cannot be undone. The activity will be removed from the calendar." detail=record confirm_label="Delete Activity" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

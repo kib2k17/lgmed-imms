@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Full-page delete confirmation. The in-page dialog posts here too, so the
+   action is confirmable with or without JavaScript and is never one click.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_header %}{% endblock %}
+
+{% block content %}
+  <div class="mx-auto max-w-xl">
+    <div class="card border-red-200">
+      <div class="card-body">
+        <div class="flex items-start gap-4">
+          <span aria-hidden="true" class="grid size-11 shrink-0 place-items-center rounded-md bg-red-50 text-red-700">
+            {% icon "warning" "size-5" %}
+          </span>
+          <div class="min-w-0">
+            <h1 class="text-section-title font-semibold text-slate-900">
+              Delete this {{ module_label|lower }}?
+            </h1>
+            <p class="mt-1.5 text-sm text-slate-600">
+              This action cannot be undone.
+            </p>
+
+            <div class="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3.5">
+              <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Record to be deleted</p>
+              <p class="mt-1 text-sm font-medium text-slate-900">{{ record }}</p>
+              {% block record_detail %}{% endblock %}
+            </div>
+
+            <p class="mt-4 flex items-start gap-2 text-meta leading-relaxed text-slate-600">
+              <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-3.5" %}</span>
+              <span>
+                Deletion is recorded against your account
+                ({{ user.get_display_name }}) together with the time of the action.
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer justify-end">
+        <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+        <form method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">
+            {% icon "delete" "size-4" %}Delete {{ module_label|lower }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

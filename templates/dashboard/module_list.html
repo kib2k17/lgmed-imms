@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Generic record list: toolbar, table, pagination.
+   A module supplies only its columns, by overriding two blocks:
+
+     {% block table_head %}  <th> cells
+     {% block table_body %}  <tr> rows
+
+   Search, filtering, sorting, pagination, export and the empty state are
+   handled here so every module behaves identically.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  {% if exportable %}
+    <a href="?{% query_string export='csv' %}" class="btn btn-secondary">
+      {% icon "download" "size-4" %}<span class="hidden sm:inline">Export CSV</span>
+    </a>
+  {% endif %}
+  {% block extra_actions %}{% endblock %}
+  {% if can_create %}
+    <a href="{% url create_url_name %}" class="btn btn-primary">
+      {% icon "plus" "size-4" %}{{ create_label }}
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="records-heading">
+    <h2 id="records-heading" class="sr-only">{{ module_label }} records</h2>
+
+    {% include "components/table_toolbar.html" with search_placeholder=search_placeholder filters=filters %}
+
+    {% if records %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">
+            {{ module_label }} &mdash; {{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}
+            {% if is_filtered %}matching the current search and filters{% endif %}
+          </caption>
+          <thead>
+            <tr>{% block table_head %}{% endblock %}</tr>
+          </thead>
+          <tbody>
+            {% block table_body %}{% endblock %}
+          </tbody>
+        </table>
+      </div>
+
+      {% include "includes/pagination.html" with page_obj=page_obj label=module_label|lower %}
+
+    {% elif is_filtered %}
+      {% include "components/empty_state.html" with icon="search" title="No matching records" message="No records match the current search and filters. Clear them to see all records." %}
+      <div class="border-t border-slate-200 px-6 py-5 text-center">
+        <a href="{{ request.path }}" class="btn btn-secondary">Clear search and filters</a>
+      </div>
+
+    {% else %}
+      {% if can_create %}
+        {% url create_url_name as create_url %}
+        {% include "components/empty_state.html" with icon=empty_icon title="No records yet" message="No records have been encoded for this module." action_url=create_url action_label=create_label %}
+      {% else %}
+        {% include "components/empty_state.html" with icon=empty_icon title="No records yet" message="No records have been encoded for this module." %}
+      {% endif %}
+    {% endif %}
+  </section>
+
+  {% block after_table %}{% endblock %}
+{% endblock %}

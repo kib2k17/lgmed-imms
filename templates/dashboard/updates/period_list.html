@@ -1,0 +1,54 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block extra_actions %}
+  <a href="{% url 'updates:list' %}" class="btn btn-secondary">
+    {% icon "check-circle" "size-4" %}<span class="hidden sm:inline">All updates</span>
+  </a>
+  {% if user.can_approve %}
+    <a href="{% url 'updates:disclosure' %}" class="btn btn-secondary">
+      {% icon "home" "size-4" %}<span class="hidden sm:inline">Public disclosure</span>
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="start_date" label="Reporting week" %}
+  <th scope="col" class="hidden lg:table-cell">Theme</th>
+  <th scope="col" class="hidden sm:table-cell">Entries</th>
+  <th scope="col" class="hidden md:table-cell">Completion</th>
+  {% include "components/th_sort.html" with field="status" label="Status" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.label }}</a>
+        {% if record.is_current %}
+          <span class="ml-1.5 rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-wide text-brand-800 uppercase">This week</span>
+        {% endif %}
+        <span class="mt-0.5 block text-meta text-slate-500">
+          Convocation {{ record.convocation_date|date:"j M Y" }}
+        </span>
+      </th>
+      <td class="hidden text-slate-600 lg:table-cell">{{ record.theme|default:"&mdash;" }}</td>
+      <td class="hidden tabular sm:table-cell">{{ record.updates.count }}</td>
+      <td class="hidden md:table-cell">
+        <span class="tabular font-medium
+                     {% if record.completion_percent < 50 %}text-amber-700
+                     {% elif record.completion_percent < 100 %}text-slate-900
+                     {% else %}text-green-700{% endif %}">{{ record.completion_percent }}%</span>
+      </td>
+      <td>{% status_badge record.status record.get_status_display %}</td>
+      <td class="text-right whitespace-nowrap">
+        <a href="{{ record.get_convocation_url }}" class="btn btn-ghost btn-sm">
+          {% icon "view" "size-3.5" %}<span class="hidden lg:inline">Convocation</span>
+          <span class="sr-only">view for {{ record.label }}</span>
+        </a>
+        {% include "components/row_actions.html" with record=record %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

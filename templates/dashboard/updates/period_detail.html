@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One LGMEDD Division Weekly Accomplishment Summary.
+
+   Several people contributed the entries below; this page is where they are
+   consolidated into a single division record. Entries are grouped by what
+   kind of work they were, never by who filed them.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to weeks</span>
+  </a>
+  <a href="{{ record.get_convocation_url }}" class="btn btn-secondary">
+    {% icon "view" "size-4" %}<span class="hidden sm:inline">Convocation view</span>
+  </a>
+  {% if can_review %}
+    <a href="{% url 'updates:review' record.pk %}" class="btn btn-secondary">
+      {% icon "check-circle" "size-4" %}<span class="hidden sm:inline">Review</span>
+    </a>
+  {% endif %}
+  {% if user.can_encode %}
+    {% if record.is_open %}
+      <form method="post" action="{% url 'updates:submit' record.pk %}" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary">
+          {% icon "upload" "size-4" %}<span class="hidden sm:inline">Submit for review</span>
+        </button>
+      </form>
+    {% endif %}
+    <a href="{% url 'updates:create' %}" class="btn btn-primary">
+      {% icon "plus" "size-4" %}Add Update
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  {# ---- Where the week stands ------------------------------------------- #}
+  <section class="card mb-6" aria-labelledby="week-state-heading">
+    <div class="card-header">
+      <div class="min-w-0">
+        <h2 id="week-state-heading" class="card-title">The Division's Week</h2>
+        <p class="mt-0.5 text-meta text-slate-500">
+          Update deadline {{ record.update_deadline|date:"l j F Y" }} &middot;
+          Convocation {{ record.convocation_date|date:"l j F Y" }}
+          {% if record.theme %} &middot; {{ record.theme }}{% endif %}
+        </p>
+      </div>
+      {% status_badge record.status record.get_status_display %}
+    </div>
+    <div class="card-body">
+      <div class="grid gap-6 lg:grid-cols-3">
+        <div class="lg:col-span-2">
+          <div class="flex items-baseline justify-between">
+            <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+              Weekly update completion
+            </p>
+            <p class="text-sm font-bold text-slate-900 tabular">{{ record.completion_percent }}%</p>
+          </div>
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+            <div class="h-full rounded-full bg-brand-600" style="width: {{ record.completion_percent }}%"></div>
+          </div>
+          <ul class="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+            {% for component in components %}
+              <li class="flex items-center gap-1.5 text-meta {% if component.present %}text-green-700{% else %}text-slate-500{% endif %}">
+                <span aria-hidden="true">
+                  {% if component.present %}{% icon "check" "size-3.5" %}{% else %}{% icon "close" "size-3.5" %}{% endif %}
+                </span>
+                {{ component.label }}
+                <span class="sr-only">{% if component.present %}recorded{% else %}not yet recorded{% endif %}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="rounded-md border border-slate-200 bg-slate-50 p-4">
+          <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Contributions</p>
+          <p class="mt-1 text-2xl font-bold text-slate-900 tabular">{{ record.updates.count|intcomma }}</p>
+          <p class="mt-1 text-meta text-slate-500">
+            entries, contributed by {{ record.contributor_count }} member{{ record.contributor_count|pluralize }}
+            of the Division
+          </p>
+          {% if record.reviewed_by %}
+            <p class="mt-3 border-t border-slate-200 pt-3 text-meta text-slate-500">
+              Reviewed by {{ record.reviewed_by.get_display_name }} on
+              {{ record.reviewed_at|date:"j F Y" }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ---- Division statistics --------------------------------------------- #}
+  <section aria-labelledby="week-stats-heading">
+    <h2 id="week-stats-heading" class="sr-only">Division statistics for this week</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      {% for card in cards %}
+        <div class="{% if forloop.last %}sm:col-span-2 xl:col-span-1{% endif %}">
+          {% include "components/stat_card.html" with card=card %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-6" aria-labelledby="week-figures-heading">
+    <h2 id="week-figures-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+      Division Statistics for {{ record.label }}
+    </h2>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+      {% for figure in figures %}
+        {% include "components/mini_stat.html" with label=figure.label value=figure.value tone=figure.tone %}
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---- Major accomplishments ------------------------------------------- #}
+  {% if major %}
+    <section class="card mt-6" aria-labelledby="major-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="major-heading" class="card-title">Major Accomplishments</h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            Selected by the Division Chief for the Monday convocation
+          </p>
+        </div>
+      </div>
+      <ol class="divide-y divide-slate-100">
+        {% for item in major %}
+          <li class="flex items-start gap-3 px-4 py-3">
+            <span aria-hidden="true" class="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-50 text-meta font-bold text-brand-700">
+              {{ forloop.counter }}
+            </span>
+            <div class="min-w-0">
+              <a href="{{ item.get_absolute_url }}" class="text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                {{ item.title }}
+              </a>
+              <p class="mt-0.5 text-meta text-slate-500">
+                {{ item.get_category_display }} &middot; {{ item.date_label }}
+                {% if item.location %} &middot; {{ item.location }}{% endif %}
+              </p>
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endif %}
+
+  {# ---- Everything contributed ------------------------------------------ #}
+  <section class="card mt-6" aria-labelledby="entries-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="entries-heading" class="card-title">Consolidated Division Updates</h2>
+        <p class="mt-0.5 text-meta text-slate-500">
+          Every accomplishment, activity and communication contributed to this week
+        </p>
+      </div>
+    </div>
+    {% if updates %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">
+            Division updates contributed for {{ record.label }}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Entry</th>
+              <th scope="col" class="hidden sm:table-cell">Category</th>
+              <th scope="col" class="hidden lg:table-cell">Focal person</th>
+              <th scope="col" class="hidden md:table-cell">Date</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in updates %}
+              <tr>
+                <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                  <a href="{{ item.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ item.title }}</a>
+                  {% if item.is_public %}
+                    <span class="ml-1.5 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-wide text-green-800 uppercase">Public</span>
+                  {% endif %}
+                  {% if item.location %}
+                    <span class="mt-0.5 block text-meta text-slate-500">{{ item.location }}</span>
+                  {% endif %}
+                </th>
+                <td class="hidden sm:table-cell">
+                  {{ item.get_category_display }}
+                  {% if item.activity_type != "NA" %}
+                    <span class="mt-0.5 block text-meta text-slate-500">{{ item.get_activity_type_display }}</span>
+                  {% endif %}
+                </td>
+                <td class="hidden text-slate-500 lg:table-cell">{{ item.focal_person_label }}</td>
+                <td class="hidden tabular md:table-cell">{{ item.date_label }}</td>
+                <td>{% status_badge item.status item.get_status_display %}</td>
+                <td class="text-right whitespace-nowrap">
+                  {% include "components/row_actions.html" with record=item %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% if user.can_encode %}
+        {% url 'updates:create' as create_url %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing contributed yet" message="The Division's week is empty. Add the activities, communications and accomplishments it should carry." action_url=create_url action_label="Add Update" %}
+      {% else %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing contributed yet" message="The Division's accomplishments for this week have not been recorded." %}
+      {% endif %}
+    {% endif %}
+  </section>
+
+  {# ---- Photographs ------------------------------------------------------ #}
+  <section class="card mt-6" aria-labelledby="week-photos-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="week-photos-heading" class="card-title">Activities &amp; Photo Documentation</h2>
+        <p class="mt-0.5 text-meta text-slate-500">
+          {{ photos|length }} photograph{{ photos|length|pluralize }} across the week
+        </p>
+      </div>
+    </div>
+    {% if photos %}
+      <div class="card-body">
+        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {% for photo in photos %}
+            <li class="overflow-hidden rounded-md border border-slate-200">
+              <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}"
+                   class="h-36 w-full bg-slate-50 object-cover">
+              <div class="px-3 py-2">
+                <a href="{{ photo.update.get_absolute_url }}" class="text-meta font-medium text-brand-700 hover:underline">
+                  {{ photo.update.title }}
+                </a>
+                <p class="mt-0.5 text-meta text-slate-500">{{ photo.caption|default:"No caption recorded" }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="view" title="No photographs this week" message="Photographs are filed against the entry they document, and gather here." %}
+    {% endif %}
+  </section>
+
+  {# ---- POPS Plan, ways forward, upcoming -------------------------------- #}
+  <div class="mt-6 grid gap-4 xl:grid-cols-2">
+
+    <section class="card" aria-labelledby="pops-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="pops-heading" class="card-title">POPS Plan Updates</h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            {{ pops_compliance.accomplished }} of {{ pops_compliance.target }} delivered
+            &middot; {{ pops_compliance.percent }}% compliance
+          </p>
+        </div>
+        {% if user.can_encode %}
+          <a href="{% url 'updates:pops_create' record.pk %}" class="btn btn-secondary btn-sm">
+            {% icon "plus" "size-3.5" %}Add
+          </a>
+        {% endif %}
+      </div>
+      {% if pops_updates %}
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">POPS Plan progress for {{ record.label }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Commitment</th>
+                <th scope="col">Target</th>
+                <th scope="col">Done</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pops in pops_updates %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                    {{ pops.commitment }}
+                    {% if pops.remarks %}
+                      <span class="mt-0.5 block text-meta font-normal text-slate-500">{{ pops.remarks }}</span>
+                    {% endif %}
+                  </th>
+                  <td class="tabular">{{ pops.target }}</td>
+                  <td class="tabular">{{ pops.accomplished }}</td>
+                  <td>{% status_badge pops.status pops.percent|stringformat:"d"|add:"%" %}</td>
+                  <td class="text-right whitespace-nowrap">
+                    {% if user.can_encode %}
+                      <a href="{% url 'updates:pops_update' pops.pk %}" class="btn btn-ghost btn-sm">
+                        {% icon "edit" "size-3.5" %}<span class="sr-only">Edit {{ pops.commitment }}</span>
+                      </a>
+                    {% endif %}
+                    {% if user.can_delete %}
+                      <a href="{% url 'updates:pops_delete' pops.pk %}" class="btn btn-ghost btn-sm text-red-700 hover:bg-red-50">
+                        {% icon "delete" "size-3.5" %}<span class="sr-only">Delete {{ pops.commitment }}</span>
+                      </a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="card-body">
+          <p class="text-sm text-slate-500">
+            No POPS Plan commitment has been reported on for this week.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="week-ways-heading">
+      <div class="card-header">
+        <h2 id="week-ways-heading" class="card-title">Ways Forward</h2>
+        {% if user.can_encode %}
+          <a href="{% url 'updates:way_create' record.pk %}" class="btn btn-secondary btn-sm">
+            {% icon "plus" "size-3.5" %}Add
+          </a>
+        {% endif %}
+      </div>
+      {% if ways_forward %}
+        <ul class="divide-y divide-slate-100">
+          {% for way in ways_forward %}
+            <li class="flex items-start justify-between gap-3 px-4 py-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-slate-900">{{ way.description }}</p>
+                {% if way.detail %}
+                  <p class="mt-0.5 text-meta text-slate-500">{{ way.detail }}</p>
+                {% endif %}
+                <p class="mt-1 flex flex-wrap items-center gap-2 text-meta text-slate-500">
+                  {% status_badge way.status way.get_status_display %}
+                  {% if way.target_date %}<span class="tabular">by {{ way.target_date|date:"j M Y" }}</span>{% endif %}
+                </p>
+              </div>
+              <span class="shrink-0 whitespace-nowrap">
+                {% if user.can_encode %}
+                  <a href="{% url 'updates:way_update' way.pk %}" class="btn btn-ghost btn-sm">
+                    {% icon "edit" "size-3.5" %}<span class="sr-only">Edit {{ way.description }}</span>
+                  </a>
+                {% endif %}
+                {% if user.can_delete %}
+                  <a href="{% url 'updates:way_delete' way.pk %}" class="btn btn-ghost btn-sm text-red-700 hover:bg-red-50">
+                    {% icon "delete" "size-3.5" %}<span class="sr-only">Delete {{ way.description }}</span>
+                  </a>
+                {% endif %}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body">
+          <p class="text-sm text-slate-500">
+            No next steps have been agreed for this week yet.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="week-upcoming-heading">
+      <div class="card-header">
+        <h2 id="week-upcoming-heading" class="card-title">Upcoming Activities</h2>
+      </div>
+      {% if upcoming %}
+        <ul class="divide-y divide-slate-100">
+          {% for item in upcoming %}
+            <li class="px-4 py-3">
+              <a href="{{ item.get_absolute_url }}" class="text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                {{ item.title }}
+              </a>
+              <p class="mt-0.5 text-meta text-slate-500 tabular">
+                {{ item.date_label }}{% if item.location %} &middot; {{ item.location }}{% endif %}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body">
+          <p class="text-sm text-slate-500">
+            Nothing has been recorded as upcoming on this week.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="week-documents-heading">
+      <div class="card-header">
+        <h2 id="week-documents-heading" class="card-title">Supporting Documents</h2>
+      </div>
+      {% if documents %}
+        <ul class="divide-y divide-slate-100">
+          {% for document in documents %}
+            <li class="flex items-center gap-3 px-4 py-3">
+              <span aria-hidden="true" class="shrink-0 text-slate-400">{% icon "file" "size-4" %}</span>
+              <div class="min-w-0">
+                <a href="{{ document.file.url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                  {{ document.caption|default:document.filename }}
+                </a>
+                <p class="text-meta text-slate-500">{{ document.update.title }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body">
+          <p class="text-sm text-slate-500">No supporting documents were filed this week.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if record.chief_remarks %}
+    <section class="card mt-6" aria-labelledby="remarks-heading">
+      <div class="card-header">
+        <h2 id="remarks-heading" class="card-title">Division Chief's Remarks</h2>
+      </div>
+      <div class="card-body">
+        <p class="text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.chief_remarks }}</p>
+      </div>
+    </section>
+  {% endif %}
+
+  <div class="mt-6">
+    {% include "components/record_provenance.html" %}
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete this reporting week?" message="Every entry, photograph, POPS Plan figure and way forward contributed to this week will be deleted with it." detail=record confirm_label="Delete reporting week" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

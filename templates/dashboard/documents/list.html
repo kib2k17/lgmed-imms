@@ -1,0 +1,126 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui humanize %}
+
+{% block content %}
+  {% include "dashboard/documents/_tabs.html" with tab="list" %}
+
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+    {% include "components/mini_stat.html" with label="Total documents" value=summary.total %}
+    {% include "components/mini_stat.html" with label="In circulation" value=summary.open tone="info" %}
+    {% include "components/mini_stat.html" with label="For review" value=summary.for_review tone="warning" %}
+    {% include "components/mini_stat.html" with label="Overdue" value=summary.overdue tone="danger" %}
+    {% include "components/mini_stat.html" with label="Completed" value=summary.completed tone="success" %}
+    {% include "components/mini_stat.html" with label="Archived" value=summary.archived %}
+  </div>
+
+  {% if active_view == "archived" or active_view == "for_disposal" %}
+    <p class="mb-4 flex items-start gap-2.5 rounded-md border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm text-slate-700" role="status">
+      {% icon "lock" "size-4 mt-0.5 shrink-0" %}
+      <span>
+        Showing archived documents. Their metadata, ownership, versions and
+        trail are all kept &mdash; only access to them is restricted.
+      </span>
+    </p>
+  {% endif %}
+
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="reference_number" label="Control number" %}
+  {% include "components/th_sort.html" with field="title" label="Document" %}
+  {% include "components/th_sort.html" with field="document_type__name" label="Type" th_class="hidden lg:table-cell" %}
+  {% include "components/th_sort.html" with field="date_received" label="Received" th_class="hidden xl:table-cell" %}
+  {% include "components/th_sort.html" with field="owner__last_name" label="Owner" th_class="hidden md:table-cell" %}
+  <th scope="col" class="hidden xl:table-cell">Assigned to</th>
+  {% include "components/th_sort.html" with field="status" label="Status" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <td class="whitespace-nowrap">
+        <span class="text-meta font-semibold text-slate-700 tabular">{{ record.reference_number }}</span>
+        {% if record.version_count > 1 %}
+          <span class="mt-0.5 block text-meta text-slate-500">
+            {{ record.version_count }} version{{ record.version_count|pluralize }}
+          </span>
+        {% endif %}
+      </td>
+
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.title }}</a>
+        {% if record.subject and record.subject != record.title %}
+          <span class="block text-meta font-normal text-slate-500">{{ record.subject|truncatechars:80 }}</span>
+        {% endif %}
+        {% if record.sender %}
+          <span class="block text-meta font-normal text-slate-500">From {{ record.sender }}</span>
+        {% endif %}
+      </th>
+
+      <td class="hidden lg:table-cell">
+        {{ record.document_type.name }}
+        {% if record.file %}
+          <span class="mt-0.5 block text-meta text-slate-500">
+            {{ record.file_type }} &middot; {{ record.file_size|filesize }}
+          </span>
+        {% else %}
+          <span class="mt-0.5 block text-meta text-slate-400">No file</span>
+        {% endif %}
+      </td>
+
+      <td class="hidden whitespace-nowrap xl:table-cell">
+        {% if record.date_received %}
+          {{ record.date_received|date:"j M Y" }}
+        {% else %}
+          <span class="text-slate-400">Created internally</span>
+        {% endif %}
+        {% if record.due_date %}
+          <span class="block text-meta {% if record.is_overdue %}font-medium text-red-700{% else %}text-slate-500{% endif %}">
+            Due {{ record.due_date|date:"j M Y" }}
+          </span>
+        {% endif %}
+      </td>
+
+      <td class="hidden md:table-cell">
+        {{ record.owner_label }}
+        <span class="block text-meta text-slate-500">{{ record.unit_label }}</span>
+      </td>
+
+      <td class="hidden xl:table-cell">
+        {% if record.assigned_to %}
+          {{ record.assignee_label }}
+        {% else %}
+          <span class="text-slate-400">Not assigned</span>
+        {% endif %}
+      </td>
+
+      <td>
+        {% status_badge record.display_status record.display_status_label %}
+        {% if record.is_available_publicly %}
+          <span class="mt-1 block text-meta text-slate-500">On public website</span>
+        {% elif record.is_disposed %}
+          <span class="mt-1 block text-meta text-red-700">Disposed</span>
+        {% elif record.is_retention_due %}
+          <span class="mt-1 block text-meta text-red-700">Retention due</span>
+        {% elif record.is_retention_approaching %}
+          <span class="mt-1 block text-meta text-amber-700">Retention approaching</span>
+        {% endif %}
+      </td>
+
+      <td class="text-right whitespace-nowrap">
+        <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+          {% icon "view" "size-3.5" %}<span class="hidden sm:inline">View</span>
+          <span class="sr-only">{{ record }}</span>
+        </a>
+        {% if record.file and not record.is_disposed %}
+          <a href="{% url 'documents:download' record.pk %}" class="btn btn-ghost btn-sm">
+            {% icon "download" "size-3.5" %}<span class="hidden lg:inline">Download</span>
+            <span class="sr-only">{{ record }}</span>
+          </a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

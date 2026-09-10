@@ -1,0 +1,59 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "components/mini_stat.html" with label="Registered LGUs" value=summary.total %}
+    {% include "components/mini_stat.html" with label="Provinces" value=summary.provinces %}
+    {% include "components/mini_stat.html" with label="Cities" value=summary.cities %}
+    {% include "components/mini_stat.html" with label="Municipalities" value=summary.municipalities %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="name" label="LGU" %}
+  {% include "components/th_sort.html" with field="lgu_type" label="Type" th_class="hidden sm:table-cell" %}
+  {% include "components/th_sort.html" with field="province__name" label="Province" th_class="hidden md:table-cell" %}
+  <th scope="col" class="hidden xl:table-cell">Contact</th>
+  <th scope="col" class="hidden lg:table-cell">Latest monitoring</th>
+  {% include "components/th_sort.html" with field="compliance_status" label="Compliance" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.name }}</a>
+        {% if record.is_independent %}
+          <span class="block text-meta font-normal text-slate-500">Independent city</span>
+        {% endif %}
+      </th>
+      <td class="hidden sm:table-cell">{{ record.get_lgu_type_display }}</td>
+      <td class="hidden md:table-cell">{{ record.province.name }}</td>
+      <td class="hidden xl:table-cell">
+        {% if record.contact_person %}
+          {{ record.contact_person }}
+          <span class="block text-meta text-slate-500">{{ record.contact_number|default:record.email }}</span>
+        {% else %}
+          <span class="text-slate-400">Not recorded</span>
+        {% endif %}
+      </td>
+      <td class="hidden whitespace-nowrap lg:table-cell">
+        {% if record.last_monitored %}
+          <time datetime="{{ record.last_monitored|date:'Y-m-d' }}">{{ record.last_monitored|date:"j M Y" }}</time>
+          <span class="block text-meta text-slate-500">
+            {{ record.activity_count }} activit{{ record.activity_count|pluralize:"y,ies" }}
+          </span>
+        {% else %}
+          <span class="text-slate-400">Never monitored</span>
+        {% endif %}
+      </td>
+      <td>{% status_badge record.compliance_tone record.get_compliance_status_display %}</td>
+      <td class="text-right whitespace-nowrap">
+        {% include "components/row_actions.html" with record=record %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

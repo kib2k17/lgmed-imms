@@ -1,0 +1,107 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Government footer (section 17). Only the office details supplied in the
+   specification appear here - nothing is invented.
+   --------------------------------------------------------------------------- 
+{% endcomment %}
+<footer class="mt-auto border-t-4 border-accent-400 bg-brand-950 text-brand-200">
+  <div class="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="grid gap-8 md:grid-cols-3 lg:gap-12">
+
+      {# Office identity #}
+      <div>
+        <div class="flex items-start gap-3">
+          {% include "includes/agency_logo.html" with size="size-11" on_dark=True %}
+          <div>
+            <p class="text-sm font-bold text-white">{{ agency.office_short }}</p>
+            <p class="mt-0.5 text-[0.8125rem] leading-snug">{{ agency.division }}</p>
+          </div>
+        </div>
+        <p class="mt-4 text-[0.8125rem] leading-relaxed">
+          {{ agency.system_full_name }}
+        </p>
+      </div>
+
+      {# Contact #}
+      <div>
+        <h2 class="text-[0.6875rem] font-semibold tracking-[0.08em] text-white uppercase">Contact Information</h2>
+        <address class="mt-3 space-y-2.5 text-[0.8125rem] not-italic">
+          <p class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0 text-brand-400">{% icon "map-pin" "size-4" %}</span>
+            <span>{{ agency.address }}</span>
+          </p>
+          <p class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0 text-brand-400">{% icon "phone" "size-4" %}</span>
+            <a href="tel:{{ agency.telephone_link }}" class="hover:text-white hover:underline">{{ agency.telephone }}</a>
+          </p>
+          <p class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0 text-brand-400">{% icon "mail" "size-4" %}</span>
+            <a href="mailto:{{ agency.email }}" class="break-all hover:text-white hover:underline">{{ agency.email }}</a>
+          </p>
+          {% if agency.office_hours %}
+            <p class="flex items-start gap-2.5">
+              <span class="mt-0.5 shrink-0 text-brand-400">{% icon "clock" "size-4" %}</span>
+              <span>{{ agency.office_hours }}</span>
+            </p>
+          {% endif %}
+          {% if agency.facebook_url %}
+            <p class="flex items-start gap-2.5">
+              <span class="mt-0.5 shrink-0 text-brand-400">{% icon "external" "size-4" %}</span>
+              <a href="{{ agency.facebook_url }}" rel="noopener noreferrer" target="_blank"
+                 class="hover:text-white hover:underline">Facebook page
+                <span class="sr-only">(opens in a new tab)</span>
+              </a>
+            </p>
+          {% endif %}
+        </address>
+      </div>
+
+      {# Site links #}
+      <div class="grid grid-cols-2 gap-8">
+        <div>
+          <h2 class="text-[0.6875rem] font-semibold tracking-[0.08em] text-white uppercase">Information</h2>
+          <ul class="mt-3 space-y-2 text-[0.8125rem]">
+            <li><a href="{% url 'core:public_about' %}" class="hover:text-white hover:underline">About LGMED</a></li>
+            <li><a href="{% url 'core:public_programs' %}" class="hover:text-white hover:underline">Programs</a></li>
+            <li><a href="{% url 'core:public_services' %}" class="hover:text-white hover:underline">Services</a></li>
+            <li><a href="{% url 'core:public_reports' %}" class="hover:text-white hover:underline">Reports</a></li>
+            <li><a href="{% url 'core:public_documents' %}" class="hover:text-white hover:underline">Documents</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="text-[0.6875rem] font-semibold tracking-[0.08em] text-white uppercase">Government</h2>
+          <ul class="mt-3 space-y-2 text-[0.8125rem]">
+            <li><a href="{% url 'core:public_contact' %}" class="hover:text-white hover:underline">Privacy notice</a></li>
+            <li><a href="{% url 'core:public_contact' %}" class="hover:text-white hover:underline">Accessibility</a></li>
+            <li><a href="{% url 'core:public_contact' %}" class="hover:text-white hover:underline">Contact us</a></li>
+            <li>
+              <a href="https://www.dilg.gov.ph" rel="noopener noreferrer" target="_blank"
+                 class="inline-flex items-center gap-1 hover:text-white hover:underline">
+                DILG Central Office
+                {% icon "external" "size-3" %}
+                <span class="sr-only">(opens in a new tab)</span>
+              </a>
+            </li>
+            <li>
+              <a href="https://www.gov.ph" rel="noopener noreferrer" target="_blank"
+                 class="inline-flex items-center gap-1 hover:text-white hover:underline">
+                GOV.PH
+                {% icon "external" "size-3" %}
+                <span class="sr-only">(opens in a new tab)</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-meta">
+      <p>&copy; {% now "Y" %} {{ agency.office_short }}. All rights reserved.</p>
+      <p class="flex items-center gap-1.5">
+        {% icon "shield" "size-3.5" %}
+        <span>{{ agency.system_name }} &mdash; official government information system</span>
+      </p>
+    </div>
+  </div>
+</footer>

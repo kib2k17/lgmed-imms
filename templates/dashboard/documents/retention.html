@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% comment %}
+ The records officer's working list. Each section is a decision that is
+ waiting to be made, in the order it becomes urgent - what has already fallen
+ due, what is about to, what has been marked for disposal and still needs an
+ authority, and what has been settled either way.
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="{% url 'documents:list' %}?view=archived" class="btn btn-secondary">
+    {% icon "lock" "size-4" %}<span class="hidden sm:inline">Browse the archive</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/documents/_tabs.html" with tab="retention" %}
+
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+    {% include "components/mini_stat.html" with label="Review due" value=due|length tone="danger" %}
+    {% include "components/mini_stat.html" with label="Approaching" value=approaching|length tone="warning" %}
+    {% include "components/mini_stat.html" with label="For disposal" value=for_disposal|length tone="danger" %}
+    {% include "components/mini_stat.html" with label="Archived" value=archived_total %}
+    {% include "components/mini_stat.html" with label="No policy set" value=no_policy|length tone="warning" %}
+  </div>
+
+  <div class="space-y-4">
+
+    {# ---- Past its retention period ---------------------------------- #}
+    <section class="card" aria-labelledby="due-heading">
+      <div class="card-header">
+        <h2 id="due-heading" class="card-title">Retention review due</h2>
+        <span class="text-meta text-slate-500">Past the end of the retention period</span>
+      </div>
+      <div class="card-body p-0">
+        {% if due %}
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Document</th>
+                  <th scope="col" class="hidden md:table-cell">Type</th>
+                  <th scope="col" class="hidden lg:table-cell">Owner</th>
+                  <th scope="col">Retention ended</th>
+                  <th scope="col">Decision</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for document in due %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{{ document.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ document.title|truncatechars:64 }}</a>
+                      <span class="block text-meta font-normal text-slate-500 tabular">{{ document.reference_number }}</span>
+                    </th>
+                    <td class="hidden md:table-cell">{{ document.document_type.name }}</td>
+                    <td class="hidden lg:table-cell">{{ document.owner_label }}</td>
+                    <td class="whitespace-nowrap font-medium text-red-700">{{ document.retention_until|date:"j M Y" }}</td>
+                    <td>{% status_badge document.retention_disposition document.get_retention_disposition_display %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-400">
+            Nothing has passed the end of its retention period.
+          </p>
+        {% endif %}
+      </div>
+    </section>
+
+    {# ---- Approaching -------------------------------------------------- #}
+    <section class="card" aria-labelledby="approaching-heading">
+      <div class="card-header">
+        <h2 id="approaching-heading" class="card-title">Approaching retention expiry</h2>
+        <span class="text-meta text-slate-500">Within the next {{ retention_warning_days }} days</span>
+      </div>
+      <div class="card-body p-0">
+        {% if approaching %}
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Document</th>
+                  <th scope="col" class="hidden md:table-cell">Type</th>
+                  <th scope="col" class="hidden lg:table-cell">Owner</th>
+                  <th scope="col">Retention ends</th>
+                  <th scope="col" class="text-right">Days left</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for document in approaching %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{{ document.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ document.title|truncatechars:64 }}</a>
+                      <span class="block text-meta font-normal text-slate-500 tabular">{{ document.reference_number }}</span>
+                    </th>
+                    <td class="hidden md:table-cell">{{ document.document_type.name }}</td>
+                    <td class="hidden lg:table-cell">{{ document.owner_label }}</td>
+                    <td class="whitespace-nowrap">{{ document.retention_until|date:"j M Y" }}</td>
+                    <td class="text-right font-semibold text-amber-700 tabular">{{ document.retention_days_remaining }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-400">
+            Nothing falls due in the next {{ retention_warning_days }} days.
+          </p>
+        {% endif %}
+      </div>
+    </section>
+
+    {# ---- Marked for disposal ------------------------------------------ #}
+    <section class="card" aria-labelledby="disposal-heading">
+      <div class="card-header">
+        <h2 id="disposal-heading" class="card-title">Marked for disposal</h2>
+        <span class="text-meta text-slate-500">Awaiting an authorised disposal</span>
+      </div>
+      <div class="card-body p-0">
+        {% if for_disposal %}
+          <p class="border-b border-slate-100 px-4 py-3 text-sm text-slate-600">
+            Each of these needs a disposal authority recorded against it before
+            its files can be destroyed. Disposal is done from the document&rsquo;s
+            own record, and only by an officer holding that authority.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Document</th>
+                  <th scope="col" class="hidden md:table-cell">Type</th>
+                  <th scope="col" class="hidden lg:table-cell">Retention ended</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for document in for_disposal %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{{ document.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ document.title|truncatechars:64 }}</a>
+                      <span class="block text-meta font-normal text-slate-500 tabular">{{ document.reference_number }}</span>
+                    </th>
+                    <td class="hidden md:table-cell">{{ document.document_type.name }}</td>
+                    <td class="hidden whitespace-nowrap lg:table-cell">{{ document.retention_until|date:"j M Y"|default:"&mdash;" }}</td>
+                    <td>{% status_badge document.status document.get_status_display %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-400">
+            No document is currently marked for disposal.
+          </p>
+        {% endif %}
+      </div>
+    </section>
+
+    {# ---- Completed but no policy --------------------------------------- #}
+    {% if no_policy %}
+      <section class="card" aria-labelledby="nopolicy-heading">
+        <div class="card-header">
+          <h2 id="nopolicy-heading" class="card-title">Completed with no retention period</h2>
+          <span class="text-meta text-slate-500">A gap to close</span>
+        </div>
+        <div class="card-body p-0">
+          <p class="border-b border-slate-100 px-4 py-3 text-sm text-slate-600">
+            These were completed while their document type carried no retention
+            period, so nothing tells the system when to review them. Set a period
+            on the record, or add one to the type in
+            <a href="{% url 'administration:settings' %}" class="font-medium text-brand-700 hover:underline">System Settings</a>.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Document</th>
+                  <th scope="col" class="hidden md:table-cell">Type</th>
+                  <th scope="col">Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for document in no_policy %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{{ document.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ document.title|truncatechars:64 }}</a>
+                      <span class="block text-meta font-normal text-slate-500 tabular">{{ document.reference_number }}</span>
+                    </th>
+                    <td class="hidden md:table-cell">{{ document.document_type.name }}</td>
+                    <td class="whitespace-nowrap">{{ document.completed_at|date:"j M Y"|default:"&mdash;" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+
+    {# ---- Settled ------------------------------------------------------- #}
+    <div class="grid gap-4 lg:grid-cols-2">
+      <section class="card" aria-labelledby="permanent-heading">
+        <div class="card-header">
+          <h2 id="permanent-heading" class="card-title">Permanent preservation</h2>
+        </div>
+        <div class="card-body">
+          <ul class="space-y-2.5">
+            {% for document in permanent %}
+              <li class="text-sm">
+                <a href="{{ document.get_absolute_url }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                  {{ document.title|truncatechars:56 }}
+                </a>
+                <span class="block text-meta text-slate-500 tabular">
+                  {{ document.reference_number }} &middot; {{ document.document_type.name }}
+                </span>
+              </li>
+            {% empty %}
+              <li class="text-sm text-slate-400">Nothing is marked for permanent preservation.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="disposed-heading">
+        <div class="card-header">
+          <h2 id="disposed-heading" class="card-title">Disposed</h2>
+          <span class="text-meta text-slate-500">Records kept, files destroyed</span>
+        </div>
+        <div class="card-body">
+          <ul class="space-y-2.5">
+            {% for document in disposed %}
+              <li class="text-sm">
+                <a href="{{ document.get_absolute_url }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                  {{ document.title|truncatechars:56 }}
+                </a>
+                <span class="block text-meta text-slate-500">
+                  {{ document.disposed_at|date:"j M Y" }} &middot; under
+                  {{ document.disposal_authority.reference|default:"an authority no longer recorded" }}
+                </span>
+              </li>
+            {% empty %}
+              <li class="text-sm text-slate-400">No document has been disposed of.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    {# ---- The schedule itself ------------------------------------------- #}
+    <section class="card" aria-labelledby="schedule-heading">
+      <div class="card-header">
+        <h2 id="schedule-heading" class="card-title">Retention schedule</h2>
+        {% if user.can_administer %}
+          <a href="{% url 'administration:settings' %}" class="text-meta font-medium text-brand-700 hover:underline">
+            Edit in System Settings
+          </a>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Document type</th>
+                <th scope="col" class="hidden sm:table-cell">Code</th>
+                <th scope="col">Retention period</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for type in types %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                    {{ type.name }}
+                  </th>
+                  <td class="hidden text-slate-500 sm:table-cell">{{ type.code|default:"&mdash;" }}</td>
+                  <td class="{% if type.retention_years is None %}text-amber-700{% else %}text-slate-700{% endif %}">
+                    {{ type.retention_label }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}

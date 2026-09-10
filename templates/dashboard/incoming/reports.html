@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+  <a href="?{% query_string export='csv' %}" class="btn btn-primary">
+    {% icon "download" "size-4" %}Export CSV
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/incoming/_tabs.html" with tab="reports" %}
+
+  <div class="grid gap-4 xl:grid-cols-4">
+
+    {# ---- Which report -------------------------------------------------- #}
+    <nav class="card h-fit no-print xl:col-span-1" aria-labelledby="catalogue-heading">
+      <div class="card-header">
+        <h2 id="catalogue-heading" class="card-title">Reports</h2>
+      </div>
+      <ul class="divide-y divide-slate-100">
+        {% for item in reports %}
+          <li>
+            <a href="?{% query_string report=item.slug export=None %}"
+               class="block px-4 py-3 hover:bg-slate-50 sm:px-5
+                      {% if item.slug == report_slug %}border-l-2 border-brand-600 bg-brand-50/50{% endif %}"
+               {% if item.slug == report_slug %}aria-current="page"{% endif %}>
+              <span class="block text-sm font-medium {% if item.slug == report_slug %}text-brand-800{% else %}text-slate-800{% endif %}">
+                {{ item.label }}
+              </span>
+              <span class="mt-0.5 block text-meta leading-snug text-slate-500">{{ item.description }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <div class="space-y-4 xl:col-span-3">
+
+      {# ---- Filters ---------------------------------------------------- #}
+      <form method="get" class="card no-print" aria-labelledby="filters-heading">
+        <div class="card-header">
+          <h2 id="filters-heading" class="card-title">Filters</h2>
+        </div>
+        <div class="card-body">
+          <input type="hidden" name="report" value="{{ report_slug }}">
+          <div class="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="sm:col-span-2 lg:col-span-3">
+              <label for="report-q" class="form-label">Docket number, subject or source</label>
+              <input type="search" id="report-q" name="q" value="{{ selected.q }}"
+                     placeholder="Search..." class="form-input">
+            </div>
+            <div>
+              <label for="report-from" class="form-label">Received from</label>
+              <input type="date" id="report-from" name="from" value="{{ selected.from }}" class="form-input">
+            </div>
+            <div>
+              <label for="report-to" class="form-label">Received to</label>
+              <input type="date" id="report-to" name="to" value="{{ selected.to }}" class="form-input">
+            </div>
+            <div>
+              <label for="report-focal" class="form-label">Focal person</label>
+              <select id="report-focal" name="focal" class="form-select">
+                <option value="">All focal persons</option>
+                <option value="unassigned" {% if selected.focal == "unassigned" %}selected{% endif %}>Unassigned</option>
+                {% for person in focal_persons %}
+                  <option value="{{ person.pk }}" {% if selected.focal == person.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ person.get_display_name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="report-status" class="form-label">Status</label>
+              <select id="report-status" name="status" class="form-select">
+                <option value="">All statuses</option>
+                <option value="{{ open_status_value }}" {% if selected.status == open_status_value %}selected{% endif %}>
+                  Open (not completed)
+                </option>
+                {% for value, label in statuses %}
+                  <option value="{{ value }}" {% if selected.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="report-type" class="form-label">Document type</label>
+              <select id="report-type" name="type" class="form-select">
+                <option value="">All types</option>
+                {% for type in document_types %}
+                  <option value="{{ type.pk }}" {% if selected.type == type.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ type.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="report-sort" class="form-label">Sort by</label>
+              <select id="report-sort" name="sort" class="form-select">
+                {% for value, label in sorts %}
+                  <option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
+            <button type="submit" class="btn btn-secondary">{% icon "filter" "size-4" %}Apply</button>
+            <a href="?report={{ report_slug }}" class="btn btn-ghost">Clear</a>
+            <p class="ml-auto text-meta text-slate-500">
+              Sorting applies to the document reports; summaries are ordered by size.
+            </p>
+          </div>
+        </div>
+      </form>
+
+      {# ---- The report --------------------------------------------------- #}
+      <section class="card" aria-labelledby="report-heading">
+        <div class="card-header">
+          <div class="min-w-0">
+            <h2 id="report-heading" class="card-title">{{ report.label }}</h2>
+            <p class="mt-0.5 text-meta text-slate-500">{{ report.description }}</p>
+          </div>
+          <p class="text-meta text-slate-500" role="status">
+            {{ row_count }} row{{ row_count|pluralize }}
+          </p>
+        </div>
+
+        <div class="border-b border-slate-200 bg-slate-50/60 px-4 py-2.5 text-meta text-slate-600 sm:px-5">
+          <p>
+            LGMED-iMMS &middot; {{ agency.office_short }} &middot;
+            generated {{ as_of|date:"j F Y, g:i A" }}
+          </p>
+          {% if applied %}
+            <p class="mt-0.5">Filters: {{ applied|join:"; " }}</p>
+          {% endif %}
+        </div>
+
+        {% if result.rows %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">{{ report.label }} &mdash; {{ report.description }}</caption>
+              <thead>
+                <tr>
+                  {% for header in result.headers %}<th scope="col">{{ header }}</th>{% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in result.rows %}
+                  <tr>
+                    {% for cell in row %}
+                      {% if forloop.first %}
+                        <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium whitespace-nowrap text-slate-900">{{ cell }}</th>
+                      {% else %}
+                        <td>{{ cell }}</td>
+                      {% endif %}
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+              {% if result.footer %}
+                <tfoot>
+                  <tr class="border-t-2 border-slate-200 font-semibold">
+                    {% for cell in result.footer %}
+                      {% if forloop.first %}
+                        <th scope="row" class="px-4 py-2.5 text-left">{{ cell }}</th>
+                      {% else %}
+                        <td class="px-4 py-2.5">{{ cell }}</td>
+                      {% endif %}
+                    {% endfor %}
+                  </tr>
+                </tfoot>
+              {% endif %}
+            </table>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="reports" title="No records for this report" message="No incoming document matches the report and the filters applied to it." %}
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endblock %}

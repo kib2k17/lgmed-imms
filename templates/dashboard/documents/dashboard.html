@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% block page_actions %}
+  <a href="{% url 'documents:list' %}" class="btn btn-secondary">
+    {% icon "documents" "size-4" %}<span class="hidden sm:inline">Open the register</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+  {% if user.can_encode %}
+    <a href="{% url 'documents:create' %}" class="btn btn-primary">
+      {% icon "plus" "size-4" %}Register Document
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/documents/_tabs.html" with tab="dashboard" %}
+
+  {# ---- The figures, every one of them a link ------------------------- #}
+  <section aria-labelledby="figures-heading">
+    <h2 id="figures-heading" class="sr-only">Document counts</h2>
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      {% for stat in stats %}
+        <a href="{{ stat.url }}"
+           class="rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+          <span class="flex items-start justify-between gap-2">
+            <span class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ stat.label }}</span>
+            <span aria-hidden="true"
+                  class="shrink-0 {% if stat.tone == 'success' %}text-green-700{% elif stat.tone == 'warning' %}text-amber-700{% elif stat.tone == 'danger' %}text-red-700{% else %}text-slate-400{% endif %}">
+              {% icon stat.icon "size-4" %}
+            </span>
+          </span>
+          <span class="mt-1.5 block text-2xl font-bold tabular
+                       {% if stat.tone == 'success' %}text-green-700
+                       {% elif stat.tone == 'warning' %}text-amber-700
+                       {% elif stat.tone == 'danger' %}text-red-700
+                       {% else %}text-slate-900{% endif %}">{{ stat.value|intcomma }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="mt-4 grid gap-4 xl:grid-cols-3">
+
+    {# ---- Lifecycle distribution ------------------------------------- #}
+    <section class="card xl:col-span-1" aria-labelledby="lifecycle-heading">
+      <div class="card-header">
+        <h2 id="lifecycle-heading" class="card-title">By lifecycle stage</h2>
+      </div>
+      <div class="card-body">
+        <ul class="space-y-3">
+          {% for row in by_status %}
+            <li>
+              <div class="flex items-baseline justify-between gap-3">
+                <span class="text-sm text-slate-700">{{ row.label }}</span>
+                <span class="text-sm font-semibold text-slate-900 tabular">
+                  {{ row.count|intcomma }}
+                  <span class="ml-1 text-meta font-normal text-slate-500">{{ row.percent }}%</span>
+                </span>
+              </div>
+              <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-brand-600" style="width: {{ row.percent }}%"></div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    {# ---- Waiting on someone ------------------------------------------ #}
+    <section class="card xl:col-span-2" aria-labelledby="waiting-heading">
+      <div class="card-header">
+        <h2 id="waiting-heading" class="card-title">Awaiting action</h2>
+        <span class="text-meta text-slate-500">Review, assignment and approval</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Document</th>
+                <th scope="col" class="hidden md:table-cell">Owner</th>
+                <th scope="col" class="hidden lg:table-cell">Registered</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for document in awaiting_action %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                    <a href="{{ document.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ document.title|truncatechars:60 }}</a>
+                    <span class="block text-meta font-normal text-slate-500 tabular">{{ document.reference_number }}</span>
+                  </th>
+                  <td class="hidden md:table-cell">{{ document.owner_label }}</td>
+                  <td class="hidden whitespace-nowrap lg:table-cell">{{ document.created_at|date:"j M Y" }}</td>
+                  <td>{% status_badge document.display_status document.display_status_label %}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="px-4 py-6 text-center text-sm text-slate-400">Nothing is waiting on a decision.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ---- Overdue ------------------------------------------------------ #}
+    <section class="card xl:col-span-2" aria-labelledby="overdue-heading">
+      <div class="card-header">
+        <h2 id="overdue-heading" class="card-title">Overdue documents</h2>
+        <a href="{% url 'documents:list' %}?view=overdue" class="text-meta font-medium text-brand-700 hover:underline">See all</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Document</th>
+                <th scope="col" class="hidden md:table-cell">Assigned to</th>
+                <th scope="col">Due</th>
+                <th scope="col" class="text-right">Days over</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for document in overdue %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                    <a href="{{ document.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ document.title|truncatechars:60 }}</a>
+                    <span class="block text-meta font-normal text-slate-500 tabular">{{ document.reference_number }}</span>
+                  </th>
+                  <td class="hidden md:table-cell">{{ document.assignee_label }}</td>
+                  <td class="whitespace-nowrap">{{ document.due_date|date:"j M Y" }}</td>
+                  <td class="text-right font-semibold text-red-700 tabular">{{ document.days_overdue }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="px-4 py-6 text-center text-sm text-slate-400">Nothing is overdue.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ---- Retention watch --------------------------------------------- #}
+    <section class="card" aria-labelledby="retention-watch-heading">
+      <div class="card-header">
+        <h2 id="retention-watch-heading" class="card-title">Retention</h2>
+      </div>
+      <div class="card-body space-y-4">
+        <div>
+          <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+            Review due now ({{ retention_due|length }})
+          </h3>
+          <ul class="mt-2 space-y-2">
+            {% for document in retention_due %}
+              <li class="text-sm">
+                <a href="{{ document.get_absolute_url }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                  {{ document.title|truncatechars:44 }}
+                </a>
+                <span class="block text-meta text-red-700">{{ document.retention_summary }}</span>
+              </li>
+            {% empty %}
+              <li class="text-sm text-slate-400">Nothing has passed its retention period.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="border-t border-slate-100 pt-4">
+          <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+            Approaching, next {{ retention_warning_days }} days ({{ retention_watch|length }})
+          </h3>
+          <ul class="mt-2 space-y-2">
+            {% for document in retention_watch %}
+              <li class="text-sm">
+                <a href="{{ document.get_absolute_url }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                  {{ document.title|truncatechars:44 }}
+                </a>
+                <span class="block text-meta text-amber-700">{{ document.retention_summary }}</span>
+              </li>
+            {% empty %}
+              <li class="text-sm text-slate-400">Nothing falls due in this period.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% if user.can_archive_documents %}
+          <a href="{% url 'documents:retention' %}" class="btn btn-secondary w-full">
+            {% icon "lock" "size-4" %}Open the retention register
+          </a>
+        {% endif %}
+      </div>
+    </section>
+
+    {# ---- Who is carrying what ---------------------------------------- #}
+    <section class="card xl:col-span-2" aria-labelledby="owners-heading">
+      <div class="card-header">
+        <h2 id="owners-heading" class="card-title">Documents by owner</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Personnel</th>
+                <th scope="col" class="hidden sm:table-cell">Unit</th>
+                <th scope="col" class="text-right">Open</th>
+                <th scope="col" class="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for person in by_owner %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                    {{ person.get_display_name }}
+                  </th>
+                  <td class="hidden text-slate-500 sm:table-cell">{{ person.section_label }}</td>
+                  <td class="text-right tabular">{{ person.open_count }}</td>
+                  <td class="text-right font-semibold tabular">{{ person.total }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="px-4 py-6 text-center text-sm text-slate-400">No documents have been registered yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ---- By type ------------------------------------------------------ #}
+    <section class="card" aria-labelledby="types-heading">
+      <div class="card-header">
+        <h2 id="types-heading" class="card-title">By document type</h2>
+      </div>
+      <div class="card-body">
+        <ul class="space-y-2.5">
+          {% for type in by_type %}
+            <li class="flex items-baseline justify-between gap-3 text-sm">
+              <a href="{% url 'documents:list' %}?document_type={{ type.pk }}"
+                 class="text-slate-700 hover:text-brand-700 hover:underline">{{ type.name }}</a>
+              <span class="font-semibold text-slate-900 tabular">{{ type.total }}</span>
+            </li>
+          {% empty %}
+            <li class="text-sm text-slate-400">No documents have been registered yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  </div>
+{% endblock %}

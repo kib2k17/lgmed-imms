@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The Monday convocation view.
+
+   Typed larger than the rest of the system because it is read from the back
+   of a room, not from a desk. It carries no controls that change anything:
+   everything here was decided on the review page beforehand.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_header %}{% endblock %}
+
+{% block content %}
+  {% if not period %}
+    {% include "components/empty_state.html" with icon="calendar" title="No reporting week to present" message="Open a reporting week and record the Division's accomplishments; the convocation view is built from them." %}
+  {% else %}
+
+    <div class="mb-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
+      <a href="{{ period.get_absolute_url }}" class="btn btn-secondary">
+        {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to the week</span>
+      </a>
+      {% if user.can_approve %}
+        <a href="{% url 'updates:review' period.pk %}" class="btn btn-secondary">
+          {% icon "edit" "size-4" %}<span class="hidden sm:inline">Change the selection</span>
+        </a>
+      {% endif %}
+      <button type="button" class="btn btn-primary" onclick="window.print()">
+        {% icon "print" "size-4" %}Print
+      </button>
+    </div>
+
+    {# ---- Title ---------------------------------------------------------- #}
+    <header class="rounded-lg border border-brand-200 bg-brand-50 px-6 py-8 text-center">
+      <p class="text-meta font-semibold tracking-widest text-brand-700 uppercase">
+        {{ agency.division|default:"Local Government Monitoring and Evaluation Division" }}
+      </p>
+      <h1 class="mt-2 text-page-title font-bold tracking-tight text-brand-900 uppercase">
+        LGMEDD Weekly Updates &amp; Accomplishments
+      </h1>
+      <p class="mt-1.5 text-lg font-semibold text-slate-700">{{ period.label }}</p>
+      {% if period.theme %}
+        <p class="mt-1 text-sm text-slate-600">{{ period.theme }}</p>
+      {% endif %}
+    </header>
+
+    {# ---- Division statistics -------------------------------------------- #}
+    <section class="mt-6" aria-labelledby="convocation-stats-heading">
+      <h2 id="convocation-stats-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+        Division Statistics
+      </h2>
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {% for card in cards %}
+          <div class="{% if forloop.last %}col-span-2 lg:col-span-1{% endif %}">
+            {% include "components/division_stat.html" with card=card %}
+          </div>
+        {% endfor %}
+      </div>
+      <p class="mt-3 text-meta text-slate-500">
+        Also in this record:
+        {{ stats.technical_assistance }} technical assistance &middot;
+        {{ stats.deliverables }} report{{ stats.deliverables|pluralize }} and
+        deliverable{{ stats.deliverables|pluralize }} &middot;
+        {{ stats.pops_accomplishments }} POPS Plan accomplishment{{ stats.pops_accomplishments|pluralize }} &middot;
+        {{ stats.photos }} photograph{{ stats.photos|pluralize }} &middot;
+        {{ stats.ways_forward }} way{{ stats.ways_forward|pluralize }} forward
+      </p>
+    </section>
+
+    {% if period.chief_remarks %}
+      <section class="card mt-6 border-l-4 border-l-brand-600" aria-labelledby="chief-remarks-heading">
+        <div class="card-body">
+          <h2 id="chief-remarks-heading" class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+            Division Chief's Remarks
+          </h2>
+          <p class="mt-2 text-base leading-relaxed whitespace-pre-line text-slate-800">
+            {{ period.chief_remarks }}
+          </p>
+        </div>
+      </section>
+    {% endif %}
+
+    {# ---- Major accomplishments ------------------------------------------- #}
+    <section class="mt-6" aria-labelledby="convocation-major-heading">
+      <h2 id="convocation-major-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+        Major Accomplishments
+      </h2>
+      {% if major %}
+        <ol class="space-y-3">
+          {% for item in major %}
+            <li class="card flex items-start gap-4 p-5">
+              <span aria-hidden="true" class="grid size-8 shrink-0 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">
+                {{ forloop.counter }}
+              </span>
+              <div class="min-w-0">
+                <h3 class="text-card-title font-semibold text-slate-900">{{ item.title }}</h3>
+                <p class="mt-1 text-meta text-slate-500">
+                  {{ item.get_category_display }}
+                  {% if item.activity_type != "NA" %} &middot; {{ item.get_activity_type_display }}{% endif %}
+                  &middot; {{ item.date_label }}
+                  {% if item.location %} &middot; {{ item.location }}{% endif %}
+                </p>
+                {% if item.narrative %}
+                  <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ item.narrative }}</p>
+                {% endif %}
+              </div>
+              <span class="ml-auto shrink-0">
+                {% status_badge item.status item.get_status_display %}
+              </span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="card">
+          {% include "components/empty_state.html" with icon="check-circle" title="No accomplishments selected yet" message="The Division Chief selects the accomplishments to present from the review page." %}
+        </div>
+      {% endif %}
+    </section>
+
+    {# ---- Photographs ----------------------------------------------------- #}
+    {% if photos %}
+      <section class="mt-6" aria-labelledby="convocation-photos-heading">
+        <h2 id="convocation-photos-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          Activities &amp; Photo Documentation
+        </h2>
+        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {% for photo in photos %}
+            <li class="card overflow-hidden">
+              <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}"
+                   class="h-52 w-full bg-slate-50 object-cover">
+              <div class="px-4 py-3">
+                <p class="text-sm font-medium text-slate-900">{{ photo.update.title }}</p>
+                <p class="mt-0.5 text-meta text-slate-500">
+                  {{ photo.caption|default:photo.update.date_label }}
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {# ---- POPS Plan ------------------------------------------------------- #}
+    <section class="mt-6" aria-labelledby="convocation-pops-heading">
+      <h2 id="convocation-pops-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+        POPS Plan Updates
+      </h2>
+      <div class="card">
+        {% if pops_updates %}
+          <div class="card-header">
+            <p class="text-sm text-slate-700">
+              <span class="font-bold tabular">{{ pops_compliance.percent }}%</span>
+              compliance &mdash; {{ pops_compliance.accomplished }} delivered
+              against a target of {{ pops_compliance.target }}
+            </p>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">POPS Plan progress for {{ period.label }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Commitment</th>
+                  <th scope="col">Target</th>
+                  <th scope="col">Accomplished</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pops in pops_updates %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                      {{ pops.commitment }}
+                      {% if pops.remarks %}
+                        <span class="mt-0.5 block text-meta font-normal text-slate-500">{{ pops.remarks }}</span>
+                      {% endif %}
+                    </th>
+                    <td class="tabular">{{ pops.target }}</td>
+                    <td class="tabular">{{ pops.accomplished }}</td>
+                    <td>{% status_badge pops.status pops.percent|stringformat:"d"|add:"%" %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="shield" title="No POPS Plan movement recorded" message="POPS Plan commitments reported on during the week appear here with their compliance." %}
+        {% endif %}
+      </div>
+    </section>
+
+    {# ---- Ways forward and what is coming ---------------------------------- #}
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      <section aria-labelledby="convocation-ways-heading">
+        <h2 id="convocation-ways-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          Ways Forward
+        </h2>
+        <div class="card">
+          {% if ways_forward %}
+            <ul class="divide-y divide-slate-100">
+              {% for way in ways_forward %}
+                <li class="flex items-start gap-3 px-4 py-3.5">
+                  <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "chevron-right" "size-4" %}</span>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-slate-900">{{ way.description }}</p>
+                    {% if way.detail %}
+                      <p class="mt-0.5 text-meta text-slate-600">{{ way.detail }}</p>
+                    {% endif %}
+                    <p class="mt-1 flex flex-wrap items-center gap-2 text-meta text-slate-500">
+                      {% status_badge way.status way.get_status_display %}
+                      {% if way.target_date %}<span class="tabular">by {{ way.target_date|date:"j M Y" }}</span>{% endif %}
+                    </p>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="card-body">
+              <p class="text-sm text-slate-500">No next steps were recorded for this week.</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section aria-labelledby="convocation-upcoming-heading">
+        <h2 id="convocation-upcoming-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          Upcoming Activities
+        </h2>
+        <div class="card">
+          {% if upcoming %}
+            <ul class="divide-y divide-slate-100">
+              {% for item in upcoming %}
+                <li class="flex items-start gap-3 px-4 py-3.5">
+                  <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "calendar" "size-4" %}</span>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-slate-900">{{ item.title }}</p>
+                    <p class="mt-0.5 text-meta text-slate-500 tabular">
+                      {{ item.date_label }}{% if item.location %} &middot; {{ item.location }}{% endif %}
+                    </p>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="card-body">
+              <p class="text-sm text-slate-500">Nothing has been recorded as upcoming.</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <p class="mt-6 text-center text-meta text-slate-500">
+      Prepared by the {{ agency.division|default:"Local Government Monitoring and Evaluation Division" }}
+      &middot; presented {{ period.convocation_date|date:"l, j F Y" }}
+    </p>
+  {% endif %}
+{% endblock %}

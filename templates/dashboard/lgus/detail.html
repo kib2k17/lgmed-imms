@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+
+      <section class="card" aria-labelledby="profile-heading">
+        <div class="card-header">
+          <h2 id="profile-heading" class="card-title">LGU Profile</h2>
+          {% status_badge record.compliance_tone record.get_compliance_status_display %}
+        </div>
+        <div class="card-body">
+          <dl class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGU type</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {{ record.get_lgu_type_display }}
+                {% if record.is_independent %}<span class="text-slate-500">(independent)</span>{% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Province</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.province.name }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Income class</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_income_class_display|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Directory status</dt>
+              <dd class="mt-1 text-sm">
+                {% if record.is_active %}{% status_badge "active" "Active" %}{% else %}{% status_badge "inactive" "Inactive" %}{% endif %}
+              </dd>
+            </div>
+          </dl>
+
+          {% if record.notes %}
+            <div class="mt-6 border-t border-slate-200 pt-5">
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Notes</h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.notes }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="monitoring-heading">
+        <div class="card-header">
+          <div>
+            <h2 id="monitoring-heading" class="card-title">Monitoring History</h2>
+            <p class="mt-0.5 text-meta text-slate-500">
+              {{ record.monitoring_count }} activit{{ record.monitoring_count|pluralize:"y,ies" }} recorded
+            </p>
+          </div>
+          {% if user.can_encode %}
+            <a href="{% url 'monitoring:create' %}" class="btn btn-secondary btn-sm">
+              {% icon "plus" "size-3.5" %}New record
+            </a>
+          {% endif %}
+        </div>
+        {% if activities %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Monitoring activities conducted on {{ record.name }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Activity</th>
+                  <th scope="col" class="hidden sm:table-cell">Date</th>
+                  <th scope="col" class="hidden lg:table-cell">Team</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for activity in activities %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{{ activity.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ activity.title }}</a>
+                    </th>
+                    <td class="hidden whitespace-nowrap sm:table-cell">{{ activity.monitoring_date|date:"j M Y" }}</td>
+                    <td class="hidden text-slate-500 lg:table-cell">{{ activity.monitoring_team|truncatechars:30 }}</td>
+                    <td>{% status_badge activity.status activity.get_status_display %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            This LGU has not been monitored yet.
+          </p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="contact-heading">
+        <div class="card-header">
+          <h2 id="contact-heading" class="card-title">Contact Information</h2>
+        </div>
+        <div class="card-body">
+          {% if record.contact_person or record.address or record.contact_number or record.email %}
+            <dl class="space-y-4">
+              {% if record.contact_person %}
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Focal person</dt>
+                  <dd class="mt-1 text-sm text-slate-900">{{ record.contact_person }}</dd>
+                  {% if record.contact_position %}
+                    <dd class="text-meta text-slate-500">{{ record.contact_position }}</dd>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if record.address %}
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Address</dt>
+                  <dd class="mt-1 flex items-start gap-2 text-sm text-slate-900">
+                    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "map-pin" "size-4" %}</span>{{ record.address }}
+                  </dd>
+                </div>
+              {% endif %}
+              {% if record.contact_number %}
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Contact number</dt>
+                  <dd class="mt-1 flex items-start gap-2 text-sm text-slate-900">
+                    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "phone" "size-4" %}</span>{{ record.contact_number }}
+                  </dd>
+                </div>
+              {% endif %}
+              {% if record.email %}
+                <div>
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Email</dt>
+                  <dd class="mt-1 flex items-start gap-2 text-sm">
+                    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "mail" "size-4" %}</span>
+                    <a href="mailto:{{ record.email }}" class="break-all text-brand-700 hover:underline">{{ record.email }}</a>
+                  </dd>
+                </div>
+              {% endif %}
+            </dl>
+          {% else %}
+            <p class="text-sm text-slate-500">No contact information has been recorded for this LGU.</p>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if programs %}
+        <section class="card" aria-labelledby="programs-heading">
+          <div class="card-header">
+            <h2 id="programs-heading" class="card-title">Programs Covering This LGU</h2>
+          </div>
+          <ul class="divide-y divide-slate-100">
+            {% for program in programs %}
+              <li class="px-4 py-3 sm:px-5">
+                <a href="{{ program.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">{{ program.title }}</a>
+                <p class="mt-1 flex flex-wrap items-center gap-2">
+                  {% status_badge program.status program.get_status_display %}
+                  <span class="text-meta text-slate-500">{{ program.category.name }}</span>
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete LGU?" message="This action cannot be undone. An LGU that has monitoring activities recorded against it cannot be deleted." detail=record confirm_label="Delete LGU" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

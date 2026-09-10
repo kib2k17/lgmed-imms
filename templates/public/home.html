@@ -1,0 +1,332 @@
+{% extends "public_base.html" %}
+{% load ui humanize %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+  {# ---- Hero ---------------------------------------------------------- #}
+  <section class="border-b border-brand-900 bg-brand-900 text-white">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:px-8 lg:py-16">
+      <div class="lg:col-span-7">
+        <p class="text-meta font-semibold tracking-[0.08em] text-accent-400 uppercase">
+          {{ agency.office_short }}
+        </p>
+        <h1 class="mt-3 text-3xl leading-tight font-bold tracking-tight text-white sm:text-4xl">
+          {{ public_content.hero_heading }}
+        </h1>
+        <p class="mt-4 max-w-2xl text-base leading-relaxed whitespace-pre-line text-brand-100">
+          {{ public_content.hero_lead }}
+        </p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a href="{% url 'core:public_reports' %}" class="btn border-white bg-white text-brand-900 hover:border-brand-100 hover:bg-brand-100">
+            {% icon "reports" "size-4" %}Published reports
+          </a>
+          <a href="{% url 'core:public_services' %}" class="btn border-white/30 bg-white/10 text-white hover:bg-white/20">
+            {% icon "services" "size-4" %}Frontline services
+          </a>
+        </div>
+      </div>
+
+      <div class="lg:col-span-5">
+        <div class="rounded-lg border border-white/15 bg-white/5 p-5">
+          <h2 class="text-meta font-semibold tracking-[0.08em] text-brand-200 uppercase">
+            Region XIII at a glance
+          </h2>
+          <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-5">
+            <div>
+              <dt class="text-meta text-brand-200">Local government units</dt>
+              <dd class="mt-0.5 text-2xl font-bold text-white tabular">{{ summary.lgus }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta text-brand-200">Provinces</dt>
+              <dd class="mt-0.5 text-2xl font-bold text-white tabular">{{ summary.provinces }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta text-brand-200">Cities</dt>
+              <dd class="mt-0.5 text-2xl font-bold text-white tabular">{{ summary.cities }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta text-brand-200">Municipalities</dt>
+              <dd class="mt-0.5 text-2xl font-bold text-white tabular">{{ summary.municipalities }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ---- Latest news ---------------------------------------------------- #}
+  <section class="border-b border-slate-200 bg-white" aria-labelledby="news-heading">
+    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div>
+          <h2 id="news-heading" class="text-section-title font-semibold text-slate-900">LGMED Latest News</h2>
+          <p class="mt-1 text-sm text-slate-600">Activities, advisories and issuances of the Division</p>
+        </div>
+        <a href="{% url 'core:public_announcements' %}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+          All news{% icon "chevron-right" "size-3.5" %}
+        </a>
+      </div>
+
+      {% if lead_story %}
+        <div class="mt-6 grid gap-6 lg:grid-cols-12 lg:gap-8">
+
+          {% comment %}
+            The lead story carries the photograph at full width; the rest read
+            as a dated list beside it, the way a bulletin board is read.
+          {% endcomment %}
+          <article class="lg:col-span-7">
+            <a href="{{ lead_story.get_public_url }}" class="block aspect-[16/9] overflow-hidden rounded-lg border border-slate-200 bg-slate-100" tabindex="-1" aria-hidden="true">
+              {% if lead_story.image %}
+                <img src="{{ lead_story.image.url }}" alt="" class="size-full object-cover">
+              {% else %}
+                <span class="grid size-full place-items-center bg-brand-50 text-brand-300">
+                  {% icon "announcements" "size-10" %}
+                </span>
+              {% endif %}
+            </a>
+            <p class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+              <span class="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-semibold tracking-wide text-brand-800 uppercase">
+                {{ lead_story.get_category_display }}
+              </span>
+              <time datetime="{{ lead_story.published_on|date:'Y-m-d' }}" class="text-slate-500">
+                {{ lead_story.published_on|date:"j F Y" }}
+              </time>
+              {% if lead_story.location %}
+                <span class="inline-flex items-center gap-1.5 text-slate-500">
+                  {% icon "map-pin" "size-3" %}{{ lead_story.location }}
+                </span>
+              {% endif %}
+            </p>
+            <h3 class="mt-2 text-xl leading-snug font-bold text-slate-900">
+              <a href="{{ lead_story.get_public_url }}" class="hover:text-brand-700 hover:underline">{{ lead_story.title }}</a>
+            </h3>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed text-slate-600">
+              {{ lead_story.summary|truncatewords:50 }}
+            </p>
+            <p class="mt-3">
+              <a href="{{ lead_story.get_public_url }}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+                See more{% icon "chevron-right" "size-3.5" %}
+              </a>
+            </p>
+          </article>
+
+          <div class="lg:col-span-5">
+            {% if news %}
+              <ul class="divide-y divide-slate-200 border-t border-slate-200 lg:border-t-0">
+                {% for item in news %}
+                  <li class="flex gap-4 py-4 first:lg:pt-0">
+                    <a href="{{ item.get_public_url }}" class="size-20 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100" tabindex="-1" aria-hidden="true">
+                      {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="" loading="lazy" class="size-full object-cover">
+                      {% else %}
+                        <span class="grid size-full place-items-center bg-brand-50 text-brand-300">
+                          {% icon "announcements" "size-5" %}
+                        </span>
+                      {% endif %}
+                    </a>
+                    <div class="min-w-0">
+                      <p class="flex flex-wrap items-center gap-x-2 text-meta text-slate-500">
+                        <span class="font-semibold tracking-wide text-brand-800 uppercase">{{ item.get_category_display }}</span>
+                        <time datetime="{{ item.published_on|date:'Y-m-d' }}">{{ item.published_on|date:"j M Y" }}</time>
+                      </p>
+                      <h3 class="mt-1 text-sm leading-snug font-semibold text-slate-900">
+                        <a href="{{ item.get_public_url }}" class="hover:text-brand-700 hover:underline">{{ item.title }}</a>
+                      </h3>
+                      <p class="mt-1 text-meta leading-relaxed text-slate-600">{{ item.summary|truncatewords:18 }}</p>
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="mt-6 rounded-lg border border-slate-200 bg-white">
+          {% include "components/empty_state.html" with icon="announcements" title="No news published yet" message="Activities, advisories and issuances of the Division will appear here as they are published." %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ---- Mandate ------------------------------------------------------- #}
+  <section class="border-b border-slate-200 bg-white" aria-labelledby="mandate-heading">
+    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <h2 id="mandate-heading" class="text-section-title font-semibold text-slate-900">What the Division does</h2>
+      <p class="mt-2 max-w-3xl text-[0.9375rem] leading-relaxed text-slate-600">
+        {{ public_content.mandate_intro }}
+      </p>
+
+      <div class="mt-8 grid gap-5 md:grid-cols-3">
+        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+            {% icon "monitoring" "size-5" %}
+          </span>
+          <h3 class="mt-4 text-card-title font-semibold text-slate-900">Governance Oversight</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            Monitoring the compliance and performance of local government units
+            against national policy, and validating the results through field
+            assessment.
+          </p>
+          <p class="mt-3 text-meta text-slate-500">
+            {{ summary.monitoring }} monitoring activit{{ summary.monitoring|pluralize:"y,ies" }} recorded this year
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+            {% icon "services" "size-5" %}
+          </span>
+          <h3 class="mt-4 text-card-title font-semibold text-slate-900">Frontline Services</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            Technical assistance, records and certifications provided to local
+            government units, national agencies and the public, with published
+            requirements and processing times.
+          </p>
+          <p class="mt-3 text-meta">
+            <a href="{% url 'core:public_services' %}" class="font-medium text-brand-700 hover:underline">
+              View the service catalogue
+            </a>
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+            {% icon "programs" "size-5" %}
+          </span>
+          <h3 class="mt-4 text-card-title font-semibold text-slate-900">Programs &amp; Impact</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            Administration of capacity development and local governance programs,
+            with evaluation of their reach and results across the region.
+          </p>
+          <p class="mt-3 text-meta text-slate-500">
+            {{ summary.programs }} active program{{ summary.programs|pluralize }}
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {# ---- Transparency figures -------------------------------------------- #}
+  <section class="border-b border-slate-200 bg-slate-50" aria-labelledby="stats-heading">
+    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <h2 id="stats-heading" class="text-section-title font-semibold text-slate-900">
+        Monitoring and evaluation in numbers
+      </h2>
+      <p class="mt-1.5 text-sm text-slate-600">Regional totals for the current year.</p>
+
+      <dl class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="rounded-lg border border-slate-200 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Local government units</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ summary.lgus|intcomma }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Monitoring activities</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ summary.monitoring|intcomma }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Published reports</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ summary.reports|intcomma }}</dd>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-4">
+          <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Public documents</dt>
+          <dd class="mt-1.5 text-2xl font-bold text-slate-900 tabular">{{ summary.documents|intcomma }}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  {# ---- Issuances + activities ------------------------------------------ #}
+  <section class="bg-white" aria-labelledby="latest-heading">
+    <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:gap-10 lg:px-8">
+
+      <div class="lg:col-span-2">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <h2 id="latest-heading" class="text-section-title font-semibold text-slate-900">Latest Issuances</h2>
+          <a href="{% url 'core:public_documents' %}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+            All documents{% icon "chevron-right" "size-3.5" %}
+          </a>
+        </div>
+
+        {% if documents %}
+          <ul class="divide-y divide-slate-200">
+            {% for document in documents %}
+              <li class="py-5">
+                <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+                  <span class="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-semibold tracking-wide text-brand-800 uppercase">
+                    {{ document.document_type.name }}
+                  </span>
+                  <span class="text-slate-500">{{ document.year }}</span>
+                </p>
+                <h3 class="mt-2 text-card-title font-semibold text-slate-900">
+                  <a href="{{ document.file.url }}" class="hover:text-brand-700 hover:underline">{{ document.title }}</a>
+                </h3>
+                {% if document.description %}
+                  <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{{ document.description|truncatewords:35 }}</p>
+                {% endif %}
+                <p class="mt-2 text-meta text-slate-500">
+                  {{ document.file_type }} &middot; {{ document.file_size|filesize }}
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="py-10 text-center text-sm text-slate-500">
+            No documents have been published yet. Published issuances will appear here.
+          </p>
+        {% endif %}
+      </div>
+
+      <div>
+        <div class="border-b border-slate-200 pb-3">
+          <h2 class="text-section-title font-semibold text-slate-900">Upcoming Activities</h2>
+        </div>
+        {% if activities %}
+          <ul class="divide-y divide-slate-200">
+            {% for activity in activities %}
+              <li class="flex gap-3.5 py-4">
+                <time datetime="{{ activity.start_date|date:'Y-m-d' }}"
+                      class="grid size-12 shrink-0 place-items-center rounded-md border border-slate-200 bg-slate-50 text-center leading-none">
+                  <span class="block text-[0.625rem] font-semibold tracking-wide text-slate-500 uppercase">{{ activity.start_date|date:"M" }}</span>
+                  <span class="mt-0.5 block text-base font-bold text-slate-900">{{ activity.start_date|date:"j" }}</span>
+                </time>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-slate-900">{{ activity.title }}</p>
+                  <p class="mt-1 flex flex-col gap-0.5 text-meta text-slate-500">
+                    {% if activity.start_time %}
+                      <span class="inline-flex items-center gap-1.5">{% icon "clock" "size-3" %}{{ activity.start_time|time:"g:i A" }}</span>
+                    {% endif %}
+                    {% if activity.location %}
+                      <span class="inline-flex items-center gap-1.5">{% icon "map-pin" "size-3" %}{{ activity.location }}</span>
+                    {% endif %}
+                  </p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="py-8 text-sm text-slate-500">No activities are currently published.</p>
+        {% endif %}
+        <a href="{% url 'core:public_calendar' %}" class="btn btn-secondary mt-4 w-full">
+          {% icon "calendar" "size-4" %}View full calendar
+        </a>
+      </div>
+    </div>
+  </section>
+
+  {# ---- Contact strip -------------------------------------------------- #}
+  <section class="border-t border-slate-200 bg-slate-50" aria-labelledby="contact-heading">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <div>
+        <h2 id="contact-heading" class="text-section-title font-semibold text-slate-900">Need to reach the Division?</h2>
+        <p class="mt-1.5 text-sm text-slate-600">
+          {{ agency.address }} &nbsp;&bull;&nbsp; {{ agency.telephone }}
+        </p>
+      </div>
+      <a href="{% url 'core:public_contact' %}" class="btn btn-primary">
+        {% icon "mail" "size-4" %}Contact information
+      </a>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Primary navigation. Fixed drawer below lg, sticky column from lg upward.
+   Sections and permissions come from core/navigation.py.
+   --------------------------------------------------------------------------- 
+{% endcomment %}
+<aside id="sidebar"
+       class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-brand-900 bg-brand-950 transition-transform duration-200 ease-out
+              lg:sticky lg:top-[var(--app-header-h)] lg:z-30 lg:h-[calc(100vh-var(--app-header-h))] lg:translate-x-0 lg:self-start"
+       aria-label="Main navigation">
+
+  {# Drawer header - system identity #}
+  <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4 lg:h-auto lg:py-2.5">
+    <div class="min-w-0">
+      <p class="truncate text-[0.9375rem] leading-tight font-bold text-white">{{ agency.system_name }}</p>
+      <p class="truncate text-[0.6875rem] leading-tight text-brand-300">{{ agency.office_short }}</p>
+    </div>
+    <button type="button" id="sidebar-close" class="-mr-1 rounded-md p-1.5 text-brand-200 hover:bg-white/10 hover:text-white lg:hidden">
+      {% icon "close" "size-5" %}
+      <span class="sr-only">Close navigation menu</span>
+    </button>
+  </div>
+
+  <nav class="nav-scroll">
+    {% for section in sidebar_sections %}
+      <p class="nav-section-label" id="nav-section-{{ forloop.counter }}">{{ section.label }}</p>
+      <ul class="space-y-0.5" aria-labelledby="nav-section-{{ forloop.counter }}">
+        {% for item in section.items %}
+          <li>
+            <a href="{{ item.url }}"
+               class="nav-link{% if item.is_active %} nav-link-active{% endif %}"
+               {% if item.is_active %}aria-current="page"{% endif %}>
+              {% icon item.icon %}
+              <span class="truncate">{{ item.label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </nav>
+
+  {# Division identification #}
+  <div class="shrink-0 border-t border-white/10 px-4 py-2.5">
+    <p class="text-[0.6875rem] leading-snug text-brand-300">
+      {{ agency.division }}
+    </p>
+    <p class="mt-1 text-[0.6875rem] leading-snug text-brand-400 sm:hidden">
+      {{ agency.department }}
+    </p>
+  </div>
+</aside>

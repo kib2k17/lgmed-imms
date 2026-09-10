@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-body">
+      {% include "components/empty_state.html" with icon="clock" title="This module is scheduled for a later phase" message=module_summary %}
+
+      <div class="mx-auto max-w-2xl border-t border-slate-200 pt-6">
+        <h2 class="text-center text-meta font-semibold tracking-wide text-slate-500 uppercase">
+          Implementation sequence
+        </h2>
+        <ol class="mx-auto mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+          <li class="flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-3">
+            <span class="mt-0.5 shrink-0 text-green-700">{% icon "check-circle" "size-4" %}</span>
+            <span>
+              <span class="block text-sm font-semibold text-green-900">Phase 1 &mdash; Delivered</span>
+              <span class="block text-meta text-green-800">Layout, header, sidebar, dashboard, design system</span>
+            </span>
+          </li>
+          <li class="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "clock" "size-4" %}</span>
+            <span>
+              <span class="block text-sm font-semibold text-slate-800">Phase 2</span>
+              <span class="block text-meta text-slate-600">Programs, Monitoring, LGUs, Services, Documents, Reports, Calendar</span>
+            </span>
+          </li>
+          <li class="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "clock" "size-4" %}</span>
+            <span>
+              <span class="block text-sm font-semibold text-slate-800">Phase 3</span>
+              <span class="block text-meta text-slate-600">Users, roles, permissions, audit logs, settings</span>
+            </span>
+          </li>
+          <li class="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "clock" "size-4" %}</span>
+            <span>
+              <span class="block text-sm font-semibold text-slate-800">Phase 4</span>
+              <span class="block text-meta text-slate-600">Analytics, exports, notifications, advanced filtering</span>
+            </span>
+          </li>
+        </ol>
+
+        <p class="mt-6 text-center">
+          <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+            {% icon "chevron-left" "size-4" %}Return to dashboard
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

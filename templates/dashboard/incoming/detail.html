@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to list</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+  {% if can_acknowledge %}
+    <form method="post" action="{% url 'incoming:acknowledge' record.pk %}" class="no-print">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">
+        {% icon "check" "size-4" %}Acknowledge receipt
+      </button>
+    </form>
+  {% endif %}
+  {% if user.can_encode %}
+    <a href="{{ record.get_absolute_url }}edit/" class="btn btn-secondary">
+      {% icon "edit" "size-4" %}<span class="hidden sm:inline">Edit</span>
+    </a>
+  {% endif %}
+  {% if user.can_delete %}
+    <button type="button" class="btn btn-danger" data-dialog-open="delete-record">
+      {% icon "delete" "size-4" %}<span class="hidden sm:inline">Delete</span>
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+    <div class="space-y-4 xl:col-span-2">
+
+      {# ---- Progress ------------------------------------------------- #}
+      <section class="card" aria-labelledby="progress-heading">
+        <div class="card-header">
+          <h2 id="progress-heading" class="card-title">Progress</h2>
+          {% status_badge record.display_status record.display_status_label %}
+        </div>
+        <div class="card-body">
+          <ol class="flex flex-wrap gap-x-2 gap-y-3">
+            {% for stage in record.workflow %}
+              <li class="flex flex-1 basis-32 items-center gap-2">
+                <span aria-hidden="true"
+                      class="grid size-6 shrink-0 place-items-center rounded-full border-2 text-[0.625rem] font-bold
+                             {% if stage.state == 'done' %}border-green-600 bg-green-600 text-white
+                             {% elif stage.state == 'current' %}border-brand-600 bg-brand-600 text-white
+                             {% elif stage.state == 'cancelled' %}border-red-600 bg-red-600 text-white
+                             {% else %}border-slate-300 bg-white text-slate-400{% endif %}">
+                  {% if stage.state == "done" %}{% icon "check" "size-3" %}{% else %}{{ forloop.counter }}{% endif %}
+                </span>
+                <span class="min-w-0 text-meta font-medium
+                             {% if stage.state == 'upcoming' %}text-slate-400{% else %}text-slate-800{% endif %}">
+                  {{ stage.label }}
+                  {% if stage.state == "current" %}<span class="sr-only">(current stage)</span>{% endif %}
+                  {% if stage.state == "done" %}<span class="sr-only">(completed)</span>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ol>
+
+          {% if record.is_overdue %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="status">
+              {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                This document was due {{ record.due_date|date:"j F Y" }} &mdash;
+                {{ record.days_overdue }} day{{ record.days_overdue|pluralize }} overdue.
+              </span>
+            </p>
+          {% elif record.awaits_acknowledgement %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+              {% icon "clock" "size-4 mt-0.5 shrink-0" %}
+              <span>Assigned to {{ record.assigned_to.get_display_name }}, awaiting acknowledgement.</span>
+            </p>
+          {% elif record.status == "FOR_REVIEW" %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+              {% icon "info" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                Recorded and waiting for the Division Chief to review it and
+                assign a focal person. No focal person may be named before then.
+              </span>
+            </p>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- The document itself --------------------------------------- #}
+      <section class="card" aria-labelledby="document-heading">
+        <div class="card-header">
+          <h2 id="document-heading" class="card-title">Document</h2>
+        </div>
+        <div class="card-body space-y-5">
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Subject</h3>
+            <p class="mt-1 text-sm leading-relaxed text-slate-900">{{ record.subject }}</p>
+          </div>
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Initial remarks</h3>
+            {% if record.initial_remarks %}
+              <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.initial_remarks }}</p>
+            {% else %}
+              <p class="mt-1 text-sm text-slate-400">No remarks were recorded on receipt.</p>
+            {% endif %}
+          </div>
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Attachment</h3>
+            {% if record.attachment %}
+              <a href="{{ record.attachment.url }}" target="_blank" rel="noopener"
+                 class="mt-2 inline-flex items-center gap-2.5 rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50">
+                <span aria-hidden="true" class="grid size-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-500">
+                  {% icon "file" "size-4" %}
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium text-brand-700">Open the attached document</span>
+                  <span class="block text-meta text-slate-500">
+                    {{ record.file_type }} &middot; {{ record.file_size|filesize }}
+                  </span>
+                </span>
+                {% icon "external" "size-3.5 text-slate-400" %}
+              </a>
+            {% else %}
+              <p class="mt-1 text-sm text-slate-400">No file was attached to this record.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      {# ---- The Division Chief's review -------------------------------- #}
+      <section class="card" aria-labelledby="review-heading">
+        <div class="card-header">
+          <h2 id="review-heading" class="card-title">Division Chief&rsquo;s Review</h2>
+          {% if record.is_reviewed %}
+            {% status_badge "completed" "Reviewed" %}
+          {% else %}
+            {% status_badge "pending" "Not yet reviewed" %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-4">
+          {% if record.is_reviewed %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Notes and instructions</h3>
+              {% if record.review_notes %}
+                <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.review_notes }}</p>
+              {% else %}
+                <p class="mt-1 text-sm text-slate-400">No notes were recorded.</p>
+              {% endif %}
+              <p class="mt-2 text-meta text-slate-500">
+                Reviewed by {{ record.reviewed_by.get_display_name|default:"an officer" }}
+                on {{ record.reviewed_at|date:"j F Y, g:i A" }}
+              </p>
+            </div>
+          {% else %}
+            <p class="text-sm text-slate-500">
+              This document has not been reviewed yet. Until the Division Chief
+              reviews it and names a focal person, it stays in the review queue.
+            </p>
+          {% endif %}
+
+          {% if can_review %}
+            <form method="post" action="{% url 'incoming:review' record.pk %}"
+                  class="space-y-3 border-t border-slate-200 pt-4 no-print">
+              {% csrf_token %}
+              {% include "components/bound_field.html" with field=review_form.review_notes %}
+              <div class="flex justify-end">
+                <button type="submit" class="btn btn-secondary">
+                  {% icon "edit" "size-4" %}Save review notes
+                </button>
+              </div>
+            </form>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- Assignment -------------------------------------------------- #}
+      <section class="card" aria-labelledby="assignment-heading">
+        <div class="card-header">
+          <h2 id="assignment-heading" class="card-title">Assignment</h2>
+          {% if record.is_assigned %}
+            {% status_badge "assigned" "Assigned" %}
+          {% else %}
+            {% status_badge "pending" "Not yet assigned" %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-4">
+          {% if record.is_assigned %}
+            <dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Focal person</dt>
+                <dd class="mt-1 text-sm font-medium text-slate-900">{{ record.assigned_to.get_display_name }}</dd>
+                <dd class="text-meta text-slate-500">
+                  {{ record.assigned_to.position|default:record.assigned_to.get_role_display }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assigned by</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.assigned_by.get_display_name|default:"Not recorded" }}</dd>
+                <dd class="text-meta text-slate-500">{{ record.assigned_at|date:"j F Y, g:i A" }}</dd>
+              </div>
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Acknowledged</dt>
+                <dd class="mt-1 text-sm text-slate-900">
+                  {% if record.is_acknowledged %}
+                    {{ record.acknowledged_at|date:"j F Y, g:i A" }}
+                  {% else %}
+                    <span class="text-amber-700">Not yet acknowledged</span>
+                  {% endif %}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Action due</dt>
+                <dd class="mt-1 text-sm {% if record.is_overdue %}font-medium text-red-700{% else %}text-slate-900{% endif %}">
+                  {{ record.due_date|date:"j F Y"|default:"No deadline set" }}
+                </dd>
+              </div>
+            </dl>
+            {% if record.assignment_remarks %}
+              <div>
+                <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assignment remarks</h3>
+                <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.assignment_remarks }}</p>
+              </div>
+            {% endif %}
+          {% else %}
+            <p class="text-sm text-slate-500">
+              No focal person has been named. Only the Division Chief may assign
+              this document.
+            </p>
+          {% endif %}
+
+          {% if can_review %}
+            <form method="post" action="{% url 'incoming:assign' record.pk %}"
+                  class="space-y-4 border-t border-slate-200 pt-4 no-print">
+              {% csrf_token %}
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                {% if record.is_assigned %}Reassign this document{% else %}Assign a focal person{% endif %}
+              </h3>
+              <div class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                  {% include "components/bound_field.html" with field=assignment_form.assigned_to %}
+                </div>
+                <div>{% include "components/bound_field.html" with field=assignment_form.priority %}</div>
+                <div>{% include "components/bound_field.html" with field=assignment_form.due_date %}</div>
+                <div class="sm:col-span-2">
+                  {% include "components/bound_field.html" with field=assignment_form.assignment_remarks %}
+                </div>
+              </div>
+              <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary">
+                  {% icon "users" "size-4" %}
+                  {% if record.is_assigned %}Reassign and notify{% else %}Assign and notify{% endif %}
+                </button>
+              </div>
+            </form>
+
+            {% if record.is_assigned and not record.is_completed %}
+              <form method="post" action="{% url 'incoming:return' record.pk %}"
+                    class="space-y-3 border-t border-slate-200 pt-4 no-print">
+                {% csrf_token %}
+                <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Return for revision</h3>
+                {% include "components/bound_field.html" with field=return_form.remarks %}
+                <div class="flex justify-end">
+                  <button type="submit" class="btn btn-secondary text-red-700">
+                    {% icon "warning" "size-4" %}Return to focal person
+                  </button>
+                </div>
+              </form>
+            {% endif %}
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- Updates from the focal person ------------------------------ #}
+      <section class="card" aria-labelledby="updates-heading">
+        <div class="card-header">
+          <h2 id="updates-heading" class="card-title">Action and Updates</h2>
+          <p class="text-meta text-slate-500">
+            {{ record.updates.count }} update{{ record.updates.count|pluralize }}
+          </p>
+        </div>
+
+        {% if record.updates.all %}
+          <ul class="divide-y divide-slate-100">
+            {% for update in record.updates.all %}
+              <li class="px-4 py-4 sm:px-5">
+                <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                  <p class="text-sm font-medium text-slate-900">
+                    {{ update.created_by.get_display_name|default:"An officer" }}
+                  </p>
+                  <div class="flex items-center gap-2">
+                    {% status_badge update.status update.get_status_display %}
+                    <time class="text-meta text-slate-500" datetime="{{ update.created_at|date:'c' }}">
+                      {{ update.created_at|date:"j M Y, g:i A" }}
+                    </time>
+                  </div>
+                </div>
+                <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ update.action_taken }}</p>
+                {% if update.remarks %}
+                  <p class="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta leading-relaxed whitespace-pre-line text-slate-600">
+                    {{ update.remarks }}
+                  </p>
+                {% endif %}
+                {% if update.attachment %}
+                  <a href="{{ update.attachment.url }}" target="_blank" rel="noopener"
+                     class="mt-2 inline-flex items-center gap-1.5 text-meta font-medium text-brand-700 hover:underline">
+                    {% icon "file" "size-3.5" %}
+                    Supporting attachment ({{ update.extension }}, {{ update.size|filesize }})
+                  </a>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            No update has been provided yet.
+            {% if record.is_assigned %}
+              The focal person is expected to report progress at least every
+              {{ update_reminder_days }} days.
+            {% endif %}
+          </p>
+        {% endif %}
+
+        {% if can_update %}
+          <form method="post" action="{% url 'incoming:add_update' record.pk %}"
+                enctype="multipart/form-data"
+                class="space-y-4 border-t border-slate-200 p-4 sm:px-5 no-print">
+            {% csrf_token %}
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Provide an update</h3>
+            {% if record.awaits_acknowledgement and is_focal_person %}
+              <p class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-meta text-amber-900">
+                Acknowledge receipt of this assignment first, using the button
+                at the top of the page.
+              </p>
+            {% endif %}
+            <div class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                {% include "components/bound_field.html" with field=update_form.action_taken %}
+              </div>
+              <div class="sm:col-span-2">
+                {% include "components/bound_field.html" with field=update_form.remarks %}
+              </div>
+              <div>{% include "components/bound_field.html" with field=update_form.status %}</div>
+              <div>{% include "components/bound_field.html" with field=update_form.attachment %}</div>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" class="btn btn-primary">
+                {% icon "check" "size-4" %}Record update
+              </button>
+            </div>
+          </form>
+        {% endif %}
+      </section>
+    </div>
+
+    {# ---- Details rail ------------------------------------------------- #}
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Document Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Docket number</dt>
+              <dd class="mt-1 text-sm font-medium text-slate-900">{{ record.docket_number }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Document type</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.document_type.name }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Source / office</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.source_office }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date received</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                <time datetime="{{ record.date_received|date:'Y-m-d' }}">{{ record.date_received|date:"j F Y" }}</time>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Priority</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_priority_display }}</dd>
+            </div>
+            {% if record.is_completed %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Completed</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.completed_at|date:"j F Y, g:i A" }}</dd>
+                <dd class="text-meta text-slate-500">
+                  {{ record.days_to_complete }} day{{ record.days_to_complete|pluralize }} from receipt
+                </dd>
+              </div>
+            {% endif %}
+          </dl>
+        </div>
+      </section>
+
+      {# ---- The document's own trail ----------------------------------- #}
+      <section class="card" aria-labelledby="trail-heading">
+        <div class="card-header">
+          <h2 id="trail-heading" class="card-title">Audit Trail</h2>
+        </div>
+        <div class="card-body">
+          <ol class="space-y-4">
+            {% for event in record.events.all %}
+              <li class="flex gap-3">
+                <span aria-hidden="true" class="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500">
+                  {% icon event.icon "size-3.5" %}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-slate-900">{{ event.get_event_type_display }}</p>
+                  {% if event.detail %}
+                    <p class="text-meta leading-relaxed text-slate-600">{{ event.detail }}</p>
+                  {% endif %}
+                  {% if event.notes %}
+                    <p class="mt-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-meta leading-relaxed whitespace-pre-line text-slate-600">
+                      {{ event.notes|truncatechars:220 }}
+                    </p>
+                  {% endif %}
+                  <p class="mt-1 text-meta text-slate-500">
+                    {{ event.actor_label }}{% if event.actor_role %} &middot; {{ event.actor_role }}{% endif %}
+                    <span class="block">{{ event.occurred_at|date:"j M Y, g:i A" }}</span>
+                  </p>
+                </div>
+              </li>
+            {% empty %}
+              <li class="text-sm text-slate-400">No activity has been recorded.</li>
+            {% endfor %}
+          </ol>
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Incoming Document?" message="This action cannot be undone. The document, its updates and its trail will be permanently removed." detail=record confirm_label="Delete Document" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to log</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="entry-heading">
+        <div class="card-header">
+          <h2 id="entry-heading" class="card-title">What happened</h2>
+          {% status_badge record.status_tone record.get_action_display %}
+        </div>
+        <div class="card-body">
+          <p class="text-[0.9375rem] leading-relaxed text-slate-800">
+            <span class="font-semibold">{{ record.actor_label }}</span>{% if record.actor_role %}
+              <span class="text-slate-500">({{ record.actor_role }})</span>{% endif %}
+            {{ record.get_action_display|lower }}
+            {% if record.target_label %}
+              {% if record.target_url %}
+                <a href="{{ record.target_url }}" class="font-medium text-brand-700 hover:underline">{{ record.target_label }}</a>
+              {% else %}
+                <span class="font-medium">{{ record.target_label }}</span>
+              {% endif %}
+            {% endif %}
+            on
+            <time datetime="{{ record.timestamp|date:'c' }}">{{ record.timestamp|date:"j F Y" }}</time>
+            at {{ record.timestamp|time:"g:i:s A" }}.
+          </p>
+
+          {% if record.detail %}
+            <p class="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700">
+              {{ record.detail }}
+            </p>
+          {% endif %}
+
+          {% if record.is_notable %}
+            <p class="mt-4 flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <span class="mt-0.5 shrink-0 text-amber-700">{% icon "warning" "size-4" %}</span>
+              <span>
+                <span class="sr-only">Note: </span>
+                This kind of entry is flagged for attention during an audit
+                review.
+              </span>
+            </p>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if record.change_list %}
+        <section class="card" aria-labelledby="changes-heading">
+          <div class="card-header">
+            <h2 id="changes-heading" class="card-title">Field Changes</h2>
+            <p class="text-meta text-slate-500">
+              {{ record.change_list|length }} field{{ record.change_list|length|pluralize }} changed
+            </p>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Values before and after this change</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Before</th>
+                  <th scope="col">After</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for field, before, after in record.change_list %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      {{ field }}
+                    </th>
+                    <td class="text-slate-500">
+                      {% if before %}<span class="line-through decoration-slate-300">{{ before }}</span>{% else %}<span class="text-slate-400">Empty</span>{% endif %}
+                    </td>
+                    <td class="font-medium text-slate-900">
+                      {% if after %}{{ after }}{% else %}<span class="font-normal text-slate-400">Empty</span>{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      {% endif %}
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="context-heading">
+        <div class="card-header">
+          <h2 id="context-heading" class="card-title">Entry Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Timestamp</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                <time datetime="{{ record.timestamp|date:'c' }}">
+                  {{ record.timestamp|date:"j F Y, g:i:s A" }}
+                </time>
+              </dd>
+              <dd class="text-meta text-slate-500">Philippine Standard Time</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Actor</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.actor %}
+                  <a href="{{ record.actor.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">
+                    {{ record.actor_label }}
+                  </a>
+                {% else %}
+                  {{ record.actor_label }}
+                  <span class="block text-meta text-slate-500">Account no longer exists</span>
+                {% endif %}
+              </dd>
+            </div>
+            {% if record.target_model %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Record type</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.target_model }}</dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Origin address</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.ip_address|default:"Not recorded" }}</dd>
+            </div>
+            {% if record.path %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Page</dt>
+                <dd class="mt-1 text-sm break-all text-slate-900">{{ record.path }}</dd>
+              </div>
+            {% endif %}
+            {% if record.user_agent %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Browser</dt>
+                <dd class="mt-1 text-meta leading-relaxed break-words text-slate-600">{{ record.user_agent }}</dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Entry reference</dt>
+              <dd class="mt-1 text-sm text-slate-900 tabular">AUD-{{ record.pk|stringformat:"06d" }}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+    </div>
+  </div>
+{% endblock %}

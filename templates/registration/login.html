@@ -1,0 +1,291 @@
+{% load static ui %}<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sign in &middot; {{ agency.system_name }}</title>
+  {% comment %}
+   The agency's own seal is the tab icon. Offering a second icon in another
+   format is not a fallback: a browser given both picks whichever it prefers -
+   Chrome takes the SVG - and the generic mark won, so the seal is now the only
+   icon declared.
+  {% endcomment %}
+  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
+  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
+
+  {% comment %}
+    reCAPTCHA v3. Loaded only when a site key is configured, so a checkout
+    without keys is not left waiting on a request to Google that can never
+    succeed. v3 shows no puzzle: the script mints a token in the background
+    and the form carries it with the credentials.
+
+    Google's floating badge is left where their script puts it, bottom-right.
+    It is the attribution their terms require, and it is the only sign the
+    page gives that it is protected at all - so it carries its own weight.
+    Hiding it is allowed only if the Privacy Policy and Terms are linked in
+    the page instead; the two go together, and one of them must always stand.
+  {% endcomment %}
+  {% if recaptcha_site_key %}
+    <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}" async defer></script>
+  {% endif %}
+</head>
+<body class="flex h-full flex-col bg-linear-to-b from-slate-100 to-slate-200 font-sans">
+
+  <div class="bg-brand-950 text-brand-200">
+    <div class="mx-auto flex h-8 max-w-6xl items-center px-4 text-[0.6875rem] sm:px-6">
+      <p class="truncate">{{ agency.department }} <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span> {{ agency.office }}</p>
+    </div>
+  </div>
+
+  <main class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-md lg:max-w-4xl">
+
+      {% comment %}
+        Below lg the office identity stacks above the form, as before. From lg
+        it moves into a panel beside it: on a desktop the single narrow column
+        left most of the screen empty, and the standing notices (who this
+        system belongs to, and that access is logged) are better placed next to
+        the form than queued above and below it.
+      {% endcomment %}
+
+      {# Identity - stacked, small screens only #}
+      <div class="mb-6 flex flex-col items-center text-center lg:hidden">
+        {% include "includes/agency_logo.html" with size="size-20" %}
+        <h1 class="mt-4 text-2xl font-bold tracking-tight text-brand-900">{{ agency.system_name }}</h1>
+        <p class="mt-1 max-w-sm text-[0.8125rem] leading-snug text-slate-600">
+          {{ agency.system_full_name }}
+        </p>
+        <p class="mt-1.5 text-meta font-medium text-slate-500">{{ agency.office_short }}</p>
+      </div>
+
+      <div class="overflow-hidden rounded-xl border-t-4 border-accent-400 bg-white shadow-overlay ring-1 ring-slate-900/5 lg:grid lg:grid-cols-5">
+
+        {# Identity panel - lg and up #}
+        <aside class="hidden bg-linear-to-b from-brand-900 to-brand-950 p-8 text-brand-200 lg:col-span-2 lg:flex lg:flex-col">
+          {% include "includes/agency_logo.html" with size="size-16" on_dark=True %}
+          <h1 class="mt-5 text-xl font-bold tracking-tight text-white">{{ agency.system_name }}</h1>
+          <p class="mt-2 text-[0.8125rem] leading-relaxed">{{ agency.system_full_name }}</p>
+          <p class="mt-4 text-meta font-medium text-brand-300">{{ agency.office_short }}</p>
+
+          <div class="mt-auto flex items-start gap-2.5 border-t border-white/10 pt-5 text-meta leading-relaxed">
+            <span class="mt-0.5 shrink-0 text-brand-400">{% icon "shield" "size-4" %}</span>
+            <p>
+              This is an official government information system. Access is
+              restricted to authorized personnel. All activity is logged for
+              audit purposes.
+            </p>
+          </div>
+        </aside>
+
+        {# Form #}
+        <div class="p-4 sm:p-5 lg:col-span-3 lg:p-8">
+          <h2 class="text-xl font-bold tracking-tight text-slate-900">Sign in to your account</h2>
+          <p class="mt-1.5 text-sm text-slate-600">Use the credentials issued by the LGMED system administrator.</p>
+
+          {# Session and authorization feedback #}
+          {% if messages %}
+            <div class="mt-4 space-y-3">{% include "includes/alerts.html" %}</div>
+          {% endif %}
+
+          {% if next and not form.errors %}
+            <div role="status" class="mt-4 flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+              <span class="mt-0.5 shrink-0 text-blue-700">{% icon "info" "size-4" %}</span>
+              <p><span class="sr-only">Information: </span>Please sign in to continue to the page you requested.</p>
+            </div>
+          {% endif %}
+
+          {% if form.non_field_errors %}
+            <div role="alert" class="mt-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              <span class="mt-0.5 shrink-0 text-red-700">{% icon "error" "size-4" %}</span>
+              <div>
+                <p class="font-semibold">Sign-in unsuccessful</p>
+                {% for error in form.non_field_errors %}<p class="mt-0.5">{{ error }}</p>{% endfor %}
+              </div>
+            </div>
+          {% endif %}
+
+          <form method="post" action="{% url 'accounts:login' %}" class="mt-6 space-y-5" novalidate
+                data-signin-form
+                data-recaptcha-site-key="{{ recaptcha_site_key }}"
+                data-recaptcha-action="{{ recaptcha_action }}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            {# Empty until the script below fills it in on submit. #}
+            {{ form.recaptcha_token }}
+
+            {% comment %}
+              Django puts `aria-describedby="id_<field>_error"` on a field that
+              failed, so the error text has to carry exactly that id or the
+              reference dangles and a screen reader announces nothing.
+            {% endcomment %}
+            <div>
+              <label for="{{ form.username.id_for_label }}" class="form-label">
+                {{ form.username.label }}<span class="required-mark" aria-hidden="true">*</span>
+                <span class="sr-only">(required)</span>
+              </label>
+              {{ form.username }}
+              {% if form.username.errors %}
+                <div id="{{ form.username.auto_id }}_error">
+                  {% for error in form.username.errors %}
+                    <p class="form-error" role="alert">{% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span></p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+
+            <div>
+              <label for="{{ form.password.id_for_label }}" class="form-label">
+                {{ form.password.label }}<span class="required-mark" aria-hidden="true">*</span>
+                <span class="sr-only">(required)</span>
+              </label>
+
+              {# The toggle is hidden until scripting confirms it works, so a #}
+              {# browser without JavaScript is never shown a dead button.     #}
+              <div class="relative">
+                {{ form.password }}
+                <button type="button" data-password-toggle
+                        aria-controls="{{ form.password.id_for_label }}"
+                        aria-pressed="false"
+                        class="absolute inset-y-0 right-0 hidden items-center rounded-r-md px-3 text-slate-500 hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:outline-none">
+                  <span data-password-icon-show>{% icon "view" "size-4" %}</span>
+                  <span data-password-icon-hide hidden>{% icon "view-off" "size-4" %}</span>
+                  <span class="sr-only" data-password-toggle-label>Show password</span>
+                </button>
+              </div>
+
+              <p class="mt-1.5 hidden items-start gap-1.5 text-meta text-amber-700"
+                 data-caps-warning role="status">
+                {% icon "warning" "size-3.5 mt-px shrink-0" %}<span>Caps Lock is on.</span>
+              </p>
+
+              {% if form.password.errors %}
+                <div id="{{ form.password.auto_id }}_error">
+                  {% for error in form.password.errors %}
+                    <p class="form-error" role="alert">{% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span></p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-1 w-full py-2.5 text-[0.9375rem] font-semibold" data-signin-submit>
+              {% icon "lock" "size-4" %}<span data-signin-submit-label>Sign in</span>
+            </button>
+          </form>
+
+          {% if recaptcha_site_key %}
+            <noscript>
+              <div role="alert" class="mt-4 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <span class="mt-0.5 shrink-0 text-amber-700">{% icon "warning" "size-4" %}</span>
+                <p>JavaScript is switched off in this browser. Sign-in verifies that
+                  each attempt comes from a person, and cannot complete without it.</p>
+              </div>
+            </noscript>
+          {% endif %}
+
+          <p class="mt-5 border-t border-slate-200 pt-4 text-meta text-slate-500">
+            Forgot your password? Contact the system administrator at
+            <a href="mailto:{{ agency.email }}" class="font-medium text-brand-700 hover:underline">{{ agency.email }}</a>.
+          </p>
+
+        </div>
+      </div>
+
+      {# Security notice - stacked, small screens only #}
+      <div class="mt-5 flex items-start gap-2.5 rounded-md border border-slate-200 bg-white/70 p-3 text-meta leading-relaxed text-slate-600 lg:hidden">
+        <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-4" %}</span>
+        <p>
+          This is an official government information system. Access is restricted to
+          authorized personnel. All activity is logged for audit purposes.
+        </p>
+      </div>
+
+      <p class="mt-5 text-center text-meta text-slate-500">
+        <a href="{% url 'core:home' %}" class="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+          {% icon "chevron-left" "size-3.5" %}Return to the public website
+        </a>
+      </p>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-meta text-slate-500 sm:px-6">
+    <p>&copy; {% now "Y" %} {{ agency.office_short }} &mdash; {{ agency.division }}</p>
+  </footer>
+
+  {% comment %}
+    A v3 token is only good for two minutes, so it is fetched when the form is
+    sent rather than when the page loads - a sign-in page left open over lunch
+    would otherwise post a token Google has already forgotten.
+
+    This runs inline and before app.js (deferred, so it executes later) purely
+    for listener order: the first submit is held back here, stopping app.js's
+    handlers from disabling the button and masking the password on an attempt
+    that is not going anywhere yet. The second pass - the real one, after the
+    token is in - runs every handler in the usual order.
+  {% endcomment %}
+  {% if recaptcha_site_key %}
+  <script>
+    (function () {
+      "use strict";
+
+      var form = document.querySelector("[data-signin-form]");
+      if (!form) return;
+
+      var siteKey = form.getAttribute("data-recaptcha-site-key");
+      var action = form.getAttribute("data-recaptcha-action") || "login";
+      var field = form.querySelector("[data-recaptcha-token]");
+      if (!siteKey || !field) return;
+
+      /* Never leave someone staring at a dead button: if Google has not
+         answered by this point the form is posted with an empty token and the
+         server decides. */
+      var PATIENCE = 6000;
+
+      var carrying = false;
+
+      var post = function (token) {
+        field.value = token || "";
+        carrying = true;
+        if (typeof form.requestSubmit === "function") form.requestSubmit();
+        else form.submit();
+      };
+
+      form.addEventListener("submit", function (event) {
+        if (carrying) return;                 /* second pass - let it through */
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        var label = form.querySelector("[data-signin-submit-label]");
+        if (label) label.textContent = "Verifying\u2026";
+
+        if (typeof grecaptcha === "undefined" || !grecaptcha.ready) {
+          post("");                           /* script blocked or not loaded */
+          return;
+        }
+
+        var settled = false;
+        var finish = function (token) {
+          if (settled) return;
+          settled = true;
+          post(token);
+        };
+
+        window.setTimeout(function () { finish(""); }, PATIENCE);
+
+        grecaptcha.ready(function () {
+          grecaptcha.execute(siteKey, { action: action }).then(
+            finish,
+            function () { finish(""); }
+          );
+        });
+      });
+    })();
+  </script>
+  {% endif %}
+
+  <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to list</span>
+  </a>
+  <a href="{% url 'accounts:user_password' record.pk %}" class="btn btn-secondary">
+    {% icon "lock" "size-4" %}<span class="hidden sm:inline">Reset password</span>
+  </a>
+  <a href="{% url 'accounts:user_update' record.pk %}" class="btn btn-primary">
+    {% icon "edit" "size-4" %}Edit
+  </a>
+  {% if not is_self %}
+    <button type="button"
+            class="btn {% if record.is_active %}btn-danger{% else %}btn-secondary{% endif %}"
+            data-dialog-open="activation">
+      {% if record.is_active %}
+        {% icon "close" "size-4" %}<span class="hidden sm:inline">Deactivate</span>
+      {% else %}
+        {% icon "check" "size-4" %}<span class="hidden sm:inline">Reactivate</span>
+      {% endif %}
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if not record.is_active %}
+    <div role="status" class="mb-5 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
+      <span class="mt-0.5 shrink-0 text-amber-700">{% icon "warning" "size-5" %}</span>
+      <p>
+        <span class="sr-only">Warning: </span>
+        This account is deactivated and cannot sign in. Its records and audit
+        entries remain intact.
+      </p>
+    </div>
+  {% endif %}
+
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+
+      <section class="card" aria-labelledby="account-heading">
+        <div class="card-header">
+          <h2 id="account-heading" class="card-title">Account Details</h2>
+          {% if record.is_active %}
+            {% status_badge "active" "Active" %}
+          {% else %}
+            {% status_badge "inactive" "Deactivated" %}
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <dl class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Full name</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_display_name }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Username</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.username }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Position</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.position|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Office / Division</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.office|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Email address</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.email|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Contact number</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.contact_number|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Account created</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.date_joined|date:"j F Y" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Last sign-in</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {{ record.last_login|date:"j F Y, g:i A"|default:"Never signed in" }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="activity-heading">
+        <div class="card-header">
+          <div>
+            <h2 id="activity-heading" class="card-title">Recent Activity</h2>
+            <p class="mt-0.5 text-meta text-slate-500">The 15 most recent entries for this account</p>
+          </div>
+          <a href="{% url 'audit:list' %}?actor_label={{ record.get_display_name|urlencode }}"
+             class="btn btn-secondary btn-sm">
+            Full audit trail{% icon "chevron-right" "size-3.5" %}
+          </a>
+        </div>
+
+        {% if recent_events %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Recent audit entries for {{ record.get_display_name }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">When</th>
+                  <th scope="col">Action</th>
+                  <th scope="col" class="hidden md:table-cell">Record</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for event in recent_events %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-normal whitespace-nowrap text-slate-700">
+                      <a href="{{ event.get_absolute_url }}" class="hover:text-brand-700 hover:underline">
+                        <time datetime="{{ event.timestamp|date:'c' }}">{{ event.timestamp|date:"j M Y, g:i A" }}</time>
+                      </a>
+                    </th>
+                    <td>{% status_badge event.status_tone event.get_action_display %}</td>
+                    <td class="hidden md:table-cell text-slate-600">
+                      {{ event.target_label|default:event.detail|truncatechars:60 }}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            No recorded activity for this account yet.
+          </p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="access-heading">
+        <div class="card-header">
+          <h2 id="access-heading" class="card-title">Role &amp; Permissions</h2>
+        </div>
+        <div class="card-body">
+          <div class="flex items-center gap-3">
+            <span aria-hidden="true" class="grid size-12 shrink-0 place-items-center rounded-md bg-brand-100 text-sm font-bold text-brand-800">
+              {{ record.get_initials }}
+            </span>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-slate-900">{{ record.get_role_display }}</p>
+              <p class="text-meta text-slate-500">Assigned role</p>
+            </div>
+          </div>
+
+          <ul class="mt-6 space-y-2.5">
+            {% for attribute, label, description in capabilities %}
+              <li class="flex items-start justify-between gap-3">
+                <span class="min-w-0">
+                  <span class="block text-sm text-slate-700">{{ label }}</span>
+                  <span class="block text-meta text-slate-500">{{ description }}</span>
+                </span>
+                <span class="shrink-0">
+                  {% if record|capability:attribute %}
+                    {% status_badge "approved" "Granted" %}
+                  {% else %}
+                    {% status_badge "inactive" "Not granted" %}
+                  {% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+
+          <p class="mt-5 flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-meta leading-relaxed text-slate-600">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-3.5" %}</span>
+            <span>
+              These permissions are checked by the server on every request.
+              Change them by changing the account's role.
+            </span>
+          </p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  {% if not is_self %}
+    <dialog id="activation" aria-labelledby="activation-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <div class="p-5">
+        <div class="flex items-start gap-3.5">
+          <span aria-hidden="true"
+                class="grid size-10 shrink-0 place-items-center rounded-md
+                       {% if record.is_active %}bg-red-50 text-red-700{% else %}bg-brand-50 text-brand-700{% endif %}">
+            {% if record.is_active %}{% icon "warning" "size-5" %}{% else %}{% icon "check" "size-5" %}{% endif %}
+          </span>
+          <div class="min-w-0">
+            <h2 id="activation-title" class="text-card-title font-semibold text-slate-900">
+              {% if record.is_active %}Deactivate this account?{% else %}Reactivate this account?{% endif %}
+            </h2>
+            <p class="mt-1.5 text-sm text-slate-600">
+              {% if record.is_active %}
+                {{ record.get_display_name }} will no longer be able to sign in.
+                Their records and audit entries are kept.
+              {% else %}
+                {{ record.get_display_name }} will be able to sign in again with
+                their existing password.
+              {% endif %}
+            </p>
+            <p class="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta text-slate-600">
+              This change is written to the audit log against your account.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+        <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+        <form method="post" action="{% url 'accounts:user_activation' record.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn {% if record.is_active %}btn-danger{% else %}btn-primary{% endif %}">
+            {% if record.is_active %}Deactivate account{% else %}Reactivate account{% endif %}
+          </button>
+        </form>
+      </div>
+    </dialog>
+  {% endif %}
+{% endblock %}

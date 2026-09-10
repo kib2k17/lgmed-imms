@@ -1,0 +1,261 @@
+{% extends "public_base.html" %}
+{% load static ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The Division's accomplishments, published.
+
+   The same statistics the office works from internally, over the weeks the
+   Chief has published - so the public figure and the convocation figure are
+   the same figure, and neither is ahead of the other.
+
+   Every chart carries its own table of figures, as everywhere else in the
+   system, so the numbers are readable to a screen reader, in print, and when
+   JavaScript is unavailable.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+
+    {% if total_count %}
+
+      {# ---- Year ---------------------------------------------------------- #}
+      {% if years|length > 1 %}
+        <form method="get" class="mb-6 flex flex-wrap items-center gap-2">
+          <label for="public-updates-year" class="text-meta font-medium text-slate-600">
+            Reporting year
+          </label>
+          <select id="public-updates-year" name="year" class="form-select w-32"
+                  onchange="this.form.submit()">
+            {% for option in years %}
+              <option value="{{ option }}" {% if option == year %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+          <noscript><button type="submit" class="btn btn-secondary btn-sm">Show</button></noscript>
+        </form>
+      {% endif %}
+
+      {# ---- Division statistics -------------------------------------------- #}
+      <section aria-labelledby="public-stats-heading">
+        <h2 id="public-stats-heading" class="text-section-title font-semibold text-slate-900">
+          Division Statistics
+        </h2>
+        <p class="mt-1 text-meta text-slate-500">
+          Across the {{ stats.weeks }} reporting week{{ stats.weeks|pluralize }}
+          published for {{ year }} &middot; {{ disclosure.describe }}
+        </p>
+
+        <div class="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-5">
+          {% for card in cards %}
+            <div class="{% if forloop.last %}col-span-2 lg:col-span-1{% endif %}">
+              {% include "components/division_stat.html" with card=card %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <p class="mt-3 text-meta text-slate-500">
+          Also in this record:
+          {{ stats.technical_assistance }} technical assistance &middot;
+          {{ stats.deliverables }} report{{ stats.deliverables|pluralize }} and
+          deliverable{{ stats.deliverables|pluralize }} &middot;
+          {{ stats.pops_accomplishments }} POPS Plan accomplishment{{ stats.pops_accomplishments|pluralize }} &middot;
+          {{ stats.photos }} photograph{{ stats.photos|pluralize }} &middot;
+          {{ stats.ways_forward }} way{{ stats.ways_forward|pluralize }} forward
+        </p>
+      </section>
+
+      {# ---- The fuller statement ------------------------------------------- #}
+      <section class="mt-8" aria-labelledby="public-figures-heading">
+        <h2 id="public-figures-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          The Division's Work in Figures
+        </h2>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          {% for figure in figures %}
+            {% include "components/mini_stat.html" with label=figure.label value=figure.value tone=figure.tone %}
+          {% endfor %}
+        </div>
+      </section>
+
+      {# ---- Charts ---------------------------------------------------------- #}
+      <section class="mt-8" aria-labelledby="public-charts-heading">
+        <h2 id="public-charts-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          Accomplishment Statistics
+        </h2>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {% for chart in charts %}
+            <div class="h-full {% if chart.span == 2 %}lg:col-span-2{% else %}lg:col-span-1{% endif %}">
+              {% include "components/chart_card.html" with id=chart.id title=chart.title subtitle=chart.subtitle height="h-64" table_headers=chart.headers table_rows=chart.rows has_data=chart.has_data %}
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      {# ---- What is next ----------------------------------------------------- #}
+      {% if upcoming or ways_forward %}
+        <div class="mt-8 grid gap-6 {% if upcoming and ways_forward %}lg:grid-cols-2{% endif %}">
+          {% if upcoming %}
+            <section aria-labelledby="public-upcoming-heading">
+              <h2 id="public-upcoming-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+                Upcoming Activities
+              </h2>
+              <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <ul class="divide-y divide-slate-100">
+                  {% for item in upcoming %}
+                    <li class="flex items-start gap-3 px-4 py-3.5">
+                      <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "calendar" "size-4" %}</span>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-slate-900">{{ item.title }}</p>
+                        <p class="mt-0.5 text-meta text-slate-500 tabular">
+                          {{ item.date_label }}{% if item.location %} &middot; {{ item.location }}{% endif %}
+                        </p>
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </section>
+          {% endif %}
+
+          {% if ways_forward %}
+            <section aria-labelledby="public-ways-heading">
+              <h2 id="public-ways-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+                Ways Forward
+              </h2>
+              <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <ul class="divide-y divide-slate-100">
+                  {% for way in ways_forward %}
+                    <li class="flex items-start gap-3 px-4 py-3.5">
+                      <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "chevron-right" "size-4" %}</span>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-slate-900">{{ way.description }}</p>
+                        {% if way.detail %}
+                          <p class="mt-0.5 text-meta text-slate-600">{{ way.detail }}</p>
+                        {% endif %}
+                        <p class="mt-1 flex flex-wrap items-center gap-2 text-meta text-slate-500">
+                          {% status_badge way.status way.get_status_display %}
+                          {% if way.target_date %}<span class="tabular">by {{ way.target_date|date:"j M Y" }}</span>{% endif %}
+                        </p>
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </section>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# ---- The weeks themselves --------------------------------------------- #}
+      <section class="mt-8" aria-labelledby="public-weeks-heading">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="public-weeks-heading" class="text-section-title font-semibold text-slate-900">
+            Published Reporting Weeks
+          </h2>
+          {% if weeks %}
+            <p class="text-meta text-slate-500">
+              Showing {{ page_obj.start_index }}&ndash;{{ page_obj.end_index }} of
+              {{ page_obj.paginator.count }} week{{ page_obj.paginator.count|pluralize }} in {{ year }}
+            </p>
+          {% endif %}
+        </div>
+
+        {% if weeks %}
+          <div class="mt-4 space-y-6">
+            {% for week in weeks %}
+              <article class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+                  <div class="min-w-0">
+                    <h3 class="text-card-title font-semibold text-slate-900">
+                      <a href="{% url 'core:public_update_week' week.period.pk %}" class="hover:text-brand-700 hover:underline">
+                        {{ week.period.label }}
+                      </a>
+                    </h3>
+                    {% if week.period.theme %}
+                      <p class="mt-0.5 text-meta text-slate-600">{{ week.period.theme }}</p>
+                    {% endif %}
+                  </div>
+                  <p class="text-meta text-slate-500">
+                    {{ week.entry_count|intcomma }} published accomplishment{{ week.entry_count|pluralize }}
+                  </p>
+                </div>
+
+                <div class="px-5 py-4">
+                  <ul class="space-y-3">
+                    {% for entry in week.entries %}
+                      <li class="flex items-start gap-3">
+                        <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "check" "size-4" %}</span>
+                        <div class="min-w-0">
+                          <p class="text-sm font-medium text-slate-900">{{ entry.title }}</p>
+                          <p class="mt-0.5 text-meta text-slate-500">
+                            {{ entry.get_category_display }} &middot; {{ entry.date_label }}
+                            {% if entry.location %} &middot; {{ entry.location }}{% endif %}
+                          </p>
+                        </div>
+                      </li>
+                    {% endfor %}
+                  </ul>
+
+                  {% if week.photos %}
+                    <ul class="mt-4 grid gap-3 sm:grid-cols-4">
+                      {% for photo in week.photos %}
+                        <li>
+                          <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}"
+                               class="h-28 w-full rounded-md border border-slate-200 bg-slate-50 object-cover">
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+
+                  <a href="{% url 'core:public_update_week' week.period.pk %}"
+                     class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline">
+                    Read the full week{% icon "chevron-right" "size-3.5" %}
+                    <span class="sr-only">of {{ week.period.label }}</span>
+                  </a>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+
+          {% if page_obj.paginator.num_pages > 1 %}
+            <div class="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              {% include "includes/pagination.html" with page_obj=page_obj label="weeks" %}
+            </div>
+          {% endif %}
+
+        {% else %}
+          <div class="mt-4 rounded-lg border border-slate-200 bg-white">
+            {% include "components/empty_state.html" with icon="calendar" title="No weeks published for this year" message="Choose another reporting year to see what the Division published then." %}
+          </div>
+        {% endif %}
+      </section>
+
+    {% else %}
+      <div class="rounded-lg border border-slate-200 bg-white">
+        {% include "components/empty_state.html" with icon="check-circle" title="No accomplishments published at the moment" message="The Division's weekly updates and accomplishments, and the statistics drawn from them, appear here once a completed week has been reviewed and published." %}
+        <div class="border-t border-slate-200 px-6 py-5 text-center">
+          <a href="{% url 'core:public_contact' %}" class="btn btn-secondary">
+            {% icon "mail" "size-4" %}Contact the Division
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% if total_count %}
+    <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+    <script src="{% static 'js/updates.js' %}"></script>
+    <script id="public-updates-data" type="application/json">{{ charts_json|safe }}</script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var el = document.getElementById("public-updates-data");
+        window.LGMED.initUpdates(JSON.parse(el.textContent));
+      });
+    </script>
+  {% endif %}
+{% endblock %}

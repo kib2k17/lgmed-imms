@@ -1,0 +1,114 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  {% if summary.unread %}
+    <form method="post" action="{% url 'notifications:read_all' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-secondary">
+        {% icon "check" "size-4" %}Mark all read
+      </button>
+    </form>
+  {% endif %}
+  {% if unread_only %}
+    <a href="{{ request.path }}" class="btn btn-primary">Show all</a>
+  {% else %}
+    <a href="?{% query_string unread=1 page=None %}" class="btn btn-primary">
+      {% icon "bell" "size-4" %}Unread only
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "components/mini_stat.html" with label="All notifications" value=summary.total %}
+    {% include "components/mini_stat.html" with label="Unread" value=summary.unread tone="info" %}
+    {% include "components/mini_stat.html" with label="Needs action (unread)" value=summary.action tone="warning" %}
+    {% include "components/mini_stat.html" with label="Of those, urgent" value=summary.urgent tone="danger" %}
+  </div>
+
+  <section class="card" aria-labelledby="notifications-heading">
+    <h2 id="notifications-heading" class="sr-only">Your notifications</h2>
+
+    {% include "components/table_toolbar.html" with search_placeholder=search_placeholder filters=filters %}
+
+    {% if records %}
+      <ul class="divide-y divide-slate-100">
+        {% for record in records %}
+          <li class="{% if not record.is_read %}bg-brand-50/40{% endif %}">
+            <div class="flex items-start gap-3 px-4 py-3.5 sm:px-5">
+              <span aria-hidden="true"
+                    class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-md
+                           {% if record.level == 'URGENT' %}bg-red-50 text-red-700
+                           {% elif record.level == 'ACTION' %}bg-amber-50 text-amber-700
+                           {% else %}bg-blue-50 text-blue-700{% endif %}">
+                {% icon record.icon "size-4" %}
+              </span>
+
+              <div class="min-w-0 flex-1">
+                <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <a href="{% url 'notifications:open' record.pk %}"
+                     class="text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                    {{ record.title }}
+                  </a>
+                  {% if not record.is_read %}
+                    <span class="inline-flex items-center rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-wide text-brand-800 uppercase">
+                      New
+                    </span>
+                  {% endif %}
+                </p>
+                {% if record.message %}
+                  <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ record.message }}</p>
+                {% endif %}
+                <p class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {% status_badge record.status_tone record.get_category_display %}
+                  <span class="text-meta text-slate-500">
+                    <time datetime="{{ record.created_at|date:'c' }}">
+                      {{ record.created_at|date:"j M Y, g:i A" }}
+                    </time>
+                    &middot; {{ record.created_at|timesince }} ago
+                  </span>
+                </p>
+              </div>
+
+              <div class="flex shrink-0 items-center gap-1">
+                {% if record.url %}
+                  <a href="{% url 'notifications:open' record.pk %}" class="btn btn-secondary btn-sm">
+                    Open<span class="sr-only"> {{ record.title }}</span>
+                  </a>
+                {% endif %}
+                <form method="post" action="{% url 'notifications:dismiss' record.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-ghost btn-sm text-slate-500 hover:text-slate-900">
+                    {% icon "close" "size-3.5" %}
+                    <span class="sr-only">Dismiss {{ record.title }}</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% include "includes/pagination.html" with page_obj=page_obj label="notifications" %}
+
+    {% elif is_filtered %}
+      {% include "components/empty_state.html" with icon="search" title="No matching notifications" message="Nothing matches the current search and filters." %}
+      <div class="border-t border-slate-200 px-6 py-5 text-center">
+        <a href="{{ request.path }}" class="btn btn-secondary">Clear search and filters</a>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="check-circle" title="Nothing needs your attention" message="Notifications appear here when a report is submitted for review, a document is waiting to be published, or a follow-up falls overdue." %}
+    {% endif %}
+  </section>
+
+  <p class="mt-4 flex items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-meta leading-relaxed text-slate-600">
+    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "info" "size-4" %}</span>
+    <span>
+      Notifications are addressed to you, not to your role, so an unread count
+      is a count of things you have not dealt with. A notice withdraws itself
+      once the work behind it is done &mdash; a report that gets approved stops
+      asking to be reviewed.
+    </span>
+  </p>
+{% endblock %}

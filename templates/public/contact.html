@@ -1,0 +1,101 @@
+{% extends "public_base.html" %}
+{% load ui %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:gap-12 lg:px-8">
+
+    <section aria-labelledby="office-heading">
+      <h2 id="office-heading" class="text-section-title font-semibold text-slate-900">Office Information</h2>
+
+      <dl class="mt-5 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+        <div class="flex gap-4 p-5">
+          <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-700">{% icon "building" "size-5" %}</span>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Office</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ agency.office_short }}</dd>
+            <dd class="text-sm text-slate-600">{{ agency.division }}</dd>
+          </div>
+        </div>
+        <div class="flex gap-4 p-5">
+          <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-700">{% icon "map-pin" "size-5" %}</span>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Address</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ agency.address }}</dd>
+          </div>
+        </div>
+        <div class="flex gap-4 p-5">
+          <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-700">{% icon "phone" "size-5" %}</span>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Telephone</dt>
+            <dd class="mt-1 text-sm text-slate-900">
+              <a href="tel:{{ agency.telephone_link }}" class="text-brand-700 hover:underline">{{ agency.telephone }}</a>
+            </dd>
+          </div>
+        </div>
+        <div class="flex gap-4 p-5">
+          <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-700">{% icon "mail" "size-5" %}</span>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Email</dt>
+            <dd class="mt-1 text-sm">
+              <a href="mailto:{{ agency.email }}" class="break-all text-brand-700 hover:underline">{{ agency.email }}</a>
+            </dd>
+          </div>
+        </div>
+        {% if agency.office_hours %}
+          <div class="flex gap-4 p-5">
+            <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-700">{% icon "clock" "size-5" %}</span>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Office hours</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ agency.office_hours }}</dd>
+            </div>
+          </div>
+        {% endif %}
+        {% if agency.facebook_url %}
+          <div class="flex gap-4 p-5">
+            <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-700">{% icon "external" "size-5" %}</span>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Facebook page</dt>
+              <dd class="mt-1 text-sm">
+                <a href="{{ agency.facebook_url }}" rel="noopener noreferrer" target="_blank"
+                   class="break-all text-brand-700 hover:underline">{{ agency.facebook_url }}
+                  <span class="sr-only">(opens in a new tab)</span>
+                </a>
+              </dd>
+            </div>
+          </div>
+        {% endif %}
+      </dl>
+    </section>
+
+    <div class="space-y-6">
+      <section aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading" class="text-section-title font-semibold text-slate-900">Privacy Notice</h2>
+        <p class="mt-3 text-sm leading-relaxed whitespace-pre-line text-slate-600">
+          {{ public_content.privacy_notice }}
+        </p>
+      </section>
+
+      <section aria-labelledby="accessibility-heading">
+        <h2 id="accessibility-heading" class="text-section-title font-semibold text-slate-900">Accessibility</h2>
+        <p class="mt-3 text-sm leading-relaxed whitespace-pre-line text-slate-600">
+          {{ public_content.accessibility_statement }}
+        </p>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-slate-50 p-5" aria-labelledby="staff-heading">
+        <h2 id="staff-heading" class="text-card-title font-semibold text-slate-900">LGMED personnel</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Division staff can sign in to LGMED-iMMS to encode monitoring records
+          and manage documents.
+        </p>
+        <a href="{% url 'accounts:login' %}" class="btn btn-primary mt-4">
+          {% icon "lock" "size-4" %}Staff sign in
+        </a>
+      </section>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "components/mini_stat.html" with label="Total programs" value=summary.total %}
+    {% include "components/mini_stat.html" with label="Active" value=summary.active tone="success" %}
+    {% include "components/mini_stat.html" with label="Completed" value=summary.completed tone="info" %}
+    {% include "components/mini_stat.html" with label="Pending" value=summary.pending tone="warning" %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="title" label="Program" %}
+  {% include "components/th_sort.html" with field="category__name" label="Category" th_class="hidden md:table-cell" %}
+  {% include "components/th_sort.html" with field="status" label="Status" %}
+  {% include "components/th_sort.html" with field="start_date" label="Start date" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="hidden lg:table-cell">Coverage</th>
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.title }}</a>
+        {% if record.reference_number %}
+          <span class="block text-meta font-normal text-slate-500">{{ record.reference_number }}</span>
+        {% endif %}
+      </th>
+      <td class="hidden md:table-cell">{{ record.category.name }}</td>
+      <td>{% status_badge record.status record.get_status_display %}</td>
+      <td class="hidden whitespace-nowrap sm:table-cell">
+        <time datetime="{{ record.start_date|date:'Y-m-d' }}">{{ record.start_date|date:"j M Y" }}</time>
+      </td>
+      <td class="hidden lg:table-cell text-slate-500">{{ record.coverage_label }}</td>
+      <td class="text-right whitespace-nowrap">
+        {% include "components/row_actions.html" with record=record %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

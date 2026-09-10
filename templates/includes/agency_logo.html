@@ -1,0 +1,39 @@
+{% load static %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The official DILG seal.
+
+   {% include "includes/agency_logo.html" with size="size-9" %}
+   {% include "includes/agency_logo.html" with size="size-11" on_dark=True %}
+
+   The seal has a transparent background and black lettering, so on a navy
+   surface it is set on a white disc rather than dropped straight onto the
+   background where its text would disappear.
+
+   Decorative by default: every placement sits beside text that names the
+   department, so repeating that name in an alt attribute would only make a
+   screen reader say it twice. Pass `alt_text` where the mark stands alone.
+
+   If the asset is missing - a fresh checkout, or before the office supplies
+   it - this falls back to a plain wordmark. It never draws an approximation
+   of the seal.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+{% if agency.has_logo %}
+  {% if on_dark %}
+    <span class="grid {{ size|default:'size-11' }} shrink-0 place-items-center rounded-full bg-white p-0.5">
+      <img src="{% static agency.logo_static_path %}" width="447" height="447"
+           class="size-full object-contain"
+           {% if alt_text %}alt="{{ alt_text }}"{% else %}alt="" aria-hidden="true"{% endif %}>
+    </span>
+  {% else %}
+    <img src="{% static agency.logo_static_path %}" width="447" height="447"
+         class="{{ size|default:'size-9' }} shrink-0 object-contain"
+         {% if alt_text %}alt="{{ alt_text }}"{% else %}alt="" aria-hidden="true"{% endif %}>
+  {% endif %}
+{% else %}
+  <span class="grid {{ size|default:'size-9' }} shrink-0 place-items-center rounded-md
+               {% if on_dark %}bg-white/10{% else %}bg-brand-800{% endif %}
+               text-[0.6875rem] font-bold tracking-wide text-white"
+        {% if alt_text %}role="img" aria-label="{{ alt_text }}"{% else %}aria-hidden="true"{% endif %}>DILG</span>
+{% endif %}

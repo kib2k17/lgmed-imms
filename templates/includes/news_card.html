@@ -1,0 +1,54 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One item on the public news feed.
+
+   {% include "includes/news_card.html" with item=item %}
+
+   The whole card is not a link: the headline is. A card-wide link swallows the
+   "read more at" link inside it and reads as one enormous target to a screen
+   reader, so the headline carries the destination and the photograph is
+   decorative next to it.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+<article class="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+  <a href="{{ item.get_public_url }}" class="block aspect-[16/9] overflow-hidden bg-slate-100" tabindex="-1" aria-hidden="true">
+    {% if item.image %}
+      <img src="{{ item.image.url }}" alt="" loading="lazy" class="size-full object-cover">
+    {% else %}
+      <span class="grid size-full place-items-center bg-brand-50 text-brand-300">
+        {% icon "announcements" "size-8" %}
+      </span>
+    {% endif %}
+  </a>
+
+  <div class="flex flex-1 flex-col p-5">
+    <p class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-meta">
+      <span class="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-semibold tracking-wide text-brand-800 uppercase">
+        {{ item.get_category_display }}
+      </span>
+      <time datetime="{{ item.published_on|date:'Y-m-d' }}" class="text-slate-500">
+        {{ item.published_on|date:"j F Y" }}
+      </time>
+    </p>
+
+    <h3 class="mt-2.5 text-card-title font-semibold text-slate-900">
+      <a href="{{ item.get_public_url }}" class="hover:text-brand-700 hover:underline">{{ item.title }}</a>
+    </h3>
+
+    <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+      {{ item.summary|truncatewords:32 }}
+    </p>
+
+    <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta">
+      <a href="{{ item.get_public_url }}" class="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+        See more{% icon "chevron-right" "size-3.5" %}
+      </a>
+      {% if item.location %}
+        <span class="inline-flex items-center gap-1.5 text-slate-500">
+          {% icon "map-pin" "size-3" %}{{ item.location }}
+        </span>
+      {% endif %}
+    </p>
+  </div>
+</article>

@@ -1,0 +1,29 @@
+{% load ui %}
+{% comment %}
+ System-wide notice, set by an administrator in System Settings. Sits directly
+ below the header so it is seen without competing with the page's own alerts,
+ and is announced to assistive technology as a status rather than interrupting.
+{% endcomment %}
+{% if system_settings.notice_message %}
+  <div role="status"
+       class="border-b no-print
+              {% if system_settings.notice_level == 'danger' %}border-red-200 bg-red-50 text-red-900
+              {% elif system_settings.notice_level == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
+              {% else %}border-blue-200 bg-blue-50 text-blue-900{% endif %}">
+    <div class="mx-auto flex w-full max-w-[100rem] items-start gap-2.5 px-4 py-2.5 text-sm sm:px-6 lg:px-8">
+      <span class="mt-0.5 shrink-0
+                   {% if system_settings.notice_level == 'danger' %}text-red-700
+                   {% elif system_settings.notice_level == 'warning' %}text-amber-700
+                   {% else %}text-blue-700{% endif %}">
+        {% if system_settings.notice_level == "info" %}
+          {% icon "info" "size-4" %}
+        {% else %}
+          {% icon "warning" "size-4" %}
+        {% endif %}
+      </span>
+      <p class="min-w-0">
+        <span class="sr-only">System notice: </span>{{ system_settings.notice_message }}
+      </p>
+    </div>
+  </div>
+{% endif %}

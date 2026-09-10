@@ -1,0 +1,15 @@
+{% load humanize %}
+{% comment %}
+ A compact figure shown above a module's table - the counts an officer wants
+ before they start reading rows. Deliberately smaller than the dashboard's
+ stat card so it never competes with the table for attention.
+{% endcomment %}
+<div class="rounded-lg border border-slate-200 bg-white px-4 py-3">
+  <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ label }}</p>
+  <p class="mt-1 text-xl font-bold tabular
+            {% if tone == 'success' %}text-green-700
+            {% elif tone == 'warning' %}text-amber-700
+            {% elif tone == 'danger' %}text-red-700
+            {% elif tone == 'info' %}text-brand-700
+            {% else %}text-slate-900{% endif %}">{{ value|default:0|intcomma }}</p>
+</div>

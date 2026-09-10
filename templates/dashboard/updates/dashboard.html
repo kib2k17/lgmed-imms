@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load static ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Updates & Accomplishments - the Division's own dashboard.
+
+   Every figure on this page is LGMEDD's. There is no per-employee panel, no
+   ranking and no leaderboard, and there is not meant to be one: the questions
+   this page answers are what the Division accomplished, how active it was,
+   what is finished, what is still open and what comes next.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <form method="get" class="flex items-center gap-2">
+    <label for="updates-year" class="text-meta font-medium text-slate-600">Year</label>
+    <select id="updates-year" name="year" class="form-select w-28" onchange="this.form.submit()">
+      {% for option in years %}
+        <option value="{{ option }}" {% if option == year %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-secondary btn-sm">Go</button></noscript>
+  </form>
+  <a href="?year={{ year }}&amp;export=csv" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Export CSV</span>
+  </a>
+  <a href="{% url 'updates:convocation_latest' %}" class="btn btn-secondary">
+    {% icon "view" "size-4" %}<span class="hidden sm:inline">Convocation view</span>
+  </a>
+  {% if user.can_approve %}
+    <a href="{% url 'updates:disclosure' %}" class="btn btn-secondary">
+      {% icon "home" "size-4" %}<span class="hidden sm:inline">Public disclosure</span>
+    </a>
+  {% endif %}
+  {% if user.can_encode %}
+    <a href="{% url 'updates:create' %}" class="btn btn-primary">
+      {% icon "plus" "size-4" %}Add Update
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  {# ---- This week -------------------------------------------------------- #}
+  {% if current_period %}
+    <section class="card mb-6 border-brand-200" aria-labelledby="current-week-heading">
+      <div class="card-header">
+        <div class="min-w-0">
+          <h2 id="current-week-heading" class="card-title">
+            This week &mdash; {{ current_period.label }}
+          </h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            The Division updates the system every Thursday
+            ({{ current_period.update_deadline|date:"j F" }}); the week is
+            presented on {{ current_period.convocation_date|date:"l j F" }}.
+          </p>
+        </div>
+        {% status_badge current_period.status current_period.get_status_display %}
+      </div>
+      <div class="card-body">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div class="min-w-40 flex-1">
+            <div class="flex items-baseline justify-between">
+              <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                Week completion
+              </p>
+              <p class="text-sm font-bold text-slate-900 tabular">
+                {{ current_period.completion_percent }}%
+              </p>
+            </div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+              <div class="h-full rounded-full bg-brand-600"
+                   style="width: {{ current_period.completion_percent }}%"></div>
+            </div>
+            {% if current_period.missing_components %}
+              <p class="mt-2 text-meta text-slate-500">
+                Still to record: {{ current_period.missing_components|join:", " }}
+              </p>
+            {% else %}
+              <p class="mt-2 text-meta text-green-700">
+                Every part of the Division's week has been recorded.
+              </p>
+            {% endif %}
+          </div>
+          <a href="{{ current_period.get_absolute_url }}" class="btn btn-secondary">
+            Open the week{% icon "chevron-right" "size-3.5" %}
+          </a>
+        </div>
+      </div>
+    </section>
+  {% elif user.can_encode %}
+    <section class="card mb-6" aria-labelledby="no-week-heading">
+      <div class="card-body flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 id="no-week-heading" class="text-card-title font-semibold text-slate-900">
+            No reporting week is open
+          </h2>
+          <p class="mt-1 text-sm text-slate-600">
+            Open this week so the Division has one record to contribute to.
+          </p>
+        </div>
+        <a href="{% url 'updates:period_create' %}" class="btn btn-primary">
+          {% icon "plus" "size-4" %}Open a Week
+        </a>
+      </div>
+    </section>
+  {% endif %}
+
+  {# ---- Division figures ------------------------------------------------- #}
+  <section aria-labelledby="headline-heading">
+    <h2 id="headline-heading" class="sr-only">Division statistics for {{ year }}</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      {% for card in cards %}
+        <div class="{% if forloop.last %}sm:col-span-2 xl:col-span-1{% endif %}">
+          {% include "components/stat_card.html" with card=card %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-6" aria-labelledby="figures-heading">
+    <h2 id="figures-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+      Division Statistics
+    </h2>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+      {% for figure in figures %}
+        {% include "components/mini_stat.html" with label=figure.label value=figure.value tone=figure.tone %}
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---- Charts ----------------------------------------------------------- #}
+  <section class="mt-6" aria-labelledby="charts-heading">
+    <h2 id="charts-heading" class="sr-only">Division accomplishment analysis</h2>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {% for chart in charts %}
+        <div class="h-full {% if chart.span == 2 %}lg:col-span-2{% else %}lg:col-span-1{% endif %}">
+          {% include "components/chart_card.html" with id=chart.id title=chart.title subtitle=chart.subtitle height="h-64" table_headers=chart.headers table_rows=chart.rows has_data=chart.has_data %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---- What is next, and what needs attention --------------------------- #}
+  <div class="mt-6 grid gap-4 xl:grid-cols-3">
+
+    <section class="card xl:col-span-2" aria-labelledby="upcoming-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="upcoming-heading" class="card-title">Upcoming Activities</h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            The Division's next events and commitments
+          </p>
+        </div>
+      </div>
+      {% if upcoming %}
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Upcoming division activities</caption>
+            <thead>
+              <tr>
+                <th scope="col">Activity</th>
+                <th scope="col" class="hidden sm:table-cell">Date</th>
+                <th scope="col" class="hidden md:table-cell">Where</th>
+                <th scope="col" class="hidden lg:table-cell">Focal person</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in upcoming %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                    <a href="{{ item.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ item.title }}</a>
+                  </th>
+                  <td class="hidden tabular sm:table-cell">{{ item.date_label }}</td>
+                  <td class="hidden text-slate-500 md:table-cell">{{ item.location|default:"&mdash;" }}</td>
+                  <td class="hidden text-slate-500 lg:table-cell">{{ item.focal_person_label }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with icon="calendar" title="Nothing scheduled yet" message="Activities recorded as upcoming appear here, whichever week they were contributed on." %}
+      {% endif %}
+    </section>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="attention-heading">
+        <div class="card-header">
+          <h2 id="attention-heading" class="card-title">Needs Attention</h2>
+        </div>
+        {% if attention %}
+          <ul class="divide-y divide-slate-100">
+            {% for week in attention %}
+              <li class="px-4 py-3">
+                <a href="{{ week.get_absolute_url }}" class="text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                  {{ week.label }}
+                </a>
+                <p class="mt-1 flex flex-wrap items-center gap-2 text-meta text-slate-500">
+                  {% status_badge week.status week.get_status_display %}
+                  <span>{{ week.completion_percent }}% complete</span>
+                </p>
+                {% if week.missing_components %}
+                  <p class="mt-1 text-meta text-slate-500">
+                    Missing: {{ week.missing_components|join:", " }}
+                  </p>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="card-body">
+            <p class="text-sm text-slate-500">
+              Every week is either open and current, or reviewed. Nothing is waiting.
+            </p>
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="card" aria-labelledby="ways-heading">
+        <div class="card-header">
+          <h2 id="ways-heading" class="card-title">Ways Forward</h2>
+        </div>
+        {% if ways_forward %}
+          <ul class="divide-y divide-slate-100">
+            {% for way in ways_forward %}
+              <li class="px-4 py-3">
+                <p class="text-sm font-medium text-slate-900">{{ way.description }}</p>
+                <p class="mt-1 flex flex-wrap items-center gap-2 text-meta text-slate-500">
+                  {% status_badge way.status way.get_status_display %}
+                  {% if way.target_date %}<span class="tabular">by {{ way.target_date|date:"j M Y" }}</span>{% endif %}
+                  <a href="{{ way.period.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ way.period.label }}</a>
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="card-body">
+            <p class="text-sm text-slate-500">
+              No open next steps have been recorded against a week.
+            </p>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+  <script src="{% static 'js/updates.js' %}"></script>
+  <script id="updates-data" type="application/json">{{ charts_json|safe }}</script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var el = document.getElementById("updates-data");
+      window.LGMED.initUpdates(JSON.parse(el.textContent));
+    });
+  </script>
+{% endblock %}

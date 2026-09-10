@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% block page_actions %}
+  <a href="{% url 'incoming:reports' %}" class="btn btn-secondary">
+    {% icon "reports" "size-4" %}<span class="hidden sm:inline">Monitoring reports</span>
+  </a>
+  <a href="{% url 'incoming:list' %}" class="btn btn-primary">
+    {% icon "inbox" "size-4" %}All documents
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/incoming/_tabs.html" with tab="dashboard" %}
+
+  <p class="mb-4 text-meta text-slate-500" role="status">
+    Figures as of {{ as_of|date:"j F Y, g:i A" }}. Every figure opens the
+    documents it counted.
+  </p>
+
+  {# ---- The figures, each one a link ---------------------------------- #}
+  <section aria-labelledby="figures-heading" class="mb-5">
+    <h2 id="figures-heading" class="sr-only">Incoming document figures</h2>
+    <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      {% for stat in stats %}
+        <li>
+          <a href="{{ stat.url }}"
+             class="flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-brand-300 hover:bg-brand-50/40">
+            <span class="flex items-start justify-between gap-2">
+              <span class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ stat.label }}</span>
+              <span aria-hidden="true"
+                    class="shrink-0 {% if stat.tone == 'success' %}text-green-700{% elif stat.tone == 'warning' %}text-amber-700{% elif stat.tone == 'danger' %}text-red-700{% else %}text-brand-700{% endif %}">
+                {% icon stat.icon "size-4" %}
+              </span>
+            </span>
+            <span class="mt-1 text-2xl font-bold tabular
+                         {% if stat.tone == 'success' %}text-green-700
+                         {% elif stat.tone == 'warning' %}text-amber-700
+                         {% elif stat.tone == 'danger' %}text-red-700
+                         {% else %}text-slate-900{% endif %}">{{ stat.value|intcomma }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <div class="grid gap-4 xl:grid-cols-2">
+
+    {# ---- Waiting on the Chief -------------------------------------- #}
+    <section class="card" aria-labelledby="review-queue-heading">
+      <div class="card-header">
+        <h2 id="review-queue-heading" class="card-title">Incoming Documents for Review</h2>
+        <a href="{% url 'incoming:list' %}?view=for_review" class="text-meta font-medium text-brand-700 hover:underline">
+          View all {{ summary.for_review }}
+        </a>
+      </div>
+      {% if for_review %}
+        <ul class="divide-y divide-slate-100">
+          {% for document in for_review %}
+            <li class="px-4 py-3 sm:px-5">
+              <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <a href="{{ document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                  {{ document.docket_number }}
+                </a>
+                <time class="text-meta text-slate-500" datetime="{{ document.date_received|date:'Y-m-d' }}">
+                  Received {{ document.date_received|date:"j M Y" }}
+                </time>
+              </div>
+              <p class="mt-0.5 text-sm text-slate-700">{{ document.subject|truncatechars:90 }}</p>
+              <p class="text-meta text-slate-500">
+                {{ document.document_type.name }} &middot; from {{ document.source_office }}
+                {% if document.created_by %}&middot; recorded by {{ document.created_by.get_display_name }}{% endif %}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing waiting on you" message="Every document that has been recorded has been reviewed and assigned." %}
+      {% endif %}
+    </section>
+
+    {# ---- Overdue ----------------------------------------------------- #}
+    <section class="card" aria-labelledby="overdue-heading">
+      <div class="card-header">
+        <h2 id="overdue-heading" class="card-title">Overdue Documents</h2>
+        <a href="{% url 'incoming:list' %}?view=overdue" class="text-meta font-medium text-brand-700 hover:underline">
+          View all {{ summary.overdue }}
+        </a>
+      </div>
+      {% if overdue %}
+        <ul class="divide-y divide-slate-100">
+          {% for document in overdue %}
+            <li class="px-4 py-3 sm:px-5">
+              <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <a href="{{ document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                  {{ document.docket_number }}
+                </a>
+                <span class="text-meta font-medium text-red-700">
+                  {{ document.days_overdue }} day{{ document.days_overdue|pluralize }} overdue
+                </span>
+              </div>
+              <p class="mt-0.5 text-sm text-slate-700">{{ document.subject|truncatechars:90 }}</p>
+              <p class="text-meta text-slate-500">
+                {{ document.assigned_to.get_display_name|default:"Unassigned" }} &middot;
+                due {{ document.due_date|date:"j M Y" }} &middot; {{ document.get_status_display }}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing overdue" message="No assigned document has passed its action due date." %}
+      {% endif %}
+    </section>
+
+    {# ---- Silent ------------------------------------------------------ #}
+    <section class="card" aria-labelledby="silent-heading">
+      <div class="card-header">
+        <h2 id="silent-heading" class="card-title">Awaiting a Focal Person Update</h2>
+        <a href="{% url 'incoming:list' %}?view=awaiting_update" class="text-meta font-medium text-brand-700 hover:underline">
+          View all {{ summary.awaiting_update }}
+        </a>
+      </div>
+      {% if awaiting_update %}
+        <ul class="divide-y divide-slate-100">
+          {% for document in awaiting_update %}
+            <li class="px-4 py-3 sm:px-5">
+              <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <a href="{{ document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                  {{ document.docket_number }}
+                </a>
+                {% status_badge document.display_status document.display_status_label %}
+              </div>
+              <p class="mt-0.5 text-sm text-slate-700">{{ document.subject|truncatechars:90 }}</p>
+              <p class="text-meta text-slate-500">
+                {{ document.assigned_to.get_display_name|default:"Unassigned" }} &middot;
+                {% if document.days_since_last_update %}
+                  no update for {{ document.days_since_last_update }} day{{ document.days_since_last_update|pluralize }}
+                {% else %}
+                  no update recorded
+                {% endif %}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Everyone has reported" message="No assigned document has gone quiet." %}
+      {% endif %}
+    </section>
+
+    {# ---- Latest action ----------------------------------------------- #}
+    <section class="card" aria-labelledby="recent-heading">
+      <div class="card-header">
+        <h2 id="recent-heading" class="card-title">Latest Updates</h2>
+      </div>
+      {% if recent_updates %}
+        <ul class="divide-y divide-slate-100">
+          {% for update in recent_updates %}
+            <li class="px-4 py-3 sm:px-5">
+              <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <a href="{{ update.document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                  {{ update.document.docket_number }}
+                </a>
+                <div class="flex items-center gap-2">
+                  {% status_badge update.status update.get_status_display %}
+                  <time class="text-meta text-slate-500" datetime="{{ update.created_at|date:'c' }}">
+                    {{ update.created_at|date:"j M Y" }}
+                  </time>
+                </div>
+              </div>
+              <p class="mt-0.5 text-sm text-slate-700">{{ update.action_taken|truncatechars:110 }}</p>
+              <p class="text-meta text-slate-500">
+                {{ update.created_by.get_display_name|default:"An officer" }}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="monitoring" title="No updates yet" message="Updates from focal persons will appear here as they are recorded." %}
+      {% endif %}
+    </section>
+  </div>
+
+  {# ---- Who holds what ------------------------------------------------ #}
+  <section class="card mt-4" aria-labelledby="workload-heading">
+    <div class="card-header">
+      <h2 id="workload-heading" class="card-title">Documents by Focal Person</h2>
+      <a href="{% url 'incoming:reports' %}?report=by-focal-person" class="text-meta font-medium text-brand-700 hover:underline">
+        Open as a report
+      </a>
+    </div>
+    {% if workload.rows %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">
+            Incoming documents held by each focal person. A document is counted as
+            awaiting an update after {{ update_reminder_days }} days of silence.
+          </caption>
+          <thead>
+            <tr>
+              {% for header in workload.headers %}
+                <th scope="col" {% if not forloop.first %}class="text-right"{% endif %}>{{ header }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in workload.rows %}
+              <tr>
+                {% for cell in row %}
+                  {% if forloop.first %}
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">{{ cell }}</th>
+                  {% else %}
+                    <td class="text-right tabular">{{ cell }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+          {% if workload.footer %}
+            <tfoot>
+              <tr class="border-t-2 border-slate-200 font-semibold">
+                {% for cell in workload.footer %}
+                  {% if forloop.first %}
+                    <th scope="row" class="px-4 py-2.5 text-left">{{ cell }}</th>
+                  {% else %}
+                    <td class="px-4 py-2.5 text-right tabular">{{ cell }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="users" title="Nothing assigned yet" message="Once documents are assigned, each focal person's workload appears here." %}
+    {% endif %}
+  </section>
+{% endblock %}

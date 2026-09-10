@@ -1,0 +1,92 @@
+{% extends "public_base.html" %}
+{% load ui %}
+
+{% block title %}{{ item.title }}{% endblock %}
+{% block meta_description %}{{ item.excerpt }}{% endblock %}
+
+{% block content %}
+
+  {# ---- Breadcrumb ------------------------------------------------------ #}
+  <div class="border-b border-slate-200 bg-slate-50">
+    <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+      <nav aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-slate-500">
+          <li><a href="{% url 'core:home' %}" class="hover:text-brand-700 hover:underline">Home</a></li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+            <a href="{% url 'core:public_announcements' %}" class="hover:text-brand-700 hover:underline">News</a>
+          </li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+            <span class="max-w-[22rem] truncate font-medium text-slate-700" aria-current="page">{{ item.title }}</span>
+          </li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <article class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+    <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+      <span class="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-semibold tracking-wide text-brand-800 uppercase">
+        {{ item.get_category_display }}
+      </span>
+      <time datetime="{{ item.published_on|date:'Y-m-d' }}" class="text-slate-500">
+        {{ item.published_on|date:"j F Y" }}
+      </time>
+      {% if item.location %}
+        <span class="inline-flex items-center gap-1.5 text-slate-500">
+          {% icon "map-pin" "size-3" %}{{ item.location }}
+        </span>
+      {% endif %}
+    </p>
+
+    <h1 class="mt-3 text-page-title font-bold tracking-tight text-slate-900">{{ item.title }}</h1>
+
+    {% if item.image %}
+      <figure class="mt-6">
+        <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
+             class="w-full rounded-lg border border-slate-200 object-cover">
+        {% if item.image_alt %}
+          <figcaption class="mt-2 text-meta text-slate-500">{{ item.image_alt }}</figcaption>
+        {% endif %}
+      </figure>
+    {% endif %}
+
+    <p class="mt-6 text-[1.0625rem] leading-8 font-medium text-slate-800">{{ item.summary }}</p>
+
+    {% if item.paragraphs %}
+      <div class="prose-gov mt-4">
+        {% for paragraph in item.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% if item.source_url %}
+      <p class="mt-8">
+        <a href="{{ item.source_url }}" rel="noopener noreferrer" target="_blank" class="btn btn-secondary">
+          {% icon "external" "size-4" %}Read the full post
+          <span class="sr-only">(opens in a new tab)</span>
+        </a>
+      </p>
+    {% endif %}
+
+    <div class="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
+      <a href="{% url 'core:public_announcements' %}" class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+        {% icon "chevron-left" "size-3.5" %}All news
+      </a>
+      <p class="text-meta text-slate-500">Published {{ item.published_on|date:"j F Y" }}</p>
+    </div>
+  </article>
+
+  {% if related %}
+    <section class="border-t border-slate-200 bg-slate-50" aria-labelledby="related-heading">
+      <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <h2 id="related-heading" class="text-section-title font-semibold text-slate-900">Related items</h2>
+        <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {% for item in related %}
+            {% include "includes/news_card.html" with item=item %}
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

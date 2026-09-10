@@ -1,0 +1,25 @@
+{% load ui %}
+{% comment %}
+ View / Edit / Delete for one table row.
+
+ Edit and Delete appear only for users whose role permits them - but the
+ views enforce that independently, so hiding them here is convenience, not
+ security. Every control carries the record name for screen readers, because
+ "Edit" repeated forty times down a column tells a screen-reader user nothing.
+{% endcomment %}
+<a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+  {% icon "view" "size-3.5" %}<span class="hidden sm:inline">View</span>
+  <span class="sr-only">{{ record }}</span>
+</a>
+{% if user.can_encode %}
+  <a href="{{ record.get_absolute_url }}edit/" class="btn btn-ghost btn-sm">
+    {% icon "edit" "size-3.5" %}<span class="hidden lg:inline">Edit</span>
+    <span class="sr-only">{{ record }}</span>
+  </a>
+{% endif %}
+{% if user.can_delete %}
+  <a href="{{ record.get_absolute_url }}delete/" class="btn btn-ghost btn-sm text-red-700 hover:bg-red-50">
+    {% icon "delete" "size-3.5" %}<span class="hidden lg:inline">Delete</span>
+    <span class="sr-only">{{ record }}</span>
+  </a>
+{% endif %}

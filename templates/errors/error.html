@@ -1,0 +1,41 @@
+{% load static ui %}<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} &middot; {{ agency.system_name|default:"LGMED-iMMS" }}</title>
+  {% comment %}
+   The agency's own seal is the tab icon. Offering a second icon in another
+   format is not a fallback: a browser given both picks whichever it prefers -
+   Chrome takes the SVG - and the generic mark won, so the seal is now the only
+   icon declared.
+  {% endcomment %}
+  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
+  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
+</head>
+<body class="flex h-full flex-col bg-slate-100 font-sans">
+  <main class="flex flex-1 items-center justify-center px-4 py-12">
+    <div class="w-full max-w-lg text-center">
+      <span aria-hidden="true"
+            class="mx-auto grid size-14 place-items-center rounded-lg border border-slate-200 bg-white text-slate-400">
+        {% icon icon "size-6" %}
+      </span>
+      <p class="mt-5 text-meta font-semibold tracking-[0.08em] text-slate-500 uppercase">Error {{ code }}</p>
+      <h1 class="mt-1.5 text-page-title font-bold tracking-tight text-slate-900">{{ title }}</h1>
+      <p class="mt-3 text-[0.9375rem] leading-relaxed text-slate-600">{{ message }}</p>
+
+      <div class="mt-7 flex flex-wrap justify-center gap-2">
+        <a href="{% url 'core:dashboard' %}" class="btn btn-primary">{% icon "dashboard" "size-4" %}Go to dashboard</a>
+        <a href="{% url 'core:home' %}" class="btn btn-secondary">{% icon "home" "size-4" %}Public website</a>
+      </div>
+
+      <p class="mt-8 text-meta text-slate-500">
+        Need assistance? Contact the LGMED system administrator at
+        <a href="mailto:{{ agency.email }}" class="font-medium text-brand-700 hover:underline">{{ agency.email }}</a>
+        or {{ agency.telephone }}.
+      </p>
+    </div>
+  </main>
+</body>
+</html>

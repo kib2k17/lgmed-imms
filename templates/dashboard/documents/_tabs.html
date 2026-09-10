@@ -1,0 +1,38 @@
+{% load ui %}
+{% comment %}
+ The three faces of Document Management: the register itself, the monitoring
+ dashboard, and the retention and archive register. One sidebar entry rather
+ than three, because they are one job.
+
+ Pass `tab` as "list", "dashboard" or "retention".
+{% endcomment %}
+<nav aria-label="Document Management sections" class="mb-4 no-print">
+  <ul class="flex flex-wrap gap-1 border-b border-slate-200">
+    <li>
+      <a href="{% url 'documents:list' %}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                {% if tab == 'list' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if tab == "list" %}aria-current="page"{% endif %}>
+        {% icon "documents" "size-4" %}Register
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'documents:dashboard' %}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                {% if tab == 'dashboard' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if tab == "dashboard" %}aria-current="page"{% endif %}>
+        {% icon "dashboard" "size-4" %}Monitoring
+      </a>
+    </li>
+    {% if user.can_archive_documents %}
+      <li>
+        <a href="{% url 'documents:retention' %}"
+           class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                  {% if tab == 'retention' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+           {% if tab == "retention" %}aria-current="page"{% endif %}>
+          {% icon "lock" "size-4" %}Retention &amp; Archive
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="workflow-heading">
+        <div class="card-header">
+          <h2 id="workflow-heading" class="card-title">Review Workflow</h2>
+          {% status_badge record.status record.get_status_display %}
+        </div>
+        <div class="card-body">
+          <ol class="flex flex-wrap gap-x-2 gap-y-3">
+            {% for stage in record.workflow %}
+              <li class="flex flex-1 basis-28 items-center gap-2">
+                <span aria-hidden="true"
+                      class="grid size-6 shrink-0 place-items-center rounded-full border-2 text-[0.625rem] font-bold
+                             {% if stage.state == 'done' %}border-green-600 bg-green-600 text-white
+                             {% elif stage.state == 'current' %}border-brand-600 bg-brand-600 text-white
+                             {% elif stage.state == 'cancelled' %}border-red-600 bg-red-600 text-white
+                             {% else %}border-slate-300 bg-white text-slate-400{% endif %}">
+                  {% if stage.state == "done" %}{% icon "check" "size-3" %}{% else %}{{ forloop.counter }}{% endif %}
+                </span>
+                <span class="min-w-0 text-meta font-medium
+                             {% if stage.state == 'upcoming' %}text-slate-400{% else %}text-slate-800{% endif %}">
+                  {{ stage.label }}
+                  {% if stage.state == "current" %}<span class="sr-only">(current stage)</span>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="summary-heading">
+        <div class="card-header">
+          <h2 id="summary-heading" class="card-title">Report Summary</h2>
+        </div>
+        <div class="card-body space-y-6">
+          <div>
+            <p class="text-sm leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.summary|default:"No summary recorded." }}
+            </p>
+          </div>
+
+          {% if record.file %}
+            <div class="flex flex-wrap items-center gap-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <span aria-hidden="true" class="grid size-11 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-500">
+                {% icon "file" "size-5" %}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-slate-900">Report file</p>
+                <p class="text-meta text-slate-500">{{ record.file.size|filesize }}</p>
+              </div>
+              <a href="{{ record.file.url }}" class="btn btn-secondary">
+                {% icon "download" "size-4" %}Download
+              </a>
+            </div>
+          {% endif %}
+
+          {% if record.review_remarks %}
+            <div class="rounded-md border border-amber-200 bg-amber-50 p-4">
+              <h3 class="text-meta font-semibold tracking-wide text-amber-800 uppercase">Review remarks</h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-amber-900">{{ record.review_remarks }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reporting period</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_period_display }} &middot; {{ record.year }}</dd>
+            </div>
+            {% if record.reference_number %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference number</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.reference_number }}</dd>
+              </div>
+            {% endif %}
+            {% if record.program %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Program</dt>
+                <dd class="mt-1 text-sm">
+                  <a href="{{ record.program.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">{{ record.program.title }}</a>
+                </dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Prepared by</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.prepared_by|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Submitted</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.submitted_on %}{{ record.submitted_on|date:"j F Y" }}{% else %}Not yet submitted{% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Published</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.published_on %}{{ record.published_on|date:"j F Y" }}{% else %}Not yet published{% endif %}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Report?" message="This action cannot be undone. The report record and any uploaded file will be permanently removed." detail=record confirm_label="Delete Report" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

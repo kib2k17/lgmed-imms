@@ -1,0 +1,22 @@
+{% load ui %}
+{% comment %}
+ Page actions for a record page: back to the list, print, edit, delete.
+ Delete opens a confirmation dialog; the dialog's form posts to the same URL
+ as the full confirmation page, so the action still works without JavaScript.
+{% endcomment %}
+<a href="{{ list_url }}" class="btn btn-secondary">
+  {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to list</span>
+</a>
+<button type="button" class="btn btn-secondary" onclick="window.print()">
+  {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+</button>
+{% if user.can_encode %}
+  <a href="{{ record.get_absolute_url }}edit/" class="btn btn-primary">
+    {% icon "edit" "size-4" %}Edit
+  </a>
+{% endif %}
+{% if user.can_delete %}
+  <button type="button" class="btn btn-danger" data-dialog-open="delete-record">
+    {% icon "delete" "size-4" %}<span class="hidden sm:inline">Delete</span>
+  </button>
+{% endif %}

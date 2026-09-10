@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}Back to accounts
+  </a>
+{% endblock %}
+
+{% block content %}
+
+  <p class="mb-5 flex max-w-3xl items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
+    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-4" %}</span>
+    <span>
+      Roles are defined in the system's code, not edited here, because they gate
+      the permission checks the server performs on every request. Making them
+      editable at runtime would let access be widened without the change passing
+      review. This page is generated from those same checks, so what you read
+      here is what the server enforces.
+    </span>
+  </p>
+
+  {# ---- Matrix ---------------------------------------------------------- #}
+  <section class="card" aria-labelledby="matrix-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="matrix-heading" class="card-title">Permission Matrix</h2>
+        <p class="mt-0.5 text-meta text-slate-500">What each role may do</p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <caption class="sr-only">
+          Permissions granted to each role. A tick means the role holds the
+          permission; a dash means it does not.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="min-w-56">Permission</th>
+            {% for role in roles %}
+              <th scope="col" class="text-center">
+                {{ role.label }}
+                <span class="mt-0.5 block text-[0.625rem] font-normal normal-case text-slate-500">
+                  {{ role.active_count }} active
+                </span>
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for attribute, label, description in capabilities %}
+            <tr>
+              <th scope="row" class="border-b border-slate-100 px-4 py-3 text-left font-medium text-slate-900">
+                {{ label }}
+                <span class="mt-0.5 block text-meta font-normal text-slate-500">{{ description }}</span>
+              </th>
+              {% for role in roles %}
+                {% for capability in role.capabilities %}
+                  {% if capability.attribute == attribute %}
+                    <td class="text-center">
+                      {% if capability.granted %}
+                        <span class="inline-flex items-center gap-1 text-green-700">
+                          {% icon "check" "size-4" %}
+                          <span class="sr-only">{{ role.label }}: granted</span>
+                        </span>
+                      {% else %}
+                        <span class="text-slate-300" aria-hidden="true">&mdash;</span>
+                        <span class="sr-only">{{ role.label }}: not granted</span>
+                      {% endif %}
+                    </td>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ---- Roles in detail --------------------------------------------------- #}
+  <section class="mt-6" aria-labelledby="roles-heading">
+    <h2 id="roles-heading" class="text-section-title font-semibold text-slate-900">Roles</h2>
+    <div class="mt-4 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+      {% for role in roles %}
+        <article class="card flex h-full flex-col">
+          <div class="card-header">
+            <h3 class="card-title">{{ role.label }}</h3>
+            <a href="{% url 'accounts:user_list' %}?role={{ role.value }}"
+               class="text-meta font-medium text-brand-700 hover:underline">
+              {{ role.count }} account{{ role.count|pluralize }}
+            </a>
+          </div>
+          <div class="card-body flex-1">
+            <p class="text-sm leading-relaxed text-slate-600">{{ role.description }}</p>
+            <ul class="mt-4 space-y-1.5">
+              {% for capability in role.capabilities %}
+                <li class="flex items-center gap-2 text-meta">
+                  {% if capability.granted %}
+                    <span class="text-green-700" aria-hidden="true">{% icon "check" "size-3.5" %}</span>
+                    <span class="text-slate-700">{{ capability.label }}</span>
+                  {% else %}
+                    <span class="text-slate-300" aria-hidden="true">{% icon "close" "size-3.5" %}</span>
+                    <span class="text-slate-400">{{ capability.label }}</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

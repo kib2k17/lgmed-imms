@@ -1,0 +1,19 @@
+{% extends "public_base.html" %}
+{% load ui %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div class="rounded-lg border border-slate-200 bg-white">
+      {% include "components/empty_state.html" with icon="clock" title="This section is being prepared" message="Published content for this section becomes available as the corresponding module is rolled out. In the meantime, the Division can be reached directly using the contact details below." %}
+      <div class="border-t border-slate-200 px-6 py-5 text-center">
+        <a href="{% url 'core:public_contact' %}" class="btn btn-secondary">
+          {% icon "mail" "size-4" %}Contact the Division
+        </a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

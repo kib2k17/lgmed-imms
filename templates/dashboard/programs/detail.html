@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="about-heading">
+        <div class="card-header">
+          <h2 id="about-heading" class="card-title">Program Information</h2>
+          {% status_badge record.status record.get_status_display %}
+        </div>
+        <div class="card-body space-y-6">
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Description</h3>
+            <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.description|default:"No description recorded." }}
+            </p>
+          </div>
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Objectives</h3>
+            <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.objectives|default:"No objectives recorded." }}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="coverage-heading">
+        <div class="card-header">
+          <h2 id="coverage-heading" class="card-title">Covered LGUs</h2>
+          <p class="text-meta text-slate-500">{{ record.coverage_label }}</p>
+        </div>
+        {% if record.covered_lgus.all %}
+          <div class="card-body">
+            <ul class="flex flex-wrap gap-2">
+              {% for lgu in record.covered_lgus.all %}
+                <li>
+                  <a href="{{ lgu.get_absolute_url }}"
+                     class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-meta font-medium text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800">
+                    {% icon "lgu" "size-3" %}{{ lgu.name }}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            This program covers the whole region; no individual LGUs are listed.
+          </p>
+        {% endif %}
+      </section>
+
+      <section class="card" aria-labelledby="activities-heading">
+        <div class="card-header">
+          <h2 id="activities-heading" class="card-title">Monitoring Activities</h2>
+          <a href="{% url 'monitoring:list' %}?q={{ record.title|urlencode }}" class="btn btn-secondary btn-sm">
+            View all{% icon "chevron-right" "size-3.5" %}
+          </a>
+        </div>
+        {% if activities %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Monitoring activities conducted under this program</caption>
+              <thead>
+                <tr>
+                  <th scope="col">LGU</th>
+                  <th scope="col" class="hidden sm:table-cell">Date</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for activity in activities %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{{ activity.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ activity.lgu.name }}</a>
+                      <span class="block text-meta font-normal text-slate-500">{{ activity.title }}</span>
+                    </th>
+                    <td class="hidden whitespace-nowrap sm:table-cell">{{ activity.monitoring_date|date:"j M Y" }}</td>
+                    <td>{% status_badge activity.status activity.get_status_display %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            No monitoring activities have been recorded under this program.
+          </p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Category</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.category.name }}</dd>
+            </div>
+            {% if record.reference_number %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference number</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.reference_number }}</dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Implementation period</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                <time datetime="{{ record.start_date|date:'Y-m-d' }}">{{ record.start_date|date:"j F Y" }}</time>
+                {% if record.end_date %}
+                  &ndash; <time datetime="{{ record.end_date|date:'Y-m-d' }}">{{ record.end_date|date:"j F Y" }}</time>
+                {% else %}
+                  <span class="text-slate-500">onward</span>
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Lead office</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.lead_office }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Focal person</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.focal_person|default:"Not recorded" }}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {% if reports %}
+        <section class="card" aria-labelledby="reports-heading">
+          <div class="card-header">
+            <h2 id="reports-heading" class="card-title">Reports</h2>
+          </div>
+          <ul class="divide-y divide-slate-100">
+            {% for report in reports %}
+              <li class="px-4 py-3 sm:px-5">
+                <a href="{{ report.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">{{ report.title }}</a>
+                <p class="mt-1">{% status_badge report.status report.get_status_display %}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Program?" message="This action cannot be undone. Monitoring activities recorded under this program will be kept but will no longer be linked to it." detail=record confirm_label="Delete Program" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

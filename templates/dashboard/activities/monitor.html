@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The Division Chief's view of the calendar.
+
+   Not a calendar - a workload. The Chief's questions are "who is carrying
+   what", "what is planned for the coming weeks" and "what has slipped", and
+   every figure on this page opens the calendar already filtered to the
+   activities behind it, so nothing here has to be taken on trust.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="{% url 'activities:list' %}?scope=all" class="btn btn-secondary">
+    {% icon "calendar" "size-4" %}<span class="hidden sm:inline">All employees' calendar</span>
+  </a>
+  <a href="{% url 'activities:list' %}?scope=all&amp;export=csv" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Export CSV</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
+    {% include "components/mini_stat.html" with label="All activities" value=totals.all %}
+    {% include "components/mini_stat.html" with label="Open" value=totals.open tone="info" %}
+    {% include "components/mini_stat.html" with label="Running today" value=totals.today tone="info" %}
+    {% include "components/mini_stat.html" with label="Next 60 days" value=totals.upcoming tone="warning" %}
+    {% include "components/mini_stat.html" with label="Overdue" value=totals.overdue tone="danger" %}
+    {% include "components/mini_stat.html" with label="Completed" value=totals.completed tone="success" %}
+  </div>
+
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    {# ---- Workload by employee ------------------------------------------ #}
+    <section class="card xl:col-span-2" aria-labelledby="workload-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="workload-heading" class="card-title">Workload by employee</h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            Activities each employee owns, and those assigned to them by someone else
+          </p>
+        </div>
+      </div>
+
+      {% if workload %}
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">
+              Open, upcoming, overdue and completed activities for each employee.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Employee</th>
+                <th scope="col" class="hidden sm:table-cell">Division / section</th>
+                <th scope="col" class="text-right">Open</th>
+                <th scope="col" class="text-right">Upcoming</th>
+                <th scope="col" class="text-right">Overdue</th>
+                <th scope="col" class="hidden text-right lg:table-cell">Assigned to them</th>
+                <th scope="col" class="hidden text-right lg:table-cell">Completed</th>
+                <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for person in workload %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                    {{ person.get_display_name }}
+                    {% if person.position %}
+                      <span class="block text-meta font-normal text-slate-500">{{ person.position }}</span>
+                    {% endif %}
+                  </th>
+                  <td class="hidden text-slate-500 sm:table-cell">{{ person.section.name|default:"&mdash;" }}</td>
+                  <td class="text-right tabular">{{ person.open_count }}</td>
+                  <td class="text-right tabular">{{ person.upcoming_count }}</td>
+                  <td class="text-right tabular {% if person.overdue_count %}font-semibold text-red-700{% else %}text-slate-400{% endif %}">
+                    {{ person.overdue_count }}
+                  </td>
+                  <td class="hidden text-right tabular lg:table-cell">{{ person.assigned_count }}</td>
+                  <td class="hidden text-right tabular text-slate-500 lg:table-cell">{{ person.completed_count }}</td>
+                  <td class="text-right whitespace-nowrap">
+                    <a href="{% url 'activities:list' %}?scope=all&amp;employee={{ person.pk }}"
+                       class="btn btn-ghost btn-sm">
+                      {% icon "calendar" "size-3.5" %}<span class="hidden sm:inline">Calendar</span>
+                      <span class="sr-only">of {{ person.get_display_name }}</span>
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with icon="users" title="No activities recorded" message="No employee has recorded a calendar activity yet." %}
+      {% endif %}
+
+      {% if idle %}
+        <div class="card-footer">
+          <p class="text-meta leading-relaxed text-slate-600">
+            <span class="font-semibold text-slate-700">Nothing recorded:</span>
+            {% for person in idle %}{{ person.get_display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+            An empty calendar is not the same as an idle employee &mdash; it usually
+            means the work has not been recorded here.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ---- Today ---------------------------------------------------------- #}
+    <section class="card" aria-labelledby="today-heading">
+      <div class="card-header">
+        <h2 id="today-heading" class="card-title">Running today</h2>
+        <span class="text-meta text-slate-500">{{ today|date:"j M Y" }}</span>
+      </div>
+      {% if today_activities %}
+        <ul class="divide-y divide-slate-100">
+          {% for activity in today_activities %}
+            {% include "dashboard/activities/_activity_row.html" %}
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="calendar" title="Nothing today" message="No activities are scheduled to run today." %}
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="mt-4 grid gap-4 xl:grid-cols-3">
+
+    {# ---- By division / section ------------------------------------------ #}
+    <section class="card" aria-labelledby="sections-heading">
+      <div class="card-header">
+        <h2 id="sections-heading" class="card-title">By division / section</h2>
+      </div>
+      {% if sections %}
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Open and overdue activities per section.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Section</th>
+                <th scope="col" class="text-right">Staff</th>
+                <th scope="col" class="text-right">Open</th>
+                <th scope="col" class="text-right">Overdue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for section in sections %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                    <a href="{% url 'activities:list' %}?scope=all&amp;section={{ section.pk }}"
+                       class="hover:text-brand-700 hover:underline">{{ section.name }}</a>
+                  </th>
+                  <td class="text-right tabular text-slate-500">{{ section.member_count }}</td>
+                  <td class="text-right tabular">{{ section.open_count }}</td>
+                  <td class="text-right tabular {% if section.overdue_count %}font-semibold text-red-700{% else %}text-slate-400{% endif %}">
+                    {{ section.overdue_count }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with icon="building" title="No sections recorded" message="Add departments, divisions or sections in System Settings, then assign employees to them." %}
+      {% endif %}
+    </section>
+
+    {# ---- Coming up ------------------------------------------------------ #}
+    <section class="card" aria-labelledby="upcoming-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="upcoming-heading" class="card-title">Planned ahead</h2>
+          <p class="mt-0.5 text-meta text-slate-500">Next {{ upcoming_days }} days</p>
+        </div>
+        <a href="{% url 'activities:list' %}?scope=all&amp;period=upcoming" class="btn btn-ghost btn-sm">View all</a>
+      </div>
+      {% if upcoming_activities %}
+        <ul class="divide-y divide-slate-100">
+          {% for activity in upcoming_activities %}
+            {% include "dashboard/activities/_activity_row.html" %}
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="calendar" title="Nothing planned" message="No activities are scheduled in the coming weeks." %}
+      {% endif %}
+    </section>
+
+    {# ---- Slipped -------------------------------------------------------- #}
+    <section class="card" aria-labelledby="overdue-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="overdue-heading" class="card-title">Overdue</h2>
+          <p class="mt-0.5 text-meta text-slate-500">Past their date and not closed off</p>
+        </div>
+        <a href="{% url 'activities:list' %}?scope=all&amp;period=overdue" class="btn btn-ghost btn-sm">View all</a>
+      </div>
+      {% if overdue_activities %}
+        <ul class="divide-y divide-slate-100">
+          {% for activity in overdue_activities %}
+            {% include "dashboard/activities/_activity_row.html" %}
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing overdue" message="Every activity is either completed, cancelled or still ahead of its date." %}
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

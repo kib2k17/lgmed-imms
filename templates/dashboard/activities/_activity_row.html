@@ -1,0 +1,62 @@
+{% load ui %}
+{% comment %}
+ One activity as a row in a list - the panel beside the grid, the upcoming and
+ overdue views, and the Chief's monitoring page all use this, so an activity
+ reads the same wherever it is met. Ownership is never omitted: who the
+ activity belongs to is the first thing the Chief is looking for, and the last
+ thing an employee should have to open a record to find out.
+{% endcomment %}
+<li>
+  <a href="{{ activity.get_absolute_url }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 sm:px-5">
+    <time datetime="{{ activity.start_date|date:'Y-m-d' }}"
+          class="grid size-11 shrink-0 place-items-center rounded-md border text-center leading-none
+                 {% if activity.is_overdue %}border-red-200 bg-red-50{% else %}border-slate-200 bg-slate-50{% endif %}">
+      <span class="block text-[0.625rem] font-semibold tracking-wide uppercase
+                   {% if activity.is_overdue %}text-red-600{% else %}text-slate-500{% endif %}">{{ activity.start_date|date:"M" }}</span>
+      <span class="mt-0.5 block text-sm font-bold {% if activity.is_overdue %}text-red-800{% else %}text-slate-900{% endif %}">{{ activity.start_date|date:"j" }}</span>
+    </time>
+
+    <span class="min-w-0 flex-1">
+      <span class="block text-sm font-medium text-slate-900">{{ activity.title }}</span>
+
+      <span class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-meta text-slate-500">
+        <span class="inline-flex items-center gap-1">{% icon "user" "size-3" %}{{ activity.owner_label }}</span>
+        {% if activity.is_delegated %}
+          <span class="inline-flex items-center gap-1 font-medium text-brand-700">
+            {% icon "users" "size-3" %}for {{ activity.assigned_to.get_display_name }}
+          </span>
+        {% endif %}
+        {% if activity.section %}
+          <span class="inline-flex items-center gap-1">{% icon "building" "size-3" %}{{ activity.section.label }}</span>
+        {% endif %}
+      </span>
+
+      <span class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-meta text-slate-500">
+        <span class="inline-flex items-center gap-1">{% icon "clock" "size-3" %}{{ activity.time_label }}</span>
+        {% if activity.location %}
+          <span class="inline-flex items-center gap-1">{% icon "map-pin" "size-3" %}{{ activity.location|truncatechars:32 }}</span>
+        {% endif %}
+      </span>
+
+      <span class="mt-1.5 flex flex-wrap items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium
+                     {% if activity.activity_type == 'MONITORING' %}border-brand-200 bg-brand-50 text-brand-800
+                     {% elif activity.activity_type == 'DEADLINE' %}border-red-200 bg-red-50 text-red-800
+                     {% elif activity.activity_type == 'TRAINING' %}border-green-200 bg-green-50 text-green-800
+                     {% elif activity.activity_type == 'FIELDWORK' %}border-amber-200 bg-amber-50 text-amber-800
+                     {% else %}border-slate-200 bg-slate-100 text-slate-700{% endif %}">
+          {{ activity.get_activity_type_display }}
+        </span>
+        {% status_badge activity.status activity.get_status_display %}
+        {% if activity.priority == "URGENT" or activity.priority == "HIGH" %}
+          <span class="text-meta font-semibold text-red-700">{{ activity.get_priority_display }} priority</span>
+        {% endif %}
+        {% if activity.is_overdue %}
+          <span class="text-meta font-semibold text-red-700">Overdue</span>
+        {% elif activity.is_today %}
+          <span class="text-meta font-medium text-brand-700">Today</span>
+        {% endif %}
+      </span>
+    </span>
+  </a>
+</li>

@@ -1,0 +1,49 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block extra_actions %}
+  <a href="{% url 'updates:period_list' %}" class="btn btn-secondary">
+    {% icon "calendar" "size-4" %}<span class="hidden sm:inline">Reporting weeks</span>
+  </a>
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="title" label="Accomplishment" %}
+  {% include "components/th_sort.html" with field="category" label="Category" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="hidden lg:table-cell">Reporting week</th>
+  {% include "components/th_sort.html" with field="activity_date" label="Date" th_class="hidden md:table-cell" %}
+  {% include "components/th_sort.html" with field="status" label="Status" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.title }}</a>
+        {% if record.is_major %}
+          <span class="ml-1.5 rounded border border-accent-500/40 bg-accent-400/15 px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-wide text-brand-900 uppercase">Convocation</span>
+        {% endif %}
+        {% if record.lgu %}
+          <span class="mt-0.5 block text-meta text-slate-500">{{ record.lgu.name }}</span>
+        {% endif %}
+      </th>
+      <td class="hidden sm:table-cell">
+        {{ record.get_category_display }}
+        {% if record.activity_type != "NA" %}
+          <span class="mt-0.5 block text-meta text-slate-500">{{ record.get_activity_type_display }}</span>
+        {% endif %}
+      </td>
+      <td class="hidden lg:table-cell">
+        <a href="{{ record.period.get_absolute_url }}" class="text-slate-600 hover:text-brand-700 hover:underline">
+          {{ record.period.label }}
+        </a>
+      </td>
+      <td class="hidden tabular md:table-cell">{{ record.date_label }}</td>
+      <td>{% status_badge record.status record.get_status_display %}</td>
+      <td class="text-right whitespace-nowrap">
+        {% include "components/row_actions.html" with record=record %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

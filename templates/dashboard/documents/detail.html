@@ -1,0 +1,641 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to register</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+  {% if can_download %}
+    <a href="{% url 'documents:download' record.pk %}" class="btn btn-primary">
+      {% icon "download" "size-4" %}Download
+    </a>
+  {% endif %}
+  {% if can_edit %}
+    <a href="{{ record.get_absolute_url }}edit/" class="btn btn-secondary">
+      {% icon "edit" "size-4" %}<span class="hidden sm:inline">Edit</span>
+    </a>
+  {% endif %}
+  {% if user.can_delete %}
+    <button type="button" class="btn btn-danger" data-dialog-open="delete-record">
+      {% icon "delete" "size-4" %}<span class="hidden sm:inline">Delete</span>
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+    <div class="space-y-4 xl:col-span-2">
+
+      {# ---- Lifecycle ------------------------------------------------- #}
+      <section class="card" aria-labelledby="progress-heading">
+        <div class="card-header">
+          <h2 id="progress-heading" class="card-title">Document Lifecycle</h2>
+          {% status_badge record.display_status record.display_status_label %}
+        </div>
+        <div class="card-body">
+          <ol class="flex flex-wrap gap-x-2 gap-y-3">
+            {% for stage in record.workflow %}
+              <li class="flex flex-1 basis-28 items-center gap-2">
+                <span aria-hidden="true"
+                      class="grid size-6 shrink-0 place-items-center rounded-full border-2 text-[0.625rem] font-bold
+                             {% if stage.state == 'done' %}border-green-600 bg-green-600 text-white
+                             {% elif stage.state == 'current' %}border-brand-600 bg-brand-600 text-white
+                             {% elif stage.state == 'cancelled' %}border-red-600 bg-red-600 text-white
+                             {% else %}border-slate-300 bg-white text-slate-400{% endif %}">
+                  {% if stage.state == "done" %}{% icon "check" "size-3" %}{% else %}{{ forloop.counter }}{% endif %}
+                </span>
+                <span class="min-w-0 text-meta font-medium
+                             {% if stage.state == 'upcoming' %}text-slate-400{% else %}text-slate-800{% endif %}">
+                  {{ stage.label }}
+                  {% if stage.state == "current" %}<span class="sr-only">(current stage)</span>{% endif %}
+                  {% if stage.state == "done" %}<span class="sr-only">(completed)</span>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ol>
+
+          {% if record.is_disposed %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="status">
+              {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                This document was disposed of on {{ record.disposed_at|date:"j F Y" }}
+                under {{ record.disposal_authority.reference }}. Its file no longer
+                exists; the record, its version list and its trail are kept.
+              </span>
+            </p>
+          {% elif record.is_archived %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" role="status">
+              {% icon "lock" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                Archived on {{ record.archived_at|date:"j F Y" }} by
+                {{ record.archived_by.get_display_name|default:"the system" }}.
+                Access is restricted to the records officers and the personnel
+                answerable for it.
+              </span>
+            </p>
+          {% elif record.is_overdue %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="status">
+              {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                Due {{ record.due_date|date:"j F Y" }} &mdash;
+                {{ record.days_overdue }} day{{ record.days_overdue|pluralize }} overdue.
+              </span>
+            </p>
+          {% elif record.status == "FOR_ASSIGNMENT" %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+              {% icon "info" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                Reviewed and waiting for the Division Chief to name the focal
+                person. No one may be assigned before then.
+              </span>
+            </p>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- The file and its versions --------------------------------- #}
+      <section class="card" aria-labelledby="file-heading">
+        <div class="card-header">
+          <h2 id="file-heading" class="card-title">Document File</h2>
+          <span class="text-meta text-slate-500">
+            {{ versions|length }} version{{ versions|length|pluralize }} kept
+          </span>
+        </div>
+        <div class="card-body space-y-5">
+          {% if record.is_disposed %}
+            <p class="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              The file was destroyed on disposal. The version list below records
+              what the document once held.
+            </p>
+          {% elif record.file %}
+            <div class="flex flex-wrap items-center gap-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <span aria-hidden="true" class="grid size-12 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-500">
+                {% icon "file" "size-5" %}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium break-all text-slate-900">{{ record.file_name }}</p>
+                <p class="text-meta text-slate-500">
+                  {{ record.file_type }} &middot; {{ record.file_size|filesize }}
+                  &middot; current version
+                </p>
+              </div>
+              {% if can_download %}
+                <a href="{% url 'documents:download' record.pk %}" class="btn btn-primary">
+                  {% icon "download" "size-4" %}Download
+                </a>
+              {% endif %}
+            </div>
+          {% else %}
+            <p class="rounded-md border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+              No file has been uploaded against this document yet.
+            </p>
+          {% endif %}
+
+          {% if versions %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Version history</h3>
+              <ol class="mt-2 divide-y divide-slate-100 border-t border-slate-100">
+                {% for version in versions %}
+                  <li class="flex flex-wrap items-start gap-3 py-3">
+                    <span aria-hidden="true"
+                          class="grid size-8 shrink-0 place-items-center rounded-md text-meta font-bold
+                                 {% if forloop.first %}bg-brand-50 text-brand-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+                      v{{ version.version_number }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-medium text-slate-900">
+                        {{ version.label }}
+                        {% if forloop.first and not record.is_disposed %}
+                          <span class="ml-1 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-meta font-semibold text-green-800">Current</span>
+                        {% endif %}
+                      </p>
+                      <p class="text-meta text-slate-500">
+                        {{ version.uploader_label }} &middot;
+                        {{ version.uploaded_at|date:"j F Y, g:i A" }}
+                        {% if version.file %}
+                          &middot; {{ version.file_type }} &middot; {{ version.file_size|filesize }}
+                        {% endif %}
+                      </p>
+                      {% if version.reason %}
+                        <p class="mt-1 text-sm whitespace-pre-line text-slate-700">{{ version.reason }}</p>
+                      {% endif %}
+                    </div>
+                    {% if version.file and not record.is_disposed and can_download %}
+                      <a href="{% url 'documents:version_download' record.pk version.pk %}"
+                         class="btn btn-ghost btn-sm">
+                        {% icon "download" "size-3.5" %}Download
+                        <span class="sr-only">version {{ version.version_number }}</span>
+                      </a>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ol>
+            </div>
+          {% endif %}
+
+          {% if can_upload_version %}
+            <form method="post" enctype="multipart/form-data"
+                  action="{% url 'documents:upload_version' record.pk %}"
+                  class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4 no-print">
+              {% csrf_token %}
+              <h3 class="text-sm font-semibold text-slate-800">Upload a new version</h3>
+              <p class="text-meta text-slate-500">
+                The current file is kept. Nothing is overwritten.
+              </p>
+              {% include "components/bound_field.html" with field=version_form.file %}
+              {% include "components/bound_field.html" with field=version_form.reason %}
+              <button type="submit" class="btn btn-primary">
+                {% icon "upload" "size-4" %}Upload version
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- Document information --------------------------------------- #}
+      <section class="card" aria-labelledby="info-heading">
+        <div class="card-header">
+          <h2 id="info-heading" class="card-title">Document Information</h2>
+        </div>
+        <div class="card-body">
+          <dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Subject</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.subject|default:"&mdash;" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Document type</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.document_type.name }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Sender / source</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.sender|default:"Created by the Division" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date received</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {{ record.date_received|date:"j F Y"|default:"Not received &mdash; created internally" }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date of document</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.date_created|date:"j F Y"|default:"&mdash;" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Action due date</dt>
+              <dd class="mt-1 text-sm {% if record.is_overdue %}font-medium text-red-700{% else %}text-slate-900{% endif %}">
+                {{ record.due_date|date:"j F Y"|default:"None set" }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Division / unit</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.unit_label }}</dd>
+            </div>
+            {% if record.description %}
+              <div class="sm:col-span-2">
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Description</dt>
+                <dd class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.description }}</dd>
+              </div>
+            {% endif %}
+            {% if record.remarks %}
+              <div class="sm:col-span-2">
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Remarks</dt>
+                <dd class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.remarks }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+        </div>
+      </section>
+
+      {# ---- Review and assignment -------------------------------------- #}
+      <section class="card" aria-labelledby="assignment-heading">
+        <div class="card-header">
+          <h2 id="assignment-heading" class="card-title">Review and Assignment</h2>
+          {% if record.is_assigned %}
+            {% status_badge "assigned" "Assigned" %}
+          {% else %}
+            {% status_badge "pending" "Not yet assigned" %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-5">
+          <dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reviewed by</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {{ record.reviewed_by.get_display_name|default:"Not yet reviewed" }}
+              </dd>
+              {% if record.reviewed_at %}
+                <dd class="text-meta text-slate-500">{{ record.reviewed_at|date:"j F Y, g:i A" }}</dd>
+              {% endif %}
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assigned personnel</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.assignee_label }}</dd>
+              {% if record.assigned_at %}
+                <dd class="text-meta text-slate-500">
+                  Assigned {{ record.assigned_at|date:"j F Y" }} by
+                  {{ record.assigned_by.get_display_name|default:"the system" }}
+                </dd>
+              {% endif %}
+            </div>
+          </dl>
+
+          {% if record.review_notes %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Review notes</h3>
+              <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.review_notes }}</p>
+            </div>
+          {% endif %}
+          {% if record.assignment_remarks %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Instructions</h3>
+              <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.assignment_remarks }}</p>
+            </div>
+          {% endif %}
+
+          {% if can_assign %}
+            <form method="post" action="{% url 'documents:assign' record.pk %}"
+                  class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4 no-print">
+              {% csrf_token %}
+              <h3 class="text-sm font-semibold text-slate-800">
+                {% if record.is_assigned %}Reassign this document{% else %}Assign a focal person{% endif %}
+              </h3>
+              {% include "components/bound_field.html" with field=assignment_form.assigned_to %}
+              {% include "components/bound_field.html" with field=assignment_form.due_date %}
+              {% include "components/bound_field.html" with field=assignment_form.assignment_remarks %}
+              <button type="submit" class="btn btn-primary">
+                {% icon "users" "size-4" %}
+                {% if record.is_assigned %}Reassign{% else %}Assign{% endif %}
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- The trail --------------------------------------------------- #}
+      <section class="card" aria-labelledby="trail-heading">
+        <div class="card-header">
+          <h2 id="trail-heading" class="card-title">Document Trail</h2>
+          <span class="text-meta text-slate-500">{{ events|length }} recorded action{{ events|length|pluralize }}</span>
+        </div>
+        <div class="card-body">
+          <p class="mb-4 text-meta text-slate-500">
+            Every action taken on this document, with who took it and when.
+            Entries are written once and cannot be edited or removed.
+          </p>
+          <ol class="space-y-0">
+            {% for event in events %}
+              <li class="flex gap-3 pb-4 last:pb-0">
+                <div class="flex flex-col items-center">
+                  <span aria-hidden="true" class="grid size-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500">
+                    {% icon event.icon "size-3.5" %}
+                  </span>
+                  {% if not forloop.last %}<span aria-hidden="true" class="mt-1 w-px flex-1 bg-slate-200"></span>{% endif %}
+                </div>
+                <div class="min-w-0 flex-1 pt-1">
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="text-sm font-medium text-slate-900">{{ event.get_event_type_display }}</span>
+                    {% if event.to_status and event.from_status and event.to_status != event.from_status %}
+                      {% status_badge event.to_status event.to_status|cut:"_"|title %}
+                    {% endif %}
+                  </div>
+                  {% if event.detail %}
+                    <p class="mt-0.5 text-sm text-slate-700">{{ event.detail }}</p>
+                  {% endif %}
+                  {% if event.notes %}
+                    <p class="mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm whitespace-pre-line text-slate-600">{{ event.notes }}</p>
+                  {% endif %}
+                  <p class="mt-1 text-meta text-slate-500">
+                    {{ event.actor_label }}{% if event.actor_role %} &middot; {{ event.actor_role }}{% endif %}
+                    &middot; {{ event.occurred_at|date:"j F Y, g:i A" }}
+                  </p>
+                </div>
+              </li>
+            {% empty %}
+              <li class="text-sm text-slate-400">Nothing has been recorded against this document yet.</li>
+            {% endfor %}
+          </ol>
+        </div>
+      </section>
+    </div>
+
+    {# ================= Sidebar ========================================= #}
+    <div class="space-y-4">
+
+      {# ---- Ownership --------------------------------------------------- #}
+      <section class="card" aria-labelledby="ownership-heading">
+        <div class="card-header">
+          <h2 id="ownership-heading" class="card-title">Ownership</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Control number</dt>
+              <dd class="mt-1 text-sm font-semibold text-slate-900 tabular">{{ record.reference_number }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Owner / responsible</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.owner_label }}</dd>
+              <dd class="text-meta text-slate-500">{{ record.owner.position|default:record.owner.get_role_label }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assigned personnel</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.assignee_label }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Public availability</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.is_available_publicly %}Published on the public website{% else %}Internal only{% endif %}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {# ---- Actions ----------------------------------------------------- #}
+      {% if can_edit or can_approve or can_archive or can_restore %}
+        <section class="card no-print" aria-labelledby="actions-heading">
+          <div class="card-header">
+            <h2 id="actions-heading" class="card-title">Actions</h2>
+          </div>
+          <div class="card-body space-y-3">
+            {% if record.status == "DRAFT" or record.status == "RECEIVED" %}
+              {% if can_edit %}
+                <form method="post" action="{% url 'documents:submit_for_review' record.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary w-full">
+                    {% icon "view" "size-4" %}Submit for review
+                  </button>
+                </form>
+              {% endif %}
+            {% elif record.status == "FOR_REVIEW" %}
+              {% if can_set_retention or can_assign %}
+                <form method="post" action="{% url 'documents:review' record.pk %}" class="space-y-3">
+                  {% csrf_token %}
+                  {% include "components/bound_field.html" with field=review_form.notes %}
+                  <button type="submit" class="btn btn-primary w-full">
+                    {% icon "check" "size-4" %}Mark reviewed
+                  </button>
+                </form>
+              {% endif %}
+            {% elif record.status == "ASSIGNED" %}
+              {% if can_edit %}
+                <form method="post" action="{% url 'documents:start' record.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary w-full">
+                    {% icon "monitoring" "size-4" %}Start processing
+                  </button>
+                </form>
+              {% endif %}
+            {% elif record.status == "IN_PROGRESS" %}
+              {% if can_edit %}
+                <form method="post" action="{% url 'documents:submit_for_approval' record.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary w-full">
+                    {% icon "check" "size-4" %}Submit for approval
+                  </button>
+                </form>
+              {% endif %}
+            {% elif record.status == "FOR_APPROVAL" %}
+              {% if can_approve %}
+                <form method="post" action="{% url 'documents:complete' record.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary w-full">
+                    {% icon "check-circle" "size-4" %}Approve and complete
+                  </button>
+                </form>
+              {% endif %}
+            {% endif %}
+
+            {% if can_archive %}
+              <button type="button" class="btn btn-secondary w-full" data-dialog-open="archive-document">
+                {% icon "lock" "size-4" %}Archive document
+              </button>
+            {% endif %}
+            {% if can_restore %}
+              <button type="button" class="btn btn-secondary w-full" data-dialog-open="restore-document">
+                {% icon "upload" "size-4" %}Restore from archive
+              </button>
+            {% endif %}
+            {% if can_dispose %}
+              <button type="button" class="btn btn-danger w-full" data-dialog-open="dispose-document">
+                {% icon "delete" "size-4" %}Dispose permanently
+              </button>
+            {% endif %}
+            {% if can_edit and record.is_open %}
+              <button type="button" class="btn btn-ghost w-full text-red-700 hover:bg-red-50"
+                      data-dialog-open="cancel-document">
+                {% icon "close" "size-4" %}Cancel document
+              </button>
+            {% endif %}
+          </div>
+        </section>
+      {% endif %}
+
+      {# ---- Retention --------------------------------------------------- #}
+      <section class="card" aria-labelledby="retention-heading">
+        <div class="card-header">
+          <h2 id="retention-heading" class="card-title">Retention</h2>
+          {% status_badge record.retention_disposition record.get_retention_disposition_display %}
+        </div>
+        <div class="card-body space-y-4">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Status</dt>
+              <dd class="mt-1 text-sm {% if record.is_retention_due %}font-medium text-red-700{% elif record.is_retention_approaching %}font-medium text-amber-700{% else %}text-slate-900{% endif %}">
+                {{ record.retention_summary }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Policy for this type</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.document_type.retention_label }}</dd>
+            </div>
+            {% if record.retention_notes %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Notes</dt>
+                <dd class="mt-1 text-sm whitespace-pre-line text-slate-700">{{ record.retention_notes }}</dd>
+              </div>
+            {% endif %}
+            {% if record.retention_reviewed_at %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Last reviewed</dt>
+                <dd class="mt-1 text-sm text-slate-900">
+                  {{ record.retention_reviewed_by.get_display_name|default:"System" }}
+                </dd>
+                <dd class="text-meta text-slate-500">{{ record.retention_reviewed_at|date:"j F Y" }}</dd>
+              </div>
+            {% endif %}
+            {% if record.is_disposed %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Disposal authority</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.disposal_authority }}</dd>
+                <dd class="text-meta text-slate-500">
+                  {{ record.disposed_by.get_display_name|default:"System" }} &middot;
+                  {{ record.disposed_at|date:"j F Y" }}
+                </dd>
+              </div>
+            {% endif %}
+          </dl>
+
+          {% if can_set_retention and not record.is_disposed %}
+            <form method="post" action="{% url 'documents:set_retention' record.pk %}"
+                  class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4 no-print">
+              {% csrf_token %}
+              <h3 class="text-sm font-semibold text-slate-800">Record a retention decision</h3>
+              {% include "components/bound_field.html" with field=retention_form.retention_until %}
+              {% include "components/bound_field.html" with field=retention_form.retention_disposition %}
+              {% include "components/bound_field.html" with field=retention_form.notes %}
+              <button type="submit" class="btn btn-secondary w-full">
+                {% icon "clock" "size-4" %}Save decision
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {# ================= Dialogs ========================================== #}
+  {% if can_archive %}
+    <dialog id="archive-document" aria-labelledby="archive-document-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <form method="post" action="{% url 'documents:archive' record.pk %}">
+        {% csrf_token %}
+        <div class="space-y-3 p-5">
+          <h2 id="archive-document-title" class="text-card-title font-semibold text-slate-900">Archive this document?</h2>
+          <p class="text-sm text-slate-600">
+            It leaves circulation but nothing is removed: the metadata, ownership,
+            every version and the whole trail are kept. Access is restricted to the
+            records officers and the personnel answerable for it. It can be restored.
+          </p>
+          {% include "components/bound_field.html" with field=archive_form.reason %}
+        </div>
+        <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+          <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Archive document</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
+
+  {% if can_restore %}
+    <dialog id="restore-document" aria-labelledby="restore-document-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <form method="post" action="{% url 'documents:restore' record.pk %}">
+        {% csrf_token %}
+        <div class="space-y-3 p-5">
+          <h2 id="restore-document-title" class="text-card-title font-semibold text-slate-900">Restore from the archive?</h2>
+          <p class="text-sm text-slate-600">
+            The document returns to Completed and becomes readable again by all
+            staff. The restoration is recorded on its trail.
+          </p>
+          {% include "components/bound_field.html" with field=restore_form.reason %}
+        </div>
+        <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+          <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Restore document</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
+
+  {% if can_dispose %}
+    <dialog id="dispose-document" aria-labelledby="dispose-document-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-lg rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <form method="post" action="{% url 'documents:dispose' record.pk %}">
+        {% csrf_token %}
+        <div class="space-y-3 p-5">
+          <h2 id="dispose-document-title" class="text-card-title font-semibold text-red-800">
+            Dispose of this document permanently?
+          </h2>
+          <p class="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+            <span>
+              This cannot be undone. Every file held for this document, current
+              and historical, is destroyed. The record, its ownership, its
+              version list and its complete trail are kept as evidence of what
+              was disposed of and under whose authority.
+            </span>
+          </p>
+          {% include "components/bound_field.html" with field=disposal_form.authority %}
+          {% include "components/bound_field.html" with field=disposal_form.notes %}
+          {% include "components/bound_field.html" with field=disposal_form.confirmation %}
+        </div>
+        <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+          <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+          <button type="submit" class="btn btn-danger">Dispose permanently</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
+
+  {% if can_edit and record.is_open %}
+    <dialog id="cancel-document" aria-labelledby="cancel-document-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <form method="post" action="{% url 'documents:cancel' record.pk %}">
+        {% csrf_token %}
+        <div class="space-y-3 p-5">
+          <h2 id="cancel-document-title" class="text-card-title font-semibold text-slate-900">Cancel this document?</h2>
+          <p class="text-sm text-slate-600">
+            The document stops here and leaves circulation. It keeps its record,
+            its versions and its trail, and can still be archived.
+          </p>
+          {% include "components/bound_field.html" with field=cancel_form.reason %}
+        </div>
+        <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+          <button type="button" class="btn btn-secondary" data-dialog-close>Go back</button>
+          <button type="submit" class="btn btn-danger">Cancel document</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Document?" message="This removes the document, every version of it and its whole trail. To take a document out of circulation while keeping all of that, archive it instead." detail=record confirm_label="Delete Document" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

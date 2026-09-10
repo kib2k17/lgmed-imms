@@ -1,0 +1,279 @@
+{% extends "public_base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One published division week, laid out as it is presented at the Monday
+   convocation - the same banner, the same five figures, the same numbered
+   accomplishments - so the office and the public read the Division's week in
+   the same shape.
+
+   What differs is what reaches the page. The figures are the week's division
+   totals; the lists beneath them carry only what the Chief cleared for
+   publication. Nothing here is attributed to a member of staff.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}{{ page_subtitle }}{% endblock %}
+
+{% block content %}
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+
+    {# ---- Breadcrumb ------------------------------------------------------ #}
+    <nav aria-label="Breadcrumb">
+      <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-slate-500">
+        <li><a href="{% url 'core:home' %}" class="hover:text-brand-700 hover:underline">Home</a></li>
+        <li class="flex items-center gap-1.5">
+          <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+          <a href="{% url 'core:public_updates' %}" class="hover:text-brand-700 hover:underline">Accomplishments</a>
+        </li>
+        <li class="flex items-center gap-1.5">
+          <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+          <span class="font-medium text-slate-700" aria-current="page">{{ period.label }}</span>
+        </li>
+      </ol>
+    </nav>
+
+    {# ---- Title ----------------------------------------------------------- #}
+    <header class="mt-4 rounded-lg border border-brand-200 bg-brand-50 px-6 py-8 text-center">
+      <p class="text-meta font-semibold tracking-widest text-brand-700 uppercase">
+        {{ agency.division }}
+      </p>
+      <h1 class="mt-2 text-page-title font-bold tracking-tight text-brand-900 uppercase">
+        LGMEDD Weekly Updates &amp; Accomplishments
+      </h1>
+      <p class="mt-1.5 text-lg font-semibold text-slate-700">{{ period.label }}</p>
+      {% if period.theme %}
+        <p class="mt-1 text-sm text-slate-600">{{ period.theme }}</p>
+      {% endif %}
+    </header>
+
+    {# ---- Division statistics --------------------------------------------- #}
+    <section class="mt-8" aria-labelledby="public-stats-heading">
+      <h2 id="public-stats-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+        Division Statistics
+      </h2>
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {% for card in cards %}
+          <div class="{% if forloop.last %}col-span-2 lg:col-span-1{% endif %}">
+            {% include "components/division_stat.html" with card=card %}
+          </div>
+        {% endfor %}
+      </div>
+      <p class="mt-3 text-meta text-slate-500">
+        Also in this record:
+        {{ stats.technical_assistance }} technical assistance &middot;
+        {{ stats.deliverables }} report{{ stats.deliverables|pluralize }} and
+        deliverable{{ stats.deliverables|pluralize }} &middot;
+        {{ stats.pops_accomplishments }} POPS Plan accomplishment{{ stats.pops_accomplishments|pluralize }} &middot;
+        {{ stats.photos }} photograph{{ stats.photos|pluralize }} &middot;
+        {{ stats.ways_forward }} way{{ stats.ways_forward|pluralize }} forward
+      </p>
+    </section>
+
+    {# ---- Major accomplishments -------------------------------------------- #}
+    {% if major %}
+      <section class="mt-8" aria-labelledby="public-major-heading">
+        <h2 id="public-major-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          Major Accomplishments
+        </h2>
+        <ol class="space-y-3">
+          {% for item in major %}
+            <li class="flex items-start gap-4 rounded-lg border border-slate-200 bg-white p-5">
+              <span aria-hidden="true" class="grid size-8 shrink-0 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">
+                {{ forloop.counter }}
+              </span>
+              <div class="min-w-0">
+                <h3 class="text-card-title font-semibold text-slate-900">{{ item.title }}</h3>
+                <p class="mt-1 text-meta text-slate-500">
+                  {{ item.get_category_display }}
+                  {% if item.activity_type != "NA" %} &middot; {{ item.get_activity_type_display }}{% endif %}
+                  &middot; {{ item.date_label }}
+                  {% if item.location %} &middot; {{ item.location }}{% endif %}
+                </p>
+                {% if item.narrative %}
+                  <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ item.narrative }}</p>
+                {% endif %}
+              </div>
+              <span class="ml-auto shrink-0">
+                {% status_badge item.status item.get_status_display %}
+              </span>
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+    {% endif %}
+
+    {# ---- Photographs ------------------------------------------------------ #}
+    {% if photos %}
+      <section class="mt-8" aria-labelledby="public-photos-heading">
+        <h2 id="public-photos-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          Activities &amp; Photo Documentation
+        </h2>
+        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {% for photo in photos %}
+            <li class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}"
+                   class="h-52 w-full bg-slate-50 object-cover">
+              <div class="px-4 py-3">
+                <p class="text-sm font-medium text-slate-900">{{ photo.update.title }}</p>
+                <p class="mt-0.5 text-meta text-slate-500">
+                  {{ photo.caption|default:photo.update.date_label }}
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {# ---- Everything published --------------------------------------------- #}
+    <section class="mt-8" aria-labelledby="public-entries-heading">
+      <h2 id="public-entries-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+        Division Accomplishments
+      </h2>
+      {% if entries %}
+        <ul class="space-y-3">
+          {% for entry in entries %}
+            <li class="rounded-lg border border-slate-200 bg-white p-5">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <h3 class="text-card-title font-semibold text-slate-900">{{ entry.title }}</h3>
+                  <p class="mt-1 text-meta text-slate-500">
+                    {{ entry.get_category_display }}
+                    {% if entry.activity_type != "NA" %} &middot; {{ entry.get_activity_type_display }}{% endif %}
+                    &middot; {{ entry.date_label }}
+                    {% if entry.location %} &middot; {{ entry.location }}{% endif %}
+                  </p>
+                </div>
+                {% status_badge entry.status entry.get_status_display %}
+              </div>
+              {% if entry.narrative %}
+                <p class="mt-3 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ entry.narrative }}</p>
+              {% endif %}
+              {% if entry.partner %}
+                <p class="mt-2 text-meta text-slate-500">In partnership with {{ entry.partner }}</p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="rounded-lg border border-slate-200 bg-white">
+          {% include "components/empty_state.html" with icon="check-circle" title="Nothing released for this week" message="The Division's accomplishments for this week have not been published." %}
+        </div>
+      {% endif %}
+    </section>
+
+    {# ---- POPS Plan --------------------------------------------------------- #}
+    {% if pops_updates %}
+      <section class="mt-8" aria-labelledby="public-pops-heading">
+        <h2 id="public-pops-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+          POPS Plan Updates
+        </h2>
+        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div class="border-b border-slate-200 px-5 py-3.5">
+            <p class="text-sm text-slate-700">
+              <span class="font-bold tabular">{{ pops_compliance.percent }}%</span>
+              compliance &mdash; {{ pops_compliance.accomplished }} delivered
+              against a target of {{ pops_compliance.target }}
+            </p>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">
+                POPS Plan progress published for {{ period.label }}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Commitment</th>
+                  <th scope="col">Target</th>
+                  <th scope="col">Accomplished</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pops in pops_updates %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                      {{ pops.commitment }}
+                      {% if pops.remarks %}
+                        <span class="mt-0.5 block text-meta font-normal text-slate-500">{{ pops.remarks }}</span>
+                      {% endif %}
+                    </th>
+                    <td class="tabular">{{ pops.target }}</td>
+                    <td class="tabular">{{ pops.accomplished }}</td>
+                    <td>{% status_badge pops.status pops.percent|stringformat:"d"|add:"%" %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+
+    {# ---- Ways forward and what is coming ----------------------------------- #}
+    {% if ways_forward or upcoming %}
+      <div class="mt-8 grid gap-6 {% if ways_forward and upcoming %}lg:grid-cols-2{% endif %}">
+        {% if ways_forward %}
+          <section aria-labelledby="public-ways-heading">
+            <h2 id="public-ways-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+              Ways Forward
+            </h2>
+            <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <ul class="divide-y divide-slate-100">
+                {% for way in ways_forward %}
+                  <li class="flex items-start gap-3 px-4 py-3.5">
+                    <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "chevron-right" "size-4" %}</span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-slate-900">{{ way.description }}</p>
+                      {% if way.detail %}
+                        <p class="mt-0.5 text-meta text-slate-600">{{ way.detail }}</p>
+                      {% endif %}
+                      <p class="mt-1 flex flex-wrap items-center gap-2 text-meta text-slate-500">
+                        {% status_badge way.status way.get_status_display %}
+                        {% if way.target_date %}<span class="tabular">by {{ way.target_date|date:"j M Y" }}</span>{% endif %}
+                      </p>
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </section>
+        {% endif %}
+
+        {% if upcoming %}
+          <section aria-labelledby="public-upcoming-heading">
+            <h2 id="public-upcoming-heading" class="mb-3 text-section-title font-semibold text-slate-900">
+              Upcoming Activities
+            </h2>
+            <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <ul class="divide-y divide-slate-100">
+                {% for item in upcoming %}
+                  <li class="flex items-start gap-3 px-4 py-3.5">
+                    <span aria-hidden="true" class="mt-0.5 shrink-0 text-brand-600">{% icon "calendar" "size-4" %}</span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-slate-900">{{ item.title }}</p>
+                      <p class="mt-0.5 text-meta text-slate-500 tabular">
+                        {{ item.date_label }}{% if item.location %} &middot; {{ item.location }}{% endif %}
+                      </p>
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </section>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
+      <a href="{% url 'core:public_updates' %}"
+         class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline">
+        {% icon "chevron-left" "size-3.5" %}All published weeks
+      </a>
+      <p class="text-meta text-slate-500">
+        Published by the {{ agency.division }}
+      </p>
+    </div>
+  </div>
+{% endblock %}

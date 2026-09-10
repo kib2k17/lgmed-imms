@@ -1,0 +1,97 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block extra_actions %}
+  <a href="{% url 'accounts:role_list' %}" class="btn btn-secondary">
+    {% icon "shield" "size-4" %}<span class="hidden sm:inline">Roles &amp; permissions</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "components/mini_stat.html" with label="Total accounts" value=summary.total %}
+    {% include "components/mini_stat.html" with label="Active" value=summary.active tone="success" %}
+    {% include "components/mini_stat.html" with label="Administrators" value=summary.administrators tone="info" %}
+    {% include "components/mini_stat.html" with label="Deactivated" value=summary.deactivated tone="warning" %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="last_name" label="Name" %}
+  {% include "components/th_sort.html" with field="username" label="Username" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="hidden xl:table-cell">Position</th>
+  {% include "components/th_sort.html" with field="role" label="Role" %}
+  {% include "components/th_sort.html" with field="last_login" label="Last sign-in" th_class="hidden lg:table-cell" %}
+  {% include "components/th_sort.html" with field="is_active" label="Status" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <span class="flex items-center gap-2.5">
+          <span aria-hidden="true" class="grid size-8 shrink-0 place-items-center rounded-md bg-brand-100 text-[0.6875rem] font-bold text-brand-800">
+            {{ record.get_initials }}
+          </span>
+          <span class="min-w-0">
+            <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.get_display_name }}</a>
+            {% if record.pk == user.pk %}
+              <span class="ml-1 text-meta font-normal text-slate-500">(you)</span>
+            {% endif %}
+            {% if record.email %}
+              <span class="block text-meta font-normal text-slate-500">{{ record.email }}</span>
+            {% endif %}
+          </span>
+        </span>
+      </th>
+      <td class="hidden sm:table-cell">{{ record.username }}</td>
+      <td class="hidden text-slate-500 xl:table-cell">{{ record.position|default:"Not recorded" }}</td>
+      <td>
+        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium
+                     {% if record.can_administer %}border-brand-200 bg-brand-50 text-brand-800
+                     {% else %}border-slate-200 bg-slate-100 text-slate-700{% endif %}">
+          {% if record.can_administer %}{% icon "shield" "size-3" %}{% endif %}
+          {{ record.get_role_display }}
+        </span>
+      </td>
+      <td class="hidden whitespace-nowrap lg:table-cell">
+        {% if record.last_login %}
+          <time datetime="{{ record.last_login|date:'c' }}">{{ record.last_login|date:"j M Y" }}</time>
+          <span class="block text-meta text-slate-500">{{ record.last_login|time:"g:i A" }}</span>
+        {% else %}
+          <span class="text-slate-400">Never signed in</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if record.is_active %}
+          {% status_badge "active" "Active" %}
+        {% else %}
+          {% status_badge "inactive" "Deactivated" %}
+        {% endif %}
+      </td>
+      <td class="text-right whitespace-nowrap">
+        <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+          {% icon "view" "size-3.5" %}<span class="hidden sm:inline">View</span>
+          <span class="sr-only">{{ record.get_display_name }}</span>
+        </a>
+        <a href="{% url 'accounts:user_update' record.pk %}" class="btn btn-ghost btn-sm">
+          {% icon "edit" "size-3.5" %}<span class="hidden lg:inline">Edit</span>
+          <span class="sr-only">{{ record.get_display_name }}</span>
+        </a>
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}
+
+{% block after_table %}
+  <p class="mt-4 flex items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-meta leading-relaxed text-slate-600">
+    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "info" "size-4" %}</span>
+    <span>
+      Accounts are deactivated rather than deleted. A deactivated account
+      cannot sign in, but the records it encoded and its entries in the audit
+      trail remain attributable &mdash; which is what an audit requires.
+    </span>
+  </p>
+{% endblock %}

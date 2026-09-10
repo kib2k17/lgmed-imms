@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static ui humanize %}
+
+{% block page_actions %}
+  <form method="get" class="flex items-center gap-2">
+    <label for="analytics-year" class="text-meta font-medium text-slate-600">Year</label>
+    <select id="analytics-year" name="year" class="form-select w-28"
+            onchange="this.form.submit()">
+      {% for option in years %}
+        <option value="{{ option }}" {% if option == year %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-secondary btn-sm">Go</button></noscript>
+  </form>
+  <a href="?year={{ year }}&amp;export=csv" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Export CSV</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+
+  {# ---- Headline figures ------------------------------------------------ #}
+  <section aria-labelledby="headline-heading">
+    <h2 id="headline-heading" class="sr-only">Headline figures for {{ year }}</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="card p-4">
+        <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGU coverage</p>
+        <p class="mt-1.5 text-3xl leading-none font-bold text-slate-900 tabular">
+          {{ headline.coverage_percent }}%
+        </p>
+        <p class="mt-2 text-meta text-slate-500">
+          {{ headline.lgus_covered }} of {{ headline.lgus_total }} LGUs monitored
+          at least once in {{ year }}
+        </p>
+        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+          <div class="h-full rounded-full bg-brand-600" style="width: {{ headline.coverage_percent }}%"></div>
+        </div>
+      </div>
+
+      <div class="card p-4">
+        <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Monitoring activities</p>
+        <p class="mt-1.5 text-3xl leading-none font-bold text-slate-900 tabular">
+          {{ headline.activities|intcomma }}
+        </p>
+        <p class="mt-2 text-meta text-slate-500">
+          {{ headline.completed_percent }}% marked completed
+        </p>
+      </div>
+
+      <div class="card p-4">
+        <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reports published</p>
+        <p class="mt-1.5 text-3xl leading-none font-bold text-slate-900 tabular">
+          {{ headline.published_reports|intcomma }}
+        </p>
+        <p class="mt-2 text-meta text-slate-500">
+          {{ documents.public }} document{{ documents.public|pluralize }} released publicly
+        </p>
+      </div>
+
+      <div class="card p-4">
+        <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Report turnaround</p>
+        <p class="mt-1.5 text-3xl leading-none font-bold text-slate-900 tabular">
+          {% if headline.turnaround is not None %}{{ headline.turnaround }}<span class="text-lg font-semibold text-slate-500"> days</span>{% else %}&mdash;{% endif %}
+        </p>
+        <p class="mt-2 text-meta text-slate-500">
+          {% if headline.turnaround is not None %}
+            Average from submission to publication
+          {% else %}
+            No reports completed the cycle in {{ year }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {# ---- Charts ---------------------------------------------------------- #}
+  <section class="mt-6" aria-labelledby="charts-heading">
+    <h2 id="charts-heading" class="sr-only">Analysis</h2>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {% for chart in charts %}
+        <div class="{% if chart.span == 2 %}lg:col-span-2{% else %}lg:col-span-1{% endif %}">
+          {% include "components/chart_card.html" with id=chart.id title=chart.title subtitle=chart.subtitle height="h-64" table_headers=chart.headers table_rows=chart.rows has_data=chart.has_data %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---- Where to go next ------------------------------------------------- #}
+  <section class="card mt-6" aria-labelledby="gaps-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="gaps-heading" class="card-title">Least-Monitored LGUs</h2>
+        <p class="mt-0.5 text-meta text-slate-500">
+          Where coverage is thinnest in {{ year }} &mdash; the LGUs to schedule first
+        </p>
+      </div>
+      <a href="{% url 'lgus:list' %}" class="btn btn-secondary btn-sm">
+        LGU directory{% icon "chevron-right" "size-3.5" %}
+      </a>
+    </div>
+
+    {% if least_monitored %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">
+            LGUs with the fewest monitoring activities in {{ year }}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">LGU</th>
+              <th scope="col" class="hidden sm:table-cell">Type</th>
+              <th scope="col" class="hidden md:table-cell">Province</th>
+              <th scope="col">Activities in {{ year }}</th>
+              <th scope="col">Compliance</th>
+              <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lgu in least_monitored %}
+              <tr>
+                <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                  <a href="{{ lgu.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ lgu.name }}</a>
+                </th>
+                <td class="hidden sm:table-cell">{{ lgu.get_lgu_type_display }}</td>
+                <td class="hidden md:table-cell">{{ lgu.province.name }}</td>
+                <td>
+                  <span class="font-semibold tabular {% if not lgu.visits %}text-red-700{% else %}text-slate-900{% endif %}">
+                    {{ lgu.visits }}
+                  </span>
+                  {% if not lgu.visits %}
+                    <span class="ml-1 text-meta text-red-700">not reached</span>
+                  {% endif %}
+                </td>
+                <td>{% status_badge lgu.compliance_tone lgu.get_compliance_status_display %}</td>
+                <td class="text-right whitespace-nowrap">
+                  {% if user.can_encode %}
+                    <a href="{% url 'monitoring:create' %}" class="btn btn-ghost btn-sm">
+                      {% icon "plus" "size-3.5" %}<span class="hidden sm:inline">Schedule</span>
+                      <span class="sr-only">monitoring for {{ lgu.name }}</span>
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="lgu" title="No LGUs registered" message="Load the LGU directory to see coverage analysis." %}
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+  <script src="{% static 'js/analytics.js' %}"></script>
+  <script id="analytics-data" type="application/json">{{ charts_json|safe }}</script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var el = document.getElementById("analytics-data");
+      window.LGMED.initAnalytics(JSON.parse(el.textContent));
+    });
+  </script>
+{% endblock %}

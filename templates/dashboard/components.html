@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block title %}Design System{% endblock %}
+
+{% block content %}
+
+  <p class="mb-6 flex max-w-3xl items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
+    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "info" "size-4" %}</span>
+    <span>
+      Every component below is a Django template partial under
+      <code class="rounded bg-slate-100 px-1 py-0.5 text-[0.8125rem] text-slate-800">templates/components/</code>
+      or a class in
+      <code class="rounded bg-slate-100 px-1 py-0.5 text-[0.8125rem] text-slate-800">static/css/app.src.css</code>.
+      Build new pages from these rather than writing fresh markup, so spacing,
+      focus states and status colours stay identical across modules.
+    </span>
+  </p>
+
+  <div class="space-y-6">
+
+    {# ---- Colour --------------------------------------------------------- #}
+    <section class="card" aria-labelledby="colour-heading">
+      <div class="card-header"><h2 id="colour-heading" class="card-title">Colour</h2></div>
+      <div class="card-body space-y-6">
+        <div>
+          <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Institutional blue</h3>
+          <div class="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-11">
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-50"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">50</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-100"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">100</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-200"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">200</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-300"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">300</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-400"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">400</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-500"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">500</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-600"></div><p class="px-1.5 py-1 text-[0.625rem] font-semibold text-slate-700">600</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-700"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">700</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-800"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">800</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-900"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">900</p></div>
+            <div class="rounded-md border border-slate-200"><div class="h-10 rounded-t-md bg-brand-950"></div><p class="px-1.5 py-1 text-[0.625rem] text-slate-500">950</p></div>
+          </div>
+          <p class="mt-2 text-meta text-slate-500">
+            <span class="font-medium text-slate-700">brand-600</span> is the primary action colour;
+            <span class="font-medium text-slate-700">brand-900/950</span> carry the government band and sidebar.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Status</h3>
+          <div class="mt-2.5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div class="rounded-md border border-green-200 bg-green-50 p-3">
+              <p class="text-sm font-semibold text-green-800">Green</p>
+              <p class="mt-0.5 text-meta text-green-700">Active, Completed, Approved</p>
+            </div>
+            <div class="rounded-md border border-amber-200 bg-amber-50 p-3">
+              <p class="text-sm font-semibold text-amber-800">Amber</p>
+              <p class="mt-0.5 text-meta text-amber-700">Pending, For Review</p>
+            </div>
+            <div class="rounded-md border border-red-200 bg-red-50 p-3">
+              <p class="text-sm font-semibold text-red-800">Red</p>
+              <p class="mt-0.5 text-meta text-red-700">Rejected, Critical</p>
+            </div>
+            <div class="rounded-md border border-blue-200 bg-blue-50 p-3">
+              <p class="text-sm font-semibold text-blue-800">Blue</p>
+              <p class="mt-0.5 text-meta text-blue-700">Information, In Progress</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ---- Typography ------------------------------------------------------ #}
+    <section class="card" aria-labelledby="type-heading">
+      <div class="card-header"><h2 id="type-heading" class="card-title">Typography</h2></div>
+      <div class="card-body space-y-4">
+        <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-slate-100 pb-3">
+          <p class="text-page-title font-bold text-slate-900">Page title</p>
+          <code class="text-meta text-slate-500">text-page-title &mdash; 28px / 700</code>
+        </div>
+        <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-slate-100 pb-3">
+          <p class="text-section-title font-semibold text-slate-900">Section title</p>
+          <code class="text-meta text-slate-500">text-section-title &mdash; 18px / 600</code>
+        </div>
+        <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-slate-100 pb-3">
+          <p class="text-card-title font-semibold text-slate-900">Card title</p>
+          <code class="text-meta text-slate-500">text-card-title &mdash; 16px / 600</code>
+        </div>
+        <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-slate-100 pb-3">
+          <p class="text-sm text-slate-700">Body text &mdash; the default size across the system.</p>
+          <code class="text-meta text-slate-500">text-sm &mdash; 14px / 400</code>
+        </div>
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <p class="text-meta text-slate-500">Metadata and table captions</p>
+          <code class="text-meta text-slate-500">text-meta &mdash; 12px / 400</code>
+        </div>
+      </div>
+    </section>
+
+    {# ---- Buttons and badges ---------------------------------------------- #}
+    <div class="grid gap-6 lg:grid-cols-2">
+      <section class="card" aria-labelledby="buttons-heading">
+        <div class="card-header"><h2 id="buttons-heading" class="card-title">Buttons</h2></div>
+        <div class="card-body space-y-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-primary">{% icon "plus" "size-4" %}Primary</button>
+            <button type="button" class="btn btn-secondary">{% icon "download" "size-4" %}Secondary</button>
+            <button type="button" class="btn btn-ghost">Ghost</button>
+            <button type="button" class="btn btn-danger">{% icon "delete" "size-4" %}Danger</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-primary btn-sm">Small primary</button>
+            <button type="button" class="btn btn-secondary btn-sm">Small secondary</button>
+            <button type="button" class="btn btn-primary" disabled>Disabled</button>
+          </div>
+          <p class="text-meta text-slate-500">
+            Every button carries a text label. Icon-only controls always include a
+            screen-reader label.
+          </p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="badges-heading">
+        <div class="card-header"><h2 id="badges-heading" class="card-title">Status badges</h2></div>
+        <div class="card-body">
+          <div class="flex flex-wrap items-center gap-2">
+            {% status_badge "active" %}
+            {% status_badge "completed" %}
+            {% status_badge "approved" %}
+            {% status_badge "pending" %}
+            {% status_badge "for_review" %}
+            {% status_badge "in_progress" %}
+            {% status_badge "rejected" %}
+            {% status_badge "overdue" %}
+            {% status_badge "archived" %}
+          </div>
+          <p class="mt-4 text-meta text-slate-500">
+            Each badge pairs a colour with a glyph and a text label, so status is
+            legible without colour perception. Record values map onto these five
+            tones in <code class="rounded bg-slate-100 px-1 py-0.5">core/status.py</code>.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    {# ---- Form controls --------------------------------------------------- #}
+    <section class="card" aria-labelledby="forms-heading">
+      <div class="card-header"><h2 id="forms-heading" class="card-title">Form controls</h2></div>
+      <div class="card-body">
+        <div class="grid gap-5 md:grid-cols-2">
+          <div>
+            <label for="demo-text" class="form-label">
+              Program Title<span class="required-mark" aria-hidden="true">*</span><span class="sr-only">(required)</span>
+            </label>
+            <input type="text" id="demo-text" class="form-input" placeholder="Enter the official program title">
+            <p class="form-help">Use the title as it appears in the approved issuance.</p>
+          </div>
+
+          <div>
+            <label for="demo-select" class="form-label">
+              Program Category<span class="required-mark" aria-hidden="true">*</span><span class="sr-only">(required)</span>
+            </label>
+            <select id="demo-select" class="form-select">
+              <option value="">Select category</option>
+              <option>Governance</option>
+              <option>Monitoring</option>
+              <option>Capacity Development</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="demo-error" class="form-label">
+              Start Date<span class="required-mark" aria-hidden="true">*</span><span class="sr-only">(required)</span>
+            </label>
+            <input type="date" id="demo-error" class="form-input form-input-error"
+                   aria-invalid="true" aria-describedby="demo-error-msg">
+            <p id="demo-error-msg" class="form-error" role="alert">
+              {% icon "error" "size-3.5 mt-px shrink-0" %}<span>Start date must not be later than the end date.</span>
+            </p>
+          </div>
+
+          <div>
+            <label for="demo-disabled" class="form-label">Reference Number</label>
+            <input type="text" id="demo-disabled" class="form-input" value="Assigned on save" disabled>
+            <p class="form-help">Generated by the system.</p>
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="demo-textarea" class="form-label">Findings</label>
+            <textarea id="demo-textarea" class="form-textarea" rows="3"
+                      placeholder="Record the observations made during the monitoring activity"></textarea>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-5">
+          <button type="button" class="btn btn-secondary">Cancel</button>
+          <button type="button" class="btn btn-primary">Save Program</button>
+        </div>
+      </div>
+    </section>
+
+    {# ---- Alerts ---------------------------------------------------------- #}
+    <section class="card" aria-labelledby="alerts-heading">
+      <div class="card-header"><h2 id="alerts-heading" class="card-title">Alerts</h2></div>
+      <div class="card-body space-y-3">
+        <div role="status" class="flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-3.5 text-sm text-green-900">
+          <span class="mt-0.5 shrink-0 text-green-700">{% icon "check-circle" "size-5" %}</span>
+          <p><span class="sr-only">Success: </span>Monitoring record saved successfully.</p>
+        </div>
+        <div role="status" class="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
+          <span class="mt-0.5 shrink-0 text-amber-700">{% icon "warning" "size-5" %}</span>
+          <p><span class="sr-only">Warning: </span>Your session will expire in 5 minutes. Save your work to avoid losing it.</p>
+        </div>
+        <div role="alert" class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+          <span class="mt-0.5 shrink-0 text-red-700">{% icon "error" "size-5" %}</span>
+          <p><span class="sr-only">Error: </span>The file could not be uploaded. Accepted formats are PDF, DOCX and XLSX up to 25 MB.</p>
+        </div>
+        <div role="status" class="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-900">
+          <span class="mt-0.5 shrink-0 text-blue-700">{% icon "info" "size-5" %}</span>
+          <p><span class="sr-only">Information: </span>Records edited after publication are retained in the audit log.</p>
+        </div>
+      </div>
+    </section>
+
+    {# ---- Data table ------------------------------------------------------ #}
+    <section class="card" aria-labelledby="table-heading">
+      <div class="card-header">
+        <h2 id="table-heading" class="card-title">Data table</h2>
+        <p class="text-meta text-slate-500">Search, filter, sort, badge, act</p>
+      </div>
+
+      {% include "components/table_toolbar.html" with search_placeholder="Search programs..." action_label="Add Program" action_url="#" export_url="#" filters=demo_filters %}
+
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">Example programs table</caption>
+          <thead>
+            <tr>
+              <th scope="col">Program</th>
+              <th scope="col">Category</th>
+              <th scope="col">Status</th>
+              <th scope="col">Year</th>
+              <th scope="col" class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">Seal of Good Local Governance</th>
+              <td>Governance</td>
+              <td>{% status_badge "active" %}</td>
+              <td>2026</td>
+              <td class="text-right whitespace-nowrap">
+                <a href="#" class="btn btn-ghost btn-sm">{% icon "view" "size-3.5" %}View<span class="sr-only"> Seal of Good Local Governance</span></a>
+                <a href="#" class="btn btn-ghost btn-sm">{% icon "edit" "size-3.5" %}Edit<span class="sr-only"> Seal of Good Local Governance</span></a>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">Barangay Development Plan Review</th>
+              <td>Monitoring</td>
+              <td>{% status_badge "completed" %}</td>
+              <td>2026</td>
+              <td class="text-right whitespace-nowrap">
+                <a href="#" class="btn btn-ghost btn-sm">{% icon "view" "size-3.5" %}View<span class="sr-only"> Barangay Development Plan Review</span></a>
+                <a href="#" class="btn btn-ghost btn-sm">{% icon "edit" "size-3.5" %}Edit<span class="sr-only"> Barangay Development Plan Review</span></a>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">Local Governance Capacity Development</th>
+              <td>Training</td>
+              <td>{% status_badge "pending" %}</td>
+              <td>2026</td>
+              <td class="text-right whitespace-nowrap">
+                <a href="#" class="btn btn-ghost btn-sm">{% icon "view" "size-3.5" %}View<span class="sr-only"> Local Governance Capacity Development</span></a>
+                {% if user.can_delete %}
+                  <button type="button" class="btn btn-ghost btn-sm text-red-700 hover:bg-red-50" data-dialog-open="demo-delete">
+                    {% icon "delete" "size-3.5" %}Delete<span class="sr-only"> Local Governance Capacity Development</span>
+                  </button>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 sm:px-5">
+        <p class="text-meta text-slate-600">Showing <span class="font-semibold text-slate-900">1</span>&ndash;<span class="font-semibold text-slate-900">3</span> of <span class="font-semibold text-slate-900">48</span> programs</p>
+        <ul class="flex items-center gap-1">
+          <li><span class="btn btn-secondary btn-sm opacity-50" aria-disabled="true">{% icon "chevron-left" "size-3.5" %}Previous</span></li>
+          <li><span aria-current="page" class="grid size-8 place-items-center rounded-md border border-brand-600 bg-brand-600 text-xs font-semibold text-white">1</span></li>
+          <li><a href="#" class="grid size-8 place-items-center rounded-md border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">2</a></li>
+          <li><a href="#" class="grid size-8 place-items-center rounded-md border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">3</a></li>
+          <li><a href="#" class="btn btn-secondary btn-sm">Next{% icon "chevron-right" "size-3.5" %}</a></li>
+        </ul>
+      </div>
+    </section>
+
+    {# ---- Empty state, confirmation, loading ------------------------------ #}
+    <div class="grid gap-6 lg:grid-cols-2">
+      <section class="card" aria-labelledby="empty-heading">
+        <div class="card-header"><h2 id="empty-heading" class="card-title">Empty state</h2></div>
+        {% include "components/empty_state.html" with icon="programs" title="No programs found" message="No programs match the current search and filters. Clear the filters or add a new program." action_url="#" action_label="Add Program" %}
+      </section>
+
+      <section class="card" aria-labelledby="confirm-heading">
+        <div class="card-header"><h2 id="confirm-heading" class="card-title">Confirmation &amp; loading</h2></div>
+        <div class="card-body space-y-5">
+          <div>
+            <p class="text-sm text-slate-600">Destructive actions always require confirmation.</p>
+            <button type="button" class="btn btn-danger mt-3" data-dialog-open="demo-delete">
+              {% icon "delete" "size-4" %}Delete Monitoring Record
+            </button>
+          </div>
+
+          <div class="border-t border-slate-200 pt-5">
+            <p class="text-sm text-slate-600">Loading state for tables and panels.</p>
+            <div class="mt-3 space-y-2.5" aria-hidden="true">
+              <div class="h-3 w-2/5 animate-pulse rounded bg-slate-200"></div>
+              <div class="h-3 w-full animate-pulse rounded bg-slate-200"></div>
+              <div class="h-3 w-4/5 animate-pulse rounded bg-slate-200"></div>
+            </div>
+            <p class="sr-only" role="status">Loading records, please wait.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  {% include "components/modal.html" with id="demo-delete" tone="danger" title="Delete Monitoring Record?" message="This action cannot be undone. The record and its attachments will be permanently removed." detail="Deletion is written to the audit log together with your account name and the time of the action." confirm_label="Delete Record" %}
+{% endblock %}

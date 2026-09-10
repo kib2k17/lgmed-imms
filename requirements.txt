@@ -1,0 +1,2 @@
+# LGMED-iMMS runtime dependencies
+Django==6.1.1

@@ -1,0 +1,86 @@
+{% load static ui %}<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %} &middot; {{ agency.system_name }}</title>
+  <meta name="description" content="{{ agency.system_full_name }} - {{ agency.office_short }}">
+
+  {% comment %}
+   The agency's own seal is the tab icon. Offering a second icon in another
+   format is not a fallback: a browser given both picks whichever it prefers -
+   Chrome takes the SVG - and the generic mark won, so the seal is now the only
+   icon declared.
+  {% endcomment %}
+  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
+  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
+  {% block extra_head %}{% endblock %}
+</head>
+
+{% comment %}
+ Header height (government band + application bar) drives the sticky sidebar.
+
+ The body is min-h-full, never h-full. A sticky element cannot leave its
+ containing block, and the header's containing block is the body: pinned to
+ 100% of the viewport, the body ended one screen down, so scrolling past that
+ point slid the header away while the sidebar - whose containing block is the
+ full-height row below - stayed put, leaving a white band where the header
+ should have been.
+{% endcomment %}
+<body class="min-h-full font-sans [--app-header-h:3.5rem] sm:[--app-header-h:5.25rem]">
+
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  {% include "includes/topbar.html" %}
+  {% include "includes/system_notice.html" %}
+
+  <div class="flex">
+    {% include "includes/sidebar.html" %}
+
+    {# Backdrop for the mobile navigation drawer #}
+    <div id="sidebar-backdrop" hidden
+         class="fixed inset-0 z-40 bg-slate-900/50 transition-opacity lg:hidden"></div>
+
+    <div class="flex min-h-[calc(100vh-var(--app-header-h))] min-w-0 flex-1 flex-col">
+      <main id="main-content" tabindex="-1" class="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+        <div class="mx-auto w-full max-w-[100rem]">
+          {% block breadcrumbs %}{% include "includes/breadcrumbs.html" %}{% endblock %}
+
+          {% block page_header %}
+            {% if page_title %}
+              <div class="mb-5 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-slate-200 pb-4">
+                <div class="min-w-0">
+                  <h1 class="text-page-title font-bold tracking-tight text-slate-900">{{ page_title }}</h1>
+                  {% if page_subtitle %}
+                    <p class="mt-1 text-[0.9375rem] text-slate-600">{{ page_subtitle }}</p>
+                  {% endif %}
+                  {% if is_sample_data %}
+                    <p class="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-meta font-medium text-amber-800">
+                      {% icon "info" "size-3.5" %}
+                      Sample data &mdash; live records begin in Phase 2
+                    </p>
+                  {% endif %}
+                </div>
+                <div class="flex flex-wrap items-center gap-2 no-print">
+                  {% block page_actions %}{% endblock %}
+                </div>
+              </div>
+            {% endif %}
+          {% endblock %}
+
+          {% include "includes/alerts.html" %}
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+
+      {% include "includes/footer_app.html" %}
+    </div>
+  </div>
+
+  <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% comment %}
+ The colour key for the grid. Colour is a second channel here, never the only
+ one: every entry in the grid also carries its title, and its type, owner and
+ status are stated in words to assistive technology.
+{% endcomment %}
+<div class="card-footer">
+  <ul class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-meta text-slate-600">
+    <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-xs bg-brand-600" aria-hidden="true"></span>Monitoring</li>
+    <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-xs bg-green-600" aria-hidden="true"></span>Training</li>
+    <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-xs bg-red-600" aria-hidden="true"></span>Deadline</li>
+    <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-xs bg-amber-600" aria-hidden="true"></span>Field work / travel</li>
+    <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-xs bg-slate-400" aria-hidden="true"></span>Meeting and other</li>
+    <li class="flex items-center gap-1.5"><span class="font-bold text-red-700" aria-hidden="true">!</span>Overdue</li>
+  </ul>
+</div>

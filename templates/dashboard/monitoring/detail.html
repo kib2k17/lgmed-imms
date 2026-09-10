@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+
+      {# ---- Progress ---------------------------------------------------- #}
+      <section class="card" aria-labelledby="progress-heading">
+        <div class="card-header">
+          <h2 id="progress-heading" class="card-title">Progress</h2>
+          {% if record.is_overdue %}
+            {% status_badge "overdue" "Follow-up overdue" %}
+          {% else %}
+            {% status_badge record.status record.get_status_display %}
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <ol class="flex flex-wrap gap-x-2 gap-y-3">
+            {% for stage in record.timeline %}
+              <li class="flex flex-1 basis-32 items-center gap-2">
+                <span aria-hidden="true"
+                      class="grid size-6 shrink-0 place-items-center rounded-full border-2 text-[0.625rem] font-bold
+                             {% if stage.state == 'done' %}border-green-600 bg-green-600 text-white
+                             {% elif stage.state == 'current' %}border-brand-600 bg-brand-600 text-white
+                             {% elif stage.state == 'cancelled' %}border-red-600 bg-red-600 text-white
+                             {% else %}border-slate-300 bg-white text-slate-400{% endif %}">
+                  {% if stage.state == "done" %}{% icon "check" "size-3" %}{% else %}{{ forloop.counter }}{% endif %}
+                </span>
+                <span class="min-w-0 text-meta font-medium
+                             {% if stage.state == 'upcoming' %}text-slate-400{% else %}text-slate-800{% endif %}">
+                  {{ stage.label }}
+                  {% if stage.state == "current" %}<span class="sr-only">(current stage)</span>{% endif %}
+                  {% if stage.state == "done" %}<span class="sr-only">(completed)</span>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </section>
+
+      {# ---- Findings ---------------------------------------------------- #}
+      <section class="card" aria-labelledby="findings-heading">
+        <div class="card-header">
+          <h2 id="findings-heading" class="card-title">Findings and Recommendations</h2>
+        </div>
+        <div class="card-body space-y-6">
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Findings</h3>
+            {% if record.findings %}
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.findings }}</p>
+            {% else %}
+              <p class="mt-2 text-sm text-slate-400">No findings recorded.</p>
+            {% endif %}
+          </div>
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Recommendations</h3>
+            {% if record.recommendations %}
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.recommendations }}</p>
+            {% else %}
+              <p class="mt-2 text-sm text-slate-400">No recommendations recorded.</p>
+            {% endif %}
+          </div>
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Follow-up action</h3>
+            {% if record.follow_up_action %}
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.follow_up_action }}</p>
+            {% else %}
+              <p class="mt-2 text-sm text-slate-400">No follow-up action recorded.</p>
+            {% endif %}
+            {% if record.follow_up_date %}
+              <p class="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-meta font-medium
+                        {% if record.is_overdue %}border-red-200 bg-red-50 text-red-800{% else %}border-slate-200 bg-slate-50 text-slate-700{% endif %}">
+                {% icon "clock" "size-3.5" %}
+                Due {{ record.follow_up_date|date:"j F Y" }}
+                {% if record.is_overdue %}&mdash; overdue{% endif %}
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      {# ---- Attachments -------------------------------------------------- #}
+      <section class="card" aria-labelledby="attachments-heading">
+        <div class="card-header">
+          <h2 id="attachments-heading" class="card-title">Supporting Documents</h2>
+          <p class="text-meta text-slate-500">
+            {{ record.attachments.count }} file{{ record.attachments.count|pluralize }}
+          </p>
+        </div>
+
+        {% if record.attachments.all %}
+          <ul class="divide-y divide-slate-100">
+            {% for attachment in record.attachments.all %}
+              <li class="flex items-center gap-3 px-4 py-3 sm:px-5">
+                <span aria-hidden="true" class="grid size-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-500">
+                  {% icon "file" "size-4" %}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <a href="{{ attachment.file.url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                    {{ attachment.title }}
+                  </a>
+                  <p class="text-meta text-slate-500">
+                    {{ attachment.extension }} &middot; {{ attachment.size|filesize }} &middot;
+                    uploaded {{ attachment.uploaded_at|date:"j M Y" }}
+                    {% if attachment.uploaded_by %}by {{ attachment.uploaded_by.get_display_name }}{% endif %}
+                  </p>
+                </div>
+                {% if user.can_delete %}
+                  <form method="post" action="{% url 'monitoring:attachment_delete' record.pk attachment.pk %}" class="no-print">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost btn-sm text-red-700 hover:bg-red-50">
+                      {% icon "delete" "size-3.5" %}<span class="sr-only">Remove {{ attachment.title }}</span>
+                    </button>
+                  </form>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            No supporting documents have been attached to this record.
+          </p>
+        {% endif %}
+
+        {% if user.can_encode %}
+          <form method="post" action="{% url 'monitoring:attachment_add' record.pk %}"
+                enctype="multipart/form-data"
+                class="border-t border-slate-200 p-4 sm:px-5 no-print">
+            {% csrf_token %}
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Attach a document</h3>
+            <div class="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div>
+                <label for="{{ attachment_form.title.id_for_label }}" class="form-label">
+                  Title<span class="required-mark" aria-hidden="true">*</span><span class="sr-only">(required)</span>
+                </label>
+                {{ attachment_form.title }}
+              </div>
+              <div>
+                <label for="{{ attachment_form.file.id_for_label }}" class="form-label">
+                  File<span class="required-mark" aria-hidden="true">*</span><span class="sr-only">(required)</span>
+                </label>
+                {{ attachment_form.file }}
+              </div>
+              <button type="submit" class="btn btn-secondary">
+                {% icon "upload" "size-4" %}Attach
+              </button>
+            </div>
+          </form>
+        {% endif %}
+      </section>
+    </div>
+
+    {# ---- Details rail --------------------------------------------------- #}
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Activity Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGU</dt>
+              <dd class="mt-1 text-sm">
+                <a href="{{ record.lgu.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">
+                  {{ record.lgu.name }}
+                </a>
+              </dd>
+              <dd class="text-meta text-slate-500">
+                {{ record.lgu.get_lgu_type_display }} &middot; {{ record.lgu.province.name }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Monitoring date</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                <time datetime="{{ record.monitoring_date|date:'Y-m-d' }}">{{ record.monitoring_date|date:"j F Y" }}</time>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Monitoring team</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.monitoring_team }}</dd>
+            </div>
+            {% if record.program %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Program</dt>
+                <dd class="mt-1 text-sm">
+                  <a href="{{ record.program.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">
+                    {{ record.program.title }}
+                  </a>
+                </dd>
+              </div>
+            {% endif %}
+            {% if record.reference_number %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference number</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.reference_number }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete Monitoring Record?" message="This action cannot be undone. The record and its attachments will be permanently removed." detail=record confirm_label="Delete Record" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}

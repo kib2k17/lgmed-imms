@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="grid gap-4 lg:grid-cols-3">
+
+    <section class="card lg:col-span-2" aria-labelledby="details-heading">
+      <div class="card-header">
+        <h2 id="details-heading" class="card-title">Account Details</h2>
+      </div>
+      <div class="card-body">
+        <dl class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Full name</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.get_display_name }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Username</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.username }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Position</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.position|default:"Not recorded" }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Office / Division</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.office|default:agency.division }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Email address</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.email|default:"Not recorded" }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Contact number</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.contact_number|default:"Not recorded" }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Last sign-in</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.last_login|date:"j F Y, g:i A"|default:"First session" }}</dd>
+          </div>
+          <div>
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Account created</dt>
+            <dd class="mt-1 text-sm text-slate-900">{{ user.date_joined|date:"j F Y" }}</dd>
+          </div>
+        </dl>
+      </div>
+      <div class="card-footer">
+        <p class="text-meta text-slate-500">
+          Account details are maintained by the system administrator.
+        </p>
+        <a href="mailto:{{ agency.email }}" class="btn btn-secondary btn-sm">
+          {% icon "mail" "size-3.5" %}Request a correction
+        </a>
+      </div>
+    </section>
+
+    <section class="card h-full" aria-labelledby="access-heading">
+      <div class="card-header">
+        <h2 id="access-heading" class="card-title">System Access</h2>
+      </div>
+      <div class="card-body">
+        <div class="flex items-center gap-3">
+          <span class="grid size-12 shrink-0 place-items-center rounded-md bg-brand-100 text-sm font-bold text-brand-800" aria-hidden="true">
+            {{ user.get_initials }}
+          </span>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-slate-900">{{ user.get_role_label }}</p>
+            <p class="text-meta text-slate-500">Assigned role</p>
+          </div>
+        </div>
+
+        <h3 class="mt-6 text-meta font-semibold tracking-wide text-slate-500 uppercase">Permissions</h3>
+        <ul class="mt-3 space-y-2.5">
+          {% for attribute, label, description in capabilities %}
+            <li class="flex items-start justify-between gap-3">
+              <span class="min-w-0">
+                <span class="block text-sm text-slate-700">{{ label }}</span>
+                <span class="block text-meta text-slate-500">{{ description }}</span>
+              </span>
+              <span class="shrink-0">
+                {% if user|capability:attribute %}
+                  {% status_badge "approved" "Granted" %}
+                {% else %}
+                  {% status_badge "inactive" "Not granted" %}
+                {% endif %}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <p class="mt-5 flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-meta leading-relaxed text-slate-600">
+          <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-3.5" %}</span>
+          <span>Permissions are enforced by the server on every request. Contact the administrator to request a change of role.</span>
+        </p>
+      </div>
+    </section>
+  </div>
+
+  {% comment %}
+ Your own recent activity, from the audit trail. Seeing what the system
+     recorded about you is part of being accountable to it. 
+{% endcomment %}
+  <section class="card mt-4" aria-labelledby="my-activity-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="my-activity-heading" class="card-title">My Recent Activity</h2>
+        <p class="mt-0.5 text-meta text-slate-500">The last 10 actions recorded against your account</p>
+      </div>
+    </div>
+    {% if recent_events %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">Recent audit entries for your account</caption>
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Action</th>
+              <th scope="col" class="hidden md:table-cell">Record</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in recent_events %}
+              <tr>
+                <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-normal whitespace-nowrap text-slate-700">
+                  <time datetime="{{ event.timestamp|date:'c' }}">{{ event.timestamp|date:"j M Y, g:i A" }}</time>
+                </th>
+                <td>{% status_badge event.status_tone event.get_action_display %}</td>
+                <td class="hidden text-slate-600 md:table-cell">
+                  {{ event.target_label|default:event.detail|truncatechars:60 }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+        No activity has been recorded for your account yet.
+      </p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "public_base.html" %}
+{% load ui %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  {# ---- What the Programs section holds -------------------------------- #}
+  <section class="border-b border-slate-200 bg-white" aria-labelledby="program-areas-heading">
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <h2 id="program-areas-heading" class="text-section-title font-semibold text-slate-900">
+        Three ways into the Division's work
+      </h2>
+      <div class="mt-6 grid gap-5 md:grid-cols-3">
+
+        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+            {% icon "programs" "size-5" %}
+          </span>
+          <h3 class="mt-4 text-card-title font-semibold text-slate-900">LGMED PPAs</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            The programs, projects and activities the Division administers for
+            local government units, with their period and coverage.
+          </p>
+          <p class="mt-3 text-meta">
+            <a href="#ppas" class="font-medium text-brand-700 hover:underline">See the list below</a>
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+            {% icon "monitoring" "size-5" %}
+          </span>
+          <h3 class="mt-4 text-card-title font-semibold text-slate-900">Core functions</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            Monitoring, evaluation and databanking &mdash; the regional record of
+            LGU performance that every programme decision is drawn from.
+          </p>
+          <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta">
+            <a href="{% url 'core:public_about' %}" class="font-medium text-brand-700 hover:underline">What the Division does</a>
+            <a href="{% url 'core:public_statistics' %}" class="font-medium text-brand-700 hover:underline">Databank figures</a>
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+            {% icon "documents" "size-5" %}
+          </span>
+          <h3 class="mt-4 text-card-title font-semibold text-slate-900">Knowledge products</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            Guidebooks, primers, issuances and the monitoring reports the
+            Division publishes for LGUs and the public.
+          </p>
+          <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta">
+            <a href="{% url 'core:public_documents' %}" class="font-medium text-brand-700 hover:underline">Document library</a>
+            <a href="{% url 'core:public_reports' %}" class="font-medium text-brand-700 hover:underline">Published reports</a>
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <h2 id="ppas" class="text-section-title font-semibold text-slate-900" tabindex="-1">
+      Programs, projects and activities
+    </h2>
+    <p class="mt-1.5 mb-6 text-sm text-slate-600">
+      Administered by the Division across the region.
+    </p>
+
+    {% if programs %}
+      <ul class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {% for program in programs %}
+          <li class="flex flex-col rounded-lg border border-slate-200 bg-white p-5">
+            <p class="flex flex-wrap items-center gap-2">
+              {% status_badge program.status program.get_status_display %}
+              <span class="text-meta text-slate-500">{{ program.category.name }}</span>
+            </p>
+            <h3 class="mt-3 text-card-title font-semibold text-slate-900">{{ program.title }}</h3>
+            {% if program.description %}
+              <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+                {{ program.description|truncatewords:30 }}
+              </p>
+            {% endif %}
+            <dl class="mt-4 border-t border-slate-100 pt-3 text-meta text-slate-500">
+              <div class="flex justify-between gap-3">
+                <dt>Period</dt>
+                <dd class="text-right text-slate-700">
+                  {{ program.start_date|date:"M Y" }}
+                  {% if program.end_date %}&ndash; {{ program.end_date|date:"M Y" }}{% endif %}
+                </dd>
+              </div>
+              <div class="mt-1 flex justify-between gap-3">
+                <dt>Coverage</dt>
+                <dd class="text-right text-slate-700">{{ program.coverage_label }}</dd>
+              </div>
+            </dl>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="rounded-lg border border-slate-200 bg-white">
+        {% include "components/empty_state.html" with icon="programs" title="No programs published yet" message="Programs appear here once they are recorded and active. In the meantime the Division can be reached using the contact details below." %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

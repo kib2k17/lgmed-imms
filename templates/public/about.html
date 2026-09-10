@@ -1,0 +1,180 @@
+{% extends "public_base.html" %}
+{% load ui static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  {% include "includes/public_page_header.html" %}
+
+  <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:gap-12 lg:px-8">
+
+    <div class="lg:col-span-2">
+
+      {# ---- Message from the Division Chief ----------------------------- #}
+      {% comment %}
+        The chief's message opens the page. The portrait takes a third of the
+        row and is capped at 224px, so it sits beside the text rather than
+        dominating it and does not keep growing on a wide screen. The name and
+        title sit under the portrait they belong to, not at the foot of the
+        prose. Real alt text, and the intrinsic width and height, so the
+        paragraphs do not reflow when the picture arrives.
+      {% endcomment %}
+      <section class="mb-12" aria-labelledby="chief-message-heading">
+        <h2 id="chief-message-heading" class="text-section-title font-semibold text-slate-900">
+          Message from the Division Chief
+        </h2>
+
+        <div class="mt-5 grid gap-6 sm:grid-cols-3 sm:gap-8">
+          <div>
+            <img src="{% static 'img/division-chief.jpg' %}"
+                 alt="Ray Gregory F. Jaranilla, Chief of the Local Government Monitoring and Evaluation Division."
+                 width="1280" height="1561"
+                 class="h-auto w-40 rounded-lg sm:w-full sm:max-w-56"
+                 decoding="async">
+
+            <p class="mt-3 text-sm font-semibold tracking-wide text-slate-900">
+              RAY GREGORY F. JARANILLA
+            </p>
+            <p class="mt-0.5 text-meta leading-relaxed text-slate-600">
+              Chief, Local Government Monitoring and Evaluation Division<br>
+              DILG Region XIII - Caraga
+            </p>
+          </div>
+
+          <div class="min-w-0 sm:col-span-2">
+            <div class="prose-gov">
+              <p>
+                Welcome to the official microsite of the Local Government
+                Monitoring and Evaluation Division (LGMED) of DILG Region XIII.
+                As the monitoring arm of DILG Caraga, our mission is to ensure
+                that local governance is not just a process, but a tangible
+                service that reaches every citizen. We believe that what gets
+                measured gets improved; therefore, we provide the
+                evidence-based feedback and oversight necessary to help our
+                Local Government Units thrive and improve their service
+                delivery.
+              </p>
+              <p>
+                This platform is designed to provide our partners&mdash;the
+                Local Government Units, Civil Society Organizations, and the
+                general public&mdash;with real-time access to vital reports,
+                operational guidelines, and regional milestones. Together, let
+                us continue to uphold the highest standards of transparency,
+                accountability, and excellence in the Caraga Region.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {# ---- The Division ------------------------------------------------ #}
+      <figure class="mb-8">
+        <img src="{% static 'img/lgmed-team.jpg' %}"
+             alt="The staff of the Local Government Monitoring and Evaluation Division of DILG Region XIII - Caraga, photographed together at the Regional Office."
+             width="1280" height="504"
+             class="w-full rounded-lg border border-slate-200"
+             decoding="async">
+        <figcaption class="mt-2 text-meta text-slate-500">
+          The staff of the {{ agency.division }}.
+        </figcaption>
+      </figure>
+
+      <div class="prose-gov">
+        <p class="whitespace-pre-line">{{ public_content.about_intro }}</p>
+
+        <h2>Core functions</h2>
+        <ul>
+          {% for function in public_content.function_list %}<li>{{ function }}</li>{% endfor %}
+        </ul>
+
+        <h2>Coverage</h2>
+        <p>
+          The Division covers all {{ summary.lgus }} local government units of
+          Region XIII: {{ summary.provinces }} provinces, {{ summary.cities }}
+          cities and {{ summary.municipalities }} municipalities.
+        </p>
+      </div>
+
+      {# ---- Commendations ---------------------------------------------- #}
+      <section class="mt-10" aria-labelledby="commendations-heading">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <h2 id="commendations-heading" class="text-section-title font-semibold text-slate-900">Commendations</h2>
+          {% if commendations %}
+            <a href="{% url 'core:public_announcements' %}?category=COMMENDATION"
+               class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+              All commendations{% icon "chevron-right" "size-3.5" %}
+            </a>
+          {% endif %}
+        </div>
+
+        {% if commendations %}
+          <ul class="divide-y divide-slate-200">
+            {% for item in commendations %}
+              <li class="flex gap-4 py-4">
+                <span aria-hidden="true" class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700">
+                  {% icon "check-circle" "size-5" %}
+                </span>
+                <div class="min-w-0">
+                  <p class="text-meta text-slate-500">
+                    <time datetime="{{ item.published_on|date:'Y-m-d' }}">{{ item.published_on|date:"j F Y" }}</time>
+                  </p>
+                  <h3 class="mt-0.5 text-card-title font-semibold text-slate-900">
+                    <a href="{{ item.get_public_url }}" class="hover:text-brand-700 hover:underline">{{ item.title }}</a>
+                  </h3>
+                  <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ item.summary|truncatewords:30 }}</p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="py-8 text-sm text-slate-500">
+            Commendations and recognitions received by the Division will be listed here.
+          </p>
+        {% endif %}
+      </section>
+
+      <h2 class="mt-10 text-section-title font-semibold text-slate-900">Provinces covered</h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-3">
+        {% for province in provinces %}
+          <div class="rounded-md border border-slate-200 bg-white p-4">
+            <p class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <span class="text-brand-700" aria-hidden="true">{% icon "map-pin" "size-4" %}</span>
+              {{ province.name }}
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Aside #}
+    <aside class="space-y-5">
+      <section class="rounded-lg border border-slate-200 bg-slate-50 p-5" aria-labelledby="about-system-heading">
+        <h2 id="about-system-heading" class="text-card-title font-semibold text-slate-900">About LGMED-iMMS</h2>
+        <p class="mt-2 text-sm leading-relaxed text-slate-600">
+          {{ agency.system_full_name }} is the Division's information system for
+          recording monitoring activities, managing documents and publishing
+          reports.
+        </p>
+        <a href="{% url 'accounts:login' %}" class="btn btn-secondary mt-4 w-full">
+          {% icon "lock" "size-4" %}Staff sign in
+        </a>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="about-contact-heading">
+        <h2 id="about-contact-heading" class="text-card-title font-semibold text-slate-900">Office details</h2>
+        <address class="mt-3 space-y-2.5 text-sm not-italic text-slate-600">
+          <p class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "map-pin" "size-4" %}</span>{{ agency.address }}
+          </p>
+          <p class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "phone" "size-4" %}</span>{{ agency.telephone }}
+          </p>
+          <p class="flex items-start gap-2.5">
+            <span class="mt-0.5 shrink-0 text-slate-400">{% icon "mail" "size-4" %}</span>
+            <a href="mailto:{{ agency.email }}" class="break-all text-brand-700 hover:underline">{{ agency.email }}</a>
+          </p>
+        </address>
+      </section>
+    </aside>
+  </div>
+{% endblock %}

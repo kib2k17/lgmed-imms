@@ -1,0 +1,138 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Government header - agency identity on the left, account controls on the
+   right. Kept to two compact bands so it never crowds the working area.
+   --------------------------------------------------------------------------- 
+{% endcomment %}
+<header class="sticky top-0 z-50">
+
+  {# Band 1: institutional context #}
+  <div class="hidden bg-brand-950 text-brand-200 sm:block">
+    <div class="flex h-7 items-center justify-between gap-4 px-4 text-[0.6875rem] sm:px-6 lg:px-8">
+      <p class="truncate">
+        {{ agency.department }}
+        <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span>
+        {{ agency.office }}
+      </p>
+      <p class="hidden items-center gap-1.5 md:flex">
+        {% icon "lock" "size-3" %}
+        <span>Secure internal system &mdash; for authorized personnel only</span>
+      </p>
+    </div>
+  </div>
+
+  {# Band 2: application bar #}
+  <div class="border-b border-slate-200 bg-white">
+    <div class="flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
+
+      <button type="button" id="sidebar-open"
+              class="btn btn-ghost -ml-1 px-2 lg:hidden"
+              aria-controls="sidebar" aria-expanded="false">
+        {% icon "menu" "size-5" %}
+        <span class="sr-only">Open navigation menu</span>
+      </button>
+
+      {% comment %}
+ Agency mark. Replace static img/dilg-logo.png with the official seal
+         when the office provides the asset; the wordmark below is a neutral
+         placeholder, not a reproduction of any seal. 
+{% endcomment %}
+      <a href="{% url 'core:dashboard' %}" class="flex min-w-0 items-center gap-3 rounded-md py-1">
+        {% include "includes/agency_logo.html" with size="size-9" %}
+        <span class="min-w-0">
+          <span class="hidden text-[0.6875rem] leading-tight font-medium tracking-wide text-slate-500 uppercase md:block">
+            {{ agency.division }}
+          </span>
+          <span class="block truncate text-[0.9375rem] leading-tight font-bold text-brand-900">
+            {{ agency.system_name }}
+            <span class="font-medium text-slate-500 md:hidden">&mdash; {{ agency.office_short }}</span>
+          </span>
+        </span>
+        <span class="sr-only">{{ agency.system_full_name }} &mdash; go to dashboard</span>
+      </a>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-2">
+
+        {# Global search #}
+        <form action="#" method="get" role="search" class="hidden lg:block">
+          <label for="global-search" class="sr-only">Search the system</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 grid w-9 place-items-center text-slate-400">
+              {% icon "search" "size-4" %}
+            </span>
+            <input type="search" id="global-search" name="q" placeholder="Search records&hellip;"
+                   class="form-input w-56 py-1.5 pl-9 xl:w-72">
+          </div>
+        </form>
+        <button type="button" class="btn btn-ghost px-2 lg:hidden" data-search-toggle>
+          {% icon "search" "size-5" %}
+          <span class="sr-only">Search</span>
+        </button>
+
+        {% include "includes/notification_bell.html" %}
+
+        <span class="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden="true"></span>
+
+        {# Account #}
+        <div class="relative" data-menu>
+          <button type="button" class="btn btn-ghost gap-2 px-1.5 sm:px-2"
+                  data-menu-button aria-expanded="false" aria-haspopup="true">
+            <span class="grid size-8 shrink-0 place-items-center rounded-md bg-brand-100 text-xs font-bold text-brand-800"
+                  aria-hidden="true">{{ user.get_initials }}</span>
+            <span class="hidden text-left sm:block">
+              <span class="block text-[0.8125rem] leading-tight font-semibold text-slate-900">{{ user.get_display_name }}</span>
+              <span class="block text-[0.6875rem] leading-tight text-slate-500">{{ user.position|default:user.get_role_label }}</span>
+            </span>
+            {% icon "chevron-down" "size-4 text-slate-400" %}
+            <span class="sr-only">Account menu</span>
+          </button>
+          <div data-menu-panel hidden
+               class="absolute right-0 z-50 mt-1 w-64 origin-top-right rounded-lg border border-slate-200 bg-white shadow-overlay">
+            <div class="border-b border-slate-200 px-4 py-3">
+              <p class="text-sm font-semibold text-slate-900">{{ user.get_display_name }}</p>
+              <p class="text-meta text-slate-500">{{ user.email|default:user.username }}</p>
+              <p class="mt-2 inline-flex items-center gap-1.5 rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-brand-800">
+                {% icon "shield" "size-3" %}{{ user.get_role_label }}
+              </p>
+            </div>
+            <div class="p-1.5">
+              <a href="{% url 'accounts:profile' %}"
+                 class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                {% icon "user" "size-4 text-slate-400" %}My profile</a>
+              <a href="{% url 'core:components' %}"
+                 class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                {% icon "help" "size-4 text-slate-400" %}Design system</a>
+              <a href="{% url 'core:home' %}"
+                 class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                {% icon "external" "size-4 text-slate-400" %}Public website</a>
+            </div>
+            <div class="border-t border-slate-200 p-1.5">
+              <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-red-700 hover:bg-red-50">
+                  {% icon "logout" "size-4" %}Sign out
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Collapsible search for small screens #}
+    <div id="mobile-search" hidden class="border-t border-slate-200 px-4 py-2.5 lg:hidden">
+      <form action="#" method="get" role="search">
+        <label for="global-search-mobile" class="sr-only">Search the system</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-0 grid w-9 place-items-center text-slate-400">
+            {% icon "search" "size-4" %}
+          </span>
+          <input type="search" id="global-search-mobile" name="q" placeholder="Search records&hellip;"
+                 class="form-input pl-9">
+        </div>
+      </form>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+# Local secrets. Normally inside venv/ (already ignored above); named here
+# too, so moving it out of the virtualenv cannot commit it by accident.
+lgmed.env
+# Demonstration account passwords, kept in the working copy for
+# convenience. Plain text, so it must never be committed.
+acounts.txt
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Tailwind standalone binary (134 MB - download per machine, see README)
+tools/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    {# ---- Preferences ---------------------------------------------------- #}
+    <div class="space-y-4 xl:col-span-2">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <section class="card" aria-labelledby="prefs-heading">
+          <div class="card-header">
+            <div>
+              <h2 id="prefs-heading" class="card-title">Preferences</h2>
+              <p class="mt-0.5 text-meta text-slate-500">
+                Each setting here changes something visible in the system.
+              </p>
+            </div>
+          </div>
+
+          <div class="card-body space-y-6">
+            {% for title, fields in form.get_sections %}
+              <fieldset>
+                <legend class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ title }}</legend>
+                <div class="mt-3 grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                  {% for field in fields %}
+                    <div class="{% if field.is_wide %}sm:col-span-2{% endif %}">
+                      {% include "components/bound_field.html" with field=field form=form %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            {% endfor %}
+          </div>
+
+          <div class="card-footer">
+            <p class="text-meta text-slate-500">
+              {% if record.updated_by %}
+                Last changed by {{ record.updated_by.get_display_name }},
+              {% endif %}
+              {{ form.instance.updated_at|date:"j F Y, g:i A" }}
+            </p>
+            <button type="submit" class="btn btn-primary">
+              {% icon "check" "size-4" %}Save settings
+            </button>
+          </div>
+        </section>
+      </form>
+
+      {# ---- Reference data ------------------------------------------------ #}
+      {% for list in reference_lists %}
+        <section id="{{ list.slug }}" class="card scroll-mt-28" aria-labelledby="ref-{{ list.slug }}">
+          <div class="card-header">
+            <div class="min-w-0">
+              <h2 id="ref-{{ list.slug }}" class="flex items-center gap-2 card-title">
+                <span class="text-slate-400" aria-hidden="true">{% icon list.icon "size-4" %}</span>
+                {{ list.plural }}
+              </h2>
+              <p class="mt-0.5 text-meta text-slate-500">{{ list.description }}</p>
+            </div>
+            <a href="{% url 'administration:reference_create' list.slug %}" class="btn btn-secondary btn-sm">
+              {% icon "plus" "size-3.5" %}Add
+            </a>
+          </div>
+
+          {% if list.rows %}
+            <div class="table-wrap">
+              <table class="table">
+                <caption class="sr-only">{{ list.plural }} held by the system</caption>
+                <thead>
+                  <tr>
+                    {% for column in list.columns %}<th scope="col">{{ column }}</th>{% endfor %}
+                    <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in list.rows %}
+                    <tr>
+                      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                        {{ row }}
+                      </th>
+                      {% if list.slug == "program-categories" %}
+                        <td class="text-slate-500">{{ row.description|default:"&mdash;" }}</td>
+                        <td class="tabular">{{ row.usage_count }}</td>
+                        <td>
+                          {% if row.is_active %}{% status_badge "active" "Active" %}
+                          {% else %}{% status_badge "inactive" "Inactive" %}{% endif %}
+                        </td>
+                      {% elif list.slug == "sections" %}
+                        <td class="text-slate-500">{{ row.short_name|default:"&mdash;" }}</td>
+                        <td class="tabular">{{ row.usage_count }}</td>
+                        <td>
+                          {% if row.is_active %}{% status_badge "active" "Active" %}
+                          {% else %}{% status_badge "inactive" "Inactive" %}{% endif %}
+                        </td>
+                      {% elif list.slug == "document-types" %}
+                        <td class="text-slate-500">{{ row.retention_label }}</td>
+                        <td class="tabular">{{ row.usage_count }}</td>
+                        <td>
+                          {% if row.is_active %}{% status_badge "active" "Active" %}
+                          {% else %}{% status_badge "inactive" "Inactive" %}{% endif %}
+                        </td>
+                      {% elif list.slug == "disposal-authorities" %}
+                        <td class="text-slate-500">{{ row.approved_on|date:"j M Y" }}</td>
+                        <td class="tabular">{{ row.usage_count }}</td>
+                        <td>
+                          {% if row.is_active %}{% status_badge "active" "Active" %}
+                          {% else %}{% status_badge "inactive" "Inactive" %}{% endif %}
+                        </td>
+                      {% else %}
+                        <td class="text-slate-500">{{ row.capital|default:"&mdash;" }}</td>
+                        <td class="tabular">{{ row.usage_count }}</td>
+                      {% endif %}
+                      <td class="text-right whitespace-nowrap">
+                        <a href="{% url 'administration:reference_update' list.slug row.pk %}"
+                           class="btn btn-ghost btn-sm">
+                          {% icon "edit" "size-3.5" %}<span class="hidden sm:inline">Edit</span>
+                          <span class="sr-only">{{ row }}</span>
+                        </a>
+                        {% if not row.usage_count %}
+                          <form method="post"
+                                action="{% url 'administration:reference_delete' list.slug row.pk %}"
+                                class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-sm text-red-700 hover:bg-red-50">
+                              {% icon "delete" "size-3.5" %}<span class="hidden sm:inline">Remove</span>
+                              <span class="sr-only">{{ row }}</span>
+                            </button>
+                          </form>
+                        {% else %}
+                          <span class="px-2 text-meta text-slate-400" title="In use by {{ row.usage_count }} record{{ row.usage_count|pluralize }}">
+                            In use
+                          </span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+              No {{ list.plural|lower }} have been added yet.
+            </p>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+
+    {# ---- System information --------------------------------------------- #}
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="info-heading">
+        <div class="card-header">
+          <div>
+            <h2 id="info-heading" class="card-title">System Information</h2>
+            <p class="mt-0.5 text-meta text-slate-500">For ICT personnel</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-3.5">
+            {% for label, value in system_info %}
+              <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ label }}</dt>
+                <dd class="text-sm break-all text-slate-900">{{ value }}</dd>
+              </div>
+            {% endfor %}
+          </dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="links-heading">
+        <div class="card-header">
+          <h2 id="links-heading" class="card-title">Administration</h2>
+        </div>
+        <div class="p-1.5">
+          <a href="{% url 'accounts:user_list' %}"
+             class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+            {% icon "users" "size-4 text-slate-400" %}Users &amp; roles
+          </a>
+          <a href="{% url 'accounts:role_list' %}"
+             class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+            {% icon "shield" "size-4 text-slate-400" %}Permission matrix
+          </a>
+          <a href="{% url 'audit:list' %}"
+             class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+            {% icon "audit" "size-4 text-slate-400" %}Audit logs
+          </a>
+          {% if user.is_superadmin %}
+            <a href="/django-admin/"
+               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+              {% icon "settings" "size-4 text-slate-400" %}Django administration
+            </a>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+{% endblock %}

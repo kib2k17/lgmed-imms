@@ -1,0 +1,52 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "components/mini_stat.html" with label="Total activities" value=summary.total %}
+    {% include "components/mini_stat.html" with label="For review" value=summary.for_review tone="warning" %}
+    {% include "components/mini_stat.html" with label="Completed" value=summary.completed tone="success" %}
+    {% include "components/mini_stat.html" with label="Follow-up overdue" value=summary.overdue tone="danger" %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="lgu__name" label="LGU" %}
+  {% include "components/th_sort.html" with field="title" label="Activity" th_class="hidden md:table-cell" %}
+  {% include "components/th_sort.html" with field="monitoring_date" label="Date" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="hidden xl:table-cell">Team</th>
+  {% include "components/th_sort.html" with field="status" label="Status" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.lgu.name }}</a>
+        <span class="block text-meta font-normal text-slate-500">{{ record.lgu.province.name }}</span>
+      </th>
+      <td class="hidden md:table-cell">
+        {{ record.title }}
+        {% if record.program %}
+          <span class="block text-meta text-slate-500">{{ record.program.title }}</span>
+        {% endif %}
+      </td>
+      <td class="hidden whitespace-nowrap sm:table-cell">
+        <time datetime="{{ record.monitoring_date|date:'Y-m-d' }}">{{ record.monitoring_date|date:"j M Y" }}</time>
+      </td>
+      <td class="hidden text-slate-500 xl:table-cell">{{ record.monitoring_team|truncatechars:40 }}</td>
+      <td>
+        {% if record.is_overdue %}
+          {% status_badge "overdue" "Follow-up overdue" %}
+        {% else %}
+          {% status_badge record.status record.get_status_display %}
+        {% endif %}
+      </td>
+      <td class="text-right whitespace-nowrap">
+        {% include "components/row_actions.html" with record=record %}
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

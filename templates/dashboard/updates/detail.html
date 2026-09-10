@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}{% include "components/detail_actions.html" %}{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="entry-heading">
+        <div class="card-header">
+          <h2 id="entry-heading" class="card-title">What the Division Did</h2>
+          {% status_badge record.status record.get_status_display %}
+        </div>
+        <div class="card-body space-y-6">
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Accomplishment</h3>
+            {% if record.narrative %}
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.narrative }}</p>
+            {% else %}
+              <p class="mt-2 text-sm text-slate-500">
+                No narrative was recorded. The title alone stands as the entry.
+              </p>
+            {% endif %}
+          </div>
+
+          {% if record.remarks %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Remarks</h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.remarks }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- Photo documentation ------------------------------------------ #}
+      <section class="card" aria-labelledby="photos-heading">
+        <div class="card-header">
+          <div>
+            <h2 id="photos-heading" class="card-title">Photo Documentation</h2>
+            <p class="mt-0.5 text-meta text-slate-500">
+              {{ photos|length }} photograph{{ photos|length|pluralize }} filed against this entry
+            </p>
+          </div>
+        </div>
+        {% if photos %}
+          <div class="card-body">
+            <ul class="grid gap-4 sm:grid-cols-2">
+              {% for photo in photos %}
+                <li class="overflow-hidden rounded-md border border-slate-200">
+                  <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}"
+                       class="h-44 w-full bg-slate-50 object-cover">
+                  <div class="flex items-start justify-between gap-2 px-3 py-2">
+                    <div class="min-w-0">
+                      <p class="text-meta text-slate-600">{{ photo.caption|default:"No caption recorded" }}</p>
+                      {% if photo.is_public %}
+                        <p class="mt-1 text-meta font-medium text-green-700">Cleared for the public website</p>
+                      {% endif %}
+                    </div>
+                    {% if user.can_encode %}
+                      <a href="{% url 'updates:attachment_delete' photo.pk %}"
+                         class="btn btn-ghost btn-sm shrink-0 text-red-700 hover:bg-red-50">
+                        {% icon "delete" "size-3.5" %}<span class="sr-only">Remove {{ photo }}</span>
+                      </a>
+                    {% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="view" title="No photographs yet" message="Photographs of the activity are added below and appear at the convocation." %}
+        {% endif %}
+      </section>
+
+      {# ---- Supporting documents ------------------------------------------ #}
+      <section class="card" aria-labelledby="documents-heading">
+        <div class="card-header">
+          <h2 id="documents-heading" class="card-title">Supporting Documents</h2>
+        </div>
+        {% if documents %}
+          <ul class="divide-y divide-slate-100">
+            {% for document in documents %}
+              <li class="flex items-center justify-between gap-3 px-4 py-3">
+                <div class="flex min-w-0 items-center gap-3">
+                  <span aria-hidden="true" class="shrink-0 text-slate-400">{% icon "file" "size-4" %}</span>
+                  <div class="min-w-0">
+                    <a href="{{ document.file.url }}" class="text-sm font-medium text-brand-700 hover:underline">
+                      {{ document.caption|default:document.filename }}
+                    </a>
+                    <p class="text-meta text-slate-500">
+                      {{ document.filename }} &middot; uploaded
+                      {{ document.uploaded_at|date:"j M Y" }}
+                      {% if document.uploaded_by %}by {{ document.uploaded_by.get_display_name }}{% endif %}
+                    </p>
+                  </div>
+                </div>
+                {% if user.can_encode %}
+                  <a href="{% url 'updates:attachment_delete' document.pk %}"
+                     class="btn btn-ghost btn-sm shrink-0 text-red-700 hover:bg-red-50">
+                    {% icon "delete" "size-3.5" %}<span class="sr-only">Remove {{ document }}</span>
+                  </a>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="card-body">
+            <p class="text-sm text-slate-500">No supporting documents have been filed.</p>
+          </div>
+        {% endif %}
+      </section>
+
+      {# ---- Add a file ---------------------------------------------------- #}
+      {% if user.can_encode %}
+        <section class="card" aria-labelledby="attach-heading">
+          <div class="card-header">
+            <h2 id="attach-heading" class="card-title">Attach a Photograph or Document</h2>
+          </div>
+          <form method="post" enctype="multipart/form-data"
+                action="{% url 'updates:attachment_add' record.pk %}" novalidate>
+            {% csrf_token %}
+            <div class="card-body">
+              <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                {% for field in attachment_form %}
+                  <div class="{% if field.name == 'caption' %}sm:col-span-2{% endif %}">
+                    {% include "components/bound_field.html" with field=field form=attachment_form %}
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="card-footer justify-end">
+              <button type="submit" class="btn btn-primary">
+                {% icon "upload" "size-4" %}Attach file
+              </button>
+            </div>
+          </form>
+        </section>
+      {% endif %}
+    </div>
+
+    {# ---- Side column ----------------------------------------------------- #}
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="entry-details-heading">
+        <div class="card-header">
+          <h2 id="entry-details-heading" class="card-title">Entry Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reporting week</dt>
+              <dd class="mt-1 text-sm">
+                <a href="{{ record.period.get_absolute_url }}" class="text-brand-700 hover:underline">
+                  {{ record.period.label }}
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Category</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_category_display }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">How the Division took part</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.get_activity_type_display }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date</dt>
+              <dd class="mt-1 text-sm text-slate-900 tabular">{{ record.date_label }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Where</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.location|default:"Not recorded" }}</dd>
+            </div>
+            {% if record.lgu %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGU concerned</dt>
+                <dd class="mt-1 text-sm">
+                  <a href="{{ record.lgu.get_absolute_url }}" class="text-brand-700 hover:underline">{{ record.lgu.name }}</a>
+                </dd>
+              </div>
+            {% endif %}
+            {% if record.reference_number or record.counterpart %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ record.reference_number|default:"&mdash;" }}</dd>
+                {% if record.counterpart %}
+                  <dd class="text-meta text-slate-500">{{ record.counterpart }}</dd>
+                {% endif %}
+              </div>
+            {% endif %}
+          </dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="people-heading">
+        <div class="card-header">
+          <h2 id="people-heading" class="card-title">People</h2>
+        </div>
+        <div class="card-body">
+          <p class="mb-4 text-meta leading-relaxed text-slate-500">
+            Recorded so the Division knows who can answer for this item. The
+            accomplishment belongs to LGMEDD, and no figure in this system is
+            broken down by staff member.
+          </p>
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Focal person</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.focal_person_label }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assigned personnel / contributors</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.personnel_involved|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Partner office or agency</dt>
+              <dd class="mt-1 text-sm text-slate-900">{{ record.partner|default:"Not recorded" }}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="disclosure-heading">
+        <div class="card-header">
+          <h2 id="disclosure-heading" class="card-title">Presentation and Disclosure</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Monday convocation</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.is_major %}
+                  Selected as a major accomplishment (position {{ record.convocation_order }})
+                {% else %}
+                  Not selected for presentation
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Public website</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {% if record.is_public and record.period.is_published %}
+                  Published with {{ record.period.label }}
+                {% elif record.is_public %}
+                  Cleared, and published once the week is
+                {% else %}
+                  Internal only
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+          {% if user.can_approve %}
+            <a href="{% url 'updates:review' record.period.pk %}" class="btn btn-secondary mt-4 w-full">
+              {% icon "check-circle" "size-4" %}Review the week
+            </a>
+          {% endif %}
+        </div>
+      </section>
+
+      {% include "components/record_provenance.html" %}
+    </div>
+  </div>
+
+  {% if user.can_delete %}
+    {% include "components/modal.html" with id="delete-record" tone="danger" title="Delete this update?" message="The entry, its photographs and its supporting documents will be removed from the Division's record of the week." detail=record confirm_label="Delete update" confirm_url=record.get_absolute_url|add:"delete/" %}
+  {% endif %}
+{% endblock %}
