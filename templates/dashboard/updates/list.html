@@ -13,6 +13,7 @@
   <th scope="col" class="hidden lg:table-cell">Reporting week</th>
   {% include "components/th_sort.html" with field="activity_date" label="Date" th_class="hidden md:table-cell" %}
   {% include "components/th_sort.html" with field="status" label="Status" %}
+  <th scope="col">MOV</th>
   <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
 {% endblock %}
 
@@ -41,6 +42,19 @@
       </td>
       <td class="hidden tabular md:table-cell">{{ record.date_label }}</td>
       <td>{% status_badge record.status record.get_status_display %}</td>
+      <td>
+        {% if record.mov_count %}
+          <span class="inline-flex items-center gap-1 text-meta font-medium text-green-700">
+            {% icon "check" "size-3.5" %}{{ record.mov_count }}
+            <span class="sr-only">means of verification filed</span>
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-1 text-meta font-medium text-amber-700">
+            {% icon "warning" "size-3.5" %}<span class="hidden sm:inline">None</span>
+            <span class="sr-only">no means of verification filed</span>
+          </span>
+        {% endif %}
+      </td>
       <td class="text-right whitespace-nowrap">
         {% include "components/row_actions.html" with record=record %}
       </td>

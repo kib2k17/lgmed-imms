@@ -39,7 +39,7 @@
         {{ agency.division }}
       </p>
       <h1 class="mt-2 text-page-title font-bold tracking-tight text-brand-900 uppercase">
-        LGMEDD Weekly Updates &amp; Accomplishments
+        LGMED Weekly Updates &amp; Accomplishments
       </h1>
       <p class="mt-1.5 text-lg font-semibold text-slate-700">{{ period.label }}</p>
       {% if period.theme %}
@@ -162,6 +162,31 @@
         </div>
       {% endif %}
     </section>
+
+    {# ---- Supporting documents ---------------------------------------------- #}
+    {% if documents %}
+      <section class="mt-8" aria-labelledby="public-documents-heading">
+        <h2 id="public-documents-heading" class="text-section-title font-semibold text-slate-900">
+          Supporting Documents
+        </h2>
+        <ul class="mt-4 space-y-2">
+          {% for document in documents %}
+            <li class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <span aria-hidden="true" class="mt-0.5 shrink-0 text-slate-400">{% icon "file" "size-4" %}</span>
+              <div class="min-w-0">
+                <a href="{{ document.file.url }}" target="_blank" rel="noopener"
+                   class="text-sm font-medium text-brand-700 hover:underline">
+                  {{ document.label }}<span class="sr-only"> (opens in a new tab)</span>
+                </a>
+                <p class="mt-0.5 text-meta text-slate-500">
+                  {{ document.get_mov_type_display }} &middot; {{ document.update.title }}
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
 
     {# ---- POPS Plan --------------------------------------------------------- #}
     {% if pops_updates %}

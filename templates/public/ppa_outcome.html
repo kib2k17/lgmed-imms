@@ -1,0 +1,103 @@
+{% extends "public_base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One Organizational Outcome, and the programmes published under it.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}{{ outcome_label }}{% endblock %}
+
+{% block content %}
+  <div class="border-b border-slate-200 bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <nav aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-slate-500">
+          <li><a href="{% url 'core:home' %}" class="hover:text-brand-700 hover:underline">Home</a></li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+            <a href="{% url 'core:public_programs' %}" class="hover:text-brand-700 hover:underline">Programs</a>
+          </li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+            <span class="font-medium text-slate-700" aria-current="page">Outcome {{ outcome.number }}</span>
+          </li>
+        </ol>
+      </nav>
+      <p class="mt-3 text-meta font-semibold tracking-wide text-brand-700 uppercase">
+        Organizational Outcome {{ outcome.number }}
+      </p>
+      <h1 class="mt-1 text-page-title font-bold tracking-tight text-slate-900">{{ outcome_label }}</h1>
+      <p class="mt-1.5 max-w-3xl text-[0.9375rem] text-slate-600">{{ outcome.summary }}</p>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <h2 class="text-section-title font-semibold text-slate-900">
+      Programs under this Outcome
+    </h2>
+
+    {% if programs %}
+      <ul class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {% for program in programs %}
+          <li class="flex flex-col rounded-lg border border-slate-200 bg-white p-5">
+            <p class="flex flex-wrap items-center gap-2">
+              {% status_badge program.status program.get_status_display %}
+              {% if program.category %}
+                <span class="text-meta text-slate-500">{{ program.category.name }}</span>
+              {% endif %}
+            </p>
+            <h3 class="mt-3 text-card-title font-semibold text-slate-900">
+              <a href="{{ program.public_url }}" class="hover:text-brand-700 hover:underline">{{ program.title }}</a>
+            </h3>
+            {% if program.description %}
+              <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+                {{ program.description|truncatewords:30 }}
+              </p>
+            {% endif %}
+            <dl class="mt-4 border-t border-slate-100 pt-3 text-meta text-slate-500">
+              {% if program.start_date %}
+                <div class="flex justify-between gap-3">
+                  <dt>Period</dt>
+                  <dd class="text-right text-slate-700">
+                    {{ program.start_date|date:"M Y" }}
+                    {% if program.end_date %}&ndash; {{ program.end_date|date:"M Y" }}{% endif %}
+                  </dd>
+                </div>
+              {% endif %}
+              <div class="mt-1 flex justify-between gap-3">
+                <dt>Coverage</dt>
+                <dd class="text-right text-slate-700">{{ program.coverage_label }}</dd>
+              </div>
+            </dl>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="mt-6 rounded-lg border border-slate-200 bg-white">
+        {% include "components/empty_state.html" with icon="programs" title="Nothing published yet" message="No programmes have been published under this Outcome. The Division publishes a programme once its content and supporting documents have been reviewed and approved." %}
+      </div>
+    {% endif %}
+
+    {# ---- the other four ---------------------------------------------- #}
+    <h2 class="mt-12 text-section-title font-semibold text-slate-900">The other Outcomes</h2>
+    <ul class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {% for other in outcomes %}
+        {% if other.value != outcome_value %}
+          <li class="rounded-lg border border-slate-200 bg-white p-4">
+            <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+              Outcome {{ other.detail.number }}
+            </p>
+            <p class="mt-1 text-sm font-medium">
+              <a href="{% url 'core:public_outcome' other.detail.slug %}"
+                 class="text-brand-700 hover:underline">{{ other.detail.short_label }}</a>
+            </p>
+            <p class="mt-1 text-meta text-slate-500">
+              {{ other.program_count }} program{{ other.program_count|pluralize }}
+            </p>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

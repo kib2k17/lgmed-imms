@@ -17,6 +17,21 @@ class Action(models.TextChoices):
     EXPORT = "EXPORT", "Exported records"
     ACCESS_DENIED = "ACCESS_DENIED", "Access denied"
 
+    # Publication workflow. Recorded separately from UPDATE because "who
+    # approved this, and who put it on the public website" is a different
+    # question from "who edited it", and an auditor asking the first one
+    # should not have to read every field diff in the module to answer it.
+    UPLOAD = "UPLOAD", "Uploaded a file"
+    SCREEN = "SCREEN", "Screened a file"
+    SUBMIT = "SUBMIT", "Submitted for review"
+    APPROVE = "APPROVE", "Approved"
+    REJECT = "REJECT", "Rejected"
+    REQUEST_REVISION = "REQUEST_REVISION", "Requested revision"
+    PUBLISH = "PUBLISH", "Published"
+    UNPUBLISH = "UNPUBLISH", "Unpublished"
+    ARCHIVE = "ARCHIVE", "Archived"
+    RESTORE = "RESTORE", "Restored from the archive"
+
 
 # Actions that warrant a second look when an auditor scans the log.
 NOTABLE_ACTIONS = {
@@ -26,6 +41,10 @@ NOTABLE_ACTIONS = {
     Action.ROLE_CHANGE,
     Action.DEACTIVATION,
     Action.ACCESS_DENIED,
+    # Publication is the action that cannot be taken back by editing a row:
+    # once a document has been on the public website, it has been seen.
+    Action.PUBLISH,
+    Action.UNPUBLISH,
 }
 
 
@@ -111,6 +130,16 @@ class AuditEvent(models.Model):
             Action.DEACTIVATION: "critical",
             Action.EXPORT: "in_progress",
             Action.ACCESS_DENIED: "critical",
+            Action.UPLOAD: "in_progress",
+            Action.SCREEN: "in_progress",
+            Action.SUBMIT: "pending",
+            Action.APPROVE: "active",
+            Action.REJECT: "rejected",
+            Action.REQUEST_REVISION: "pending",
+            Action.PUBLISH: "completed",
+            Action.UNPUBLISH: "critical",
+            Action.ARCHIVE: "archived",
+            Action.RESTORE: "in_progress",
         }.get(self.action, "archived")
 
     @property

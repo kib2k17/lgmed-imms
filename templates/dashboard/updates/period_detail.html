@@ -2,7 +2,7 @@
 {% load ui humanize %}
 {% comment %}
  ---------------------------------------------------------------------------
-   One LGMEDD Division Weekly Accomplishment Summary.
+   One LGMED Division Weekly Accomplishment Summary.
 
    Several people contributed the entries below; this page is where they are
    consolidated into a single division record. Entries are grouped by what
@@ -142,6 +142,7 @@
                 {{ item.get_category_display }} &middot; {{ item.date_label }}
                 {% if item.location %} &middot; {{ item.location }}{% endif %}
               </p>
+              {% include "components/mov_list.html" with movs=item.movs %}
             </div>
           </li>
         {% endfor %}
@@ -170,6 +171,7 @@
               <th scope="col">Entry</th>
               <th scope="col" class="hidden sm:table-cell">Category</th>
               <th scope="col" class="hidden lg:table-cell">Focal person</th>
+              <th scope="col">MOV</th>
               <th scope="col" class="hidden md:table-cell">Date</th>
               <th scope="col">Status</th>
               <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
@@ -194,6 +196,19 @@
                   {% endif %}
                 </td>
                 <td class="hidden text-slate-500 lg:table-cell">{{ item.focal_person_label }}</td>
+                <td>
+                  {% if item.mov_count %}
+                    <span class="inline-flex items-center gap-1 text-meta font-medium text-green-700">
+                      {% icon "check" "size-3.5" %}{{ item.mov_count }}
+                      <span class="sr-only">means of verification filed</span>
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center gap-1 text-meta font-medium text-amber-700">
+                      {% icon "warning" "size-3.5" %}<span class="hidden sm:inline">None</span>
+                      <span class="sr-only">no means of verification filed</span>
+                    </span>
+                  {% endif %}
+                </td>
                 <td class="hidden tabular md:table-cell">{{ item.date_label }}</td>
                 <td>{% status_badge item.status item.get_status_display %}</td>
                 <td class="text-right whitespace-nowrap">
@@ -214,13 +229,50 @@
     {% endif %}
   </section>
 
+  {# ---- What cannot be evidenced yet ------------------------------------- #}
+  {% if without_mov %}
+    <section class="card mt-6 border-amber-200" aria-labelledby="no-mov-heading">
+      <div class="card-header">
+        <div class="min-w-0">
+          <h2 id="no-mov-heading" class="card-title">Awaiting a Means of Verification</h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            {{ stats.with_mov }} of {{ stats.accomplishments }} accomplishment{{ stats.accomplishments|pluralize }}
+            can be backed up &mdash; these cannot yet
+          </p>
+        </div>
+        <span class="shrink-0">{% status_badge "pending" without_mov|length|stringformat:"d"|add:" to file" %}</span>
+      </div>
+      <ul class="divide-y divide-slate-100">
+        {% for item in without_mov %}
+          <li class="flex items-center justify-between gap-3 px-4 py-3">
+            <div class="min-w-0">
+              <a href="{{ item.get_absolute_url }}" class="text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+                {{ item.title }}
+              </a>
+              <p class="mt-0.5 text-meta text-slate-500">
+                {{ item.get_category_display }} &middot; {{ item.date_label }}
+              </p>
+            </div>
+            {% if user.can_encode %}
+              <a href="{{ item.get_absolute_url }}" class="btn btn-secondary btn-sm shrink-0">
+                {% icon "upload" "size-3.5" %}<span class="hidden sm:inline">File evidence</span>
+                <span class="sr-only">for {{ item.title }}</span>
+              </a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
   {# ---- Photographs ------------------------------------------------------ #}
   <section class="card mt-6" aria-labelledby="week-photos-heading">
     <div class="card-header">
       <div>
         <h2 id="week-photos-heading" class="card-title">Activities &amp; Photo Documentation</h2>
         <p class="mt-0.5 text-meta text-slate-500">
-          {{ photos|length }} photograph{{ photos|length|pluralize }} across the week
+          {{ photos|length }} photograph{{ photos|length|pluralize }} of
+          {{ stats.movs }} means of verification filed this week
         </p>
       </div>
     </div>

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One memorandum, and every file released under it.
+
+   The second half of that is the point of the page. "What did this
+   memorandum let out?" is the question an auditor asks after the fact, and it
+   should be answerable without a database query.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="{% url 'programs:authority_update' authority.pk %}" class="btn btn-secondary">
+    {% icon "edit" "size-4" %}Edit
+  </a>
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <div class="space-y-4 xl:col-span-2">
+      <section class="card" aria-labelledby="about-heading">
+        <div class="card-header">
+          <h2 id="about-heading" class="card-title">The memorandum</h2>
+          {% status_badge authority.status_tone authority.status_label %}
+        </div>
+        <div class="card-body space-y-6">
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Subject</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-700">{{ authority.title }}</p>
+          </div>
+          {% if authority.scope %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                What it covers
+              </h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ authority.scope }}</p>
+            </div>
+          {% endif %}
+          {% if not authority.in_force %}
+            <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p class="font-semibold">
+                {% icon "warning" "size-4 inline" %}
+                This memorandum is {{ authority.status_label|lower }}.
+              </p>
+              <p class="mt-0.5">
+                It cannot authorise any further release. Files already published
+                under it remain on the public website until the records they
+                belong to are unpublished.
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="released-heading">
+        <div class="card-header">
+          <h2 id="released-heading" class="card-title">Files cited against it</h2>
+          <span class="text-meta text-slate-500">{{ documents|length }}</span>
+        </div>
+        {% if documents %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Files released, or awaiting release, under this memorandum</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Document</th>
+                  <th scope="col" class="hidden md:table-cell">Attached to</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" class="hidden sm:table-cell">Published</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for document in documents %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{% url 'programs:document_review' document.pk %}"
+                         class="hover:text-brand-700 hover:underline">{{ document.title }}</a>
+                    </th>
+                    <td class="hidden md:table-cell">{{ document.owner_label }}</td>
+                    <td>{% status_badge document.status document.get_status_display %}</td>
+                    <td class="hidden whitespace-nowrap sm:table-cell">
+                      {% if document.published_at %}
+                        <time datetime="{{ document.published_at|date:'c' }}">
+                          {{ document.published_at|date:"j M Y" }}
+                        </time>
+                        <span class="block text-meta text-slate-500">
+                          {{ document.published_by.get_display_name|default:"&mdash;" }}
+                        </span>
+                      {% else %}
+                        <span class="text-slate-500">Not yet</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            Nothing has been released under this memorandum yet.
+          </p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4 text-sm">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference</dt>
+              <dd class="mt-1 font-medium text-slate-900">{{ authority.reference }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date issued</dt>
+              <dd class="mt-1 text-slate-900">
+                <time datetime="{{ authority.approved_on|date:'Y-m-d' }}">
+                  {{ authority.approved_on|date:"j F Y" }}
+                </time>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Issued by</dt>
+              <dd class="mt-1 text-slate-900">{{ authority.approved_by }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">In effect</dt>
+              <dd class="mt-1 text-slate-900">
+                {{ authority.start_date|date:"j F Y" }}
+                {% if authority.effective_until %}
+                  &ndash; {{ authority.effective_until|date:"j F Y" }}
+                {% else %}
+                  <span class="text-slate-500">onward</span>
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {% if authority.memorandum %}
+        <section class="card" aria-labelledby="scan-heading">
+          <div class="card-header">
+            <h2 id="scan-heading" class="card-title">The signed issuance</h2>
+          </div>
+          <div class="card-body">
+            <p class="text-sm text-slate-600">
+              Held internally as the evidence behind every release made under
+              this memorandum. It is never itself published.
+            </p>
+            <a href="{% url 'programs:authority_file' authority.pk %}"
+               class="btn btn-secondary btn-sm mt-3">
+              {% icon "view" "size-3.5" %}Open the memorandum
+            </a>
+          </div>
+        </section>
+      {% endif %}
+
+      {% include "components/record_provenance.html" with record=authority %}
+    </div>
+  </div>
+{% endblock %}

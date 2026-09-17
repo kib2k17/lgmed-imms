@@ -23,3 +23,6 @@ tools/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Internal document storage - never served by a web server.
+protected/

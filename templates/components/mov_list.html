@@ -1,0 +1,60 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The evidence behind one accomplishment.
+   {% include "components/mov_list.html" with movs=item.movs %}
+
+   Pictures are shown, papers are listed - the same distinction the Chief
+   makes out loud at the convocation ("here is the activity, and here is the
+   issuance behind it"). Each one names what it is, so a certificate is not
+   read out as "a photo".
+
+   An accomplishment with nothing filed says so plainly rather than rendering
+   an empty space. Pass `quiet=True` where that notice would be noise.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% if movs %}
+  <div class="mt-3">
+    {% regroup movs by is_image as evidence_groups %}
+
+    {% for group in evidence_groups %}
+      {% if group.grouper %}
+        <ul class="flex flex-wrap gap-3">
+          {% for mov in group.list %}
+            <li class="w-36">
+              <a href="{{ mov.file.url }}" target="_blank" rel="noopener"
+                 class="block overflow-hidden rounded-md border border-slate-200">
+                <img src="{{ mov.file.url }}" alt="{{ mov.alt_text }}"
+                     class="h-24 w-36 bg-slate-50 object-cover">
+                <span class="sr-only">(opens in a new tab)</span>
+              </a>
+              <p class="mt-1 text-meta leading-snug text-slate-500">{{ mov.label }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <ul class="{% if not forloop.first %}mt-3 {% endif %}flex flex-wrap gap-2">
+          {% for mov in group.list %}
+            <li>
+              <a href="{{ mov.file.url }}" target="_blank" rel="noopener"
+                 class="inline-flex max-w-xs items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-meta text-slate-700 hover:border-brand-300 hover:text-brand-700">
+                <span aria-hidden="true" class="shrink-0 text-slate-400">{% icon "file" "size-3.5" %}</span>
+                <span class="truncate">{{ mov.label }}</span>
+                <span class="sr-only">
+                  &mdash; {{ mov.get_mov_type_display }} (opens in a new tab)
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+{% elif not quiet %}
+  <p class="mt-3 flex items-center gap-1.5 text-meta text-amber-700">
+    <span aria-hidden="true">{% icon "warning" "size-3.5" %}</span>
+    No means of verification filed yet
+  </p>
+{% endif %}

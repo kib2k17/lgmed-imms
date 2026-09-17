@@ -7,7 +7,7 @@ model below follows from it:
     Staff contribute the information, but the accomplishment belongs to the
     Division.
 
-So the record this module keeps is a *week of LGMEDD*, not a week of any one
+So the record this module keeps is a *week of LGMED*, not a week of any one
 employee. `ReportingPeriod` is that week; everything else hangs off it. Several
 people contribute to the same period, and what they contribute is consolidated
 into one division summary - which the Chief reviews, which is presented at the
@@ -86,7 +86,7 @@ class ActivityType(models.TextChoices):
     How the Division took part.
 
     The first four are the distinction the convocation actually asks for -
-    whether LGMEDD ran the activity or was present at someone else's - and the
+    whether LGMED ran the activity or was present at someone else's - and the
     Division's statistics report each of them separately.
     """
 
@@ -112,9 +112,28 @@ class WayForwardStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
 
 
-class AttachmentKind(models.TextChoices):
-    PHOTO = "PHOTO", "Photo documentation"
-    DOCUMENT = "DOCUMENT", "Supporting document"
+class MovType(models.TextChoices):
+    """
+    The kinds of evidence the Division files against its work.
+
+    The Chief presents this record to the department, so every accomplishment
+    should be answerable with something: the photograph of the activity, the
+    issuance behind it, the report it produced, or the paper that proves the
+    people were in the room.
+    """
+
+    PHOTO = "PHOTO", "Photograph of the activity"
+    DOCUMENT = "DOCUMENT", "Official document or issuance"
+    REPORT = "REPORT", "Report or accomplishment record"
+    CERTIFICATE = "CERTIFICATE", "Certificate"
+    ATTENDANCE = "ATTENDANCE", "Attendance sheet"
+    COMMUNICATION = "COMMUNICATION", "Letter or communication"
+    OTHER = "OTHER", "Other supporting file"
+
+
+# The old name for the same thing, kept so nothing outside this module has to
+# be rewritten at once.
+AttachmentKind = MovType
 
 
 # Entries that count as accomplishments. An upcoming activity is recorded on
@@ -155,7 +174,7 @@ class ReportingPeriodQuerySet(models.QuerySet):
 
 class ReportingPeriod(TimeStampedModel):
     """
-    One week of LGMEDD, and the container everything else is contributed into.
+    One week of LGMED, and the container everything else is contributed into.
 
     A period is unique on its start date, which is what makes it a *division*
     record rather than a personal one: there is one September 7-11 for the
@@ -228,7 +247,7 @@ class ReportingPeriod(TimeStampedModel):
         indexes = [models.Index(fields=("status", "-start_date"))]
 
     def __str__(self):
-        return f"LGMEDD Weekly Updates & Accomplishments, {self.label}"
+        return f"LGMED Weekly Updates & Accomplishments, {self.label}"
 
     def save(self, *args, **kwargs):
         if not self.convocation_date and self.end_date:
@@ -315,16 +334,19 @@ class ReportingPeriod(TimeStampedModel):
         )
 
     @property
+    def movs(self):
+        """Every means of verification filed against this week's entries."""
+        return UpdateAttachment.objects.filter(update__period=self).select_related(
+            "update"
+        )
+
+    @property
     def photos(self):
-        return UpdateAttachment.objects.filter(
-            update__period=self, kind=AttachmentKind.PHOTO
-        ).select_related("update")
+        return self.movs.filter(is_image=True)
 
     @property
     def supporting_documents(self):
-        return UpdateAttachment.objects.filter(
-            update__period=self, kind=AttachmentKind.DOCUMENT
-        ).select_related("update")
+        return self.movs.filter(is_image=False)
 
     @property
     def upcoming(self):
@@ -372,7 +394,7 @@ class ReportingPeriod(TimeStampedModel):
         ("Activities", "has_activities"),
         ("Communications", "has_communications"),
         ("Accomplishments", "has_accomplishments"),
-        ("Photo documentation", "has_photos"),
+        ("Means of verification", "has_movs"),
         ("POPS Plan update", "has_pops_updates"),
         ("Ways forward", "has_ways_forward"),
         ("Upcoming activities", "has_upcoming"),
@@ -391,8 +413,8 @@ class ReportingPeriod(TimeStampedModel):
         return self.accomplishments.exists()
 
     @property
-    def has_photos(self):
-        return self.photos.exists()
+    def has_movs(self):
+        return self.movs.exists()
 
     @property
     def has_pops_updates(self):
@@ -698,12 +720,34 @@ class DivisionUpdate(TimeStampedModel):
         return self.activity_date.strftime("%d %b %Y")
 
     @property
+    def movs(self):
+        """The evidence filed against this entry."""
+        return self.attachments.all()
+
+    @property
     def photos(self):
-        return self.attachments.filter(kind=AttachmentKind.PHOTO)
+        return self.attachments.filter(is_image=True)
 
     @property
     def documents(self):
-        return self.attachments.filter(kind=AttachmentKind.DOCUMENT)
+        return self.attachments.filter(is_image=False)
+
+    @property
+    def mov_count(self):
+        return self.attachments.count()
+
+    @property
+    def has_mov(self):
+        """
+        Whether this entry can be backed up if somebody asks.
+
+        Not enforced at save time on purpose: an officer records the activity
+        on the day and files the photograph when it reaches them, and a system
+        that refuses the record until the evidence exists gets neither. What
+        it does instead is count what is missing, on the week and on the
+        Chief's review page.
+        """
+        return self.attachments.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -718,36 +762,61 @@ def attachment_path(instance, filename):
 
 class UpdateAttachment(models.Model):
     """
-    A photograph or a supporting document, filed against an entry.
+    A means of verification: the evidence that an accomplishment happened.
 
-    One model rather than two: a photograph and a memorandum are the same
-    record - a file, a caption, and whether the public may see it - and the
-    only thing that differs is which extensions are accepted and where it is
-    rendered. `kind` carries that, and `clean` enforces it.
+    The Division Chief presents this record to the department, so a claim in
+    it has to be supportable - a photograph of the activity, the issuance that
+    authorised it, the report it produced, the certificate or attendance sheet
+    that proves it took place. Every one of them is the same record: a file,
+    what it is, what it shows, and whether the public may see it.
+
+    `mov_type` says what kind of evidence it is; `is_image` says how to render
+    it, and is derived from the file itself rather than from the type. The two
+    are separate on purpose - a photograph of a signed certificate is a
+    certificate that happens to display as a picture, and filing it as
+    "Photograph" to make it appear in the gallery would misdescribe it.
     """
 
     update = models.ForeignKey(
         DivisionUpdate,
         on_delete=models.CASCADE,
         related_name="attachments",
+        verbose_name="accomplishment or activity",
     )
-    kind = models.CharField(
-        max_length=10,
-        choices=AttachmentKind.choices,
-        default=AttachmentKind.PHOTO,
+    mov_type = models.CharField(
+        "type of evidence",
+        max_length=20,
+        choices=MovType.choices,
+        default=MovType.PHOTO,
         db_index=True,
+        help_text="What this file is, for the record and for the presentation.",
     )
-    file = models.FileField(upload_to=attachment_path)
+    file = models.FileField(
+        "file",
+        upload_to=attachment_path,
+        help_text=(
+            "JPG, PNG or WebP for photographs; PDF, Word, Excel, PowerPoint, "
+            "CSV or text for documents."
+        ),
+    )
     caption = models.CharField(
+        "what it shows",
         max_length=255,
         blank=True,
-        help_text="What the photograph shows, or what the document is.",
+        help_text=(
+            "What the photograph shows, or what the document is - read out "
+            "beside the accomplishment at the convocation."
+        ),
     )
     is_public = models.BooleanField(
         "Cleared for the public website",
         default=False,
-        help_text="Photographs of the Division at work; never internal papers.",
+        help_text="Evidence of the Division at work; never internal papers.",
     )
+
+    # Set on save from the file's own extension. Stored rather than computed
+    # so the gallery and the document list are one query each.
+    is_image = models.BooleanField(default=False, editable=False, db_index=True)
 
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(
@@ -758,33 +827,55 @@ class UpdateAttachment(models.Model):
     )
 
     class Meta:
-        verbose_name = "attachment"
-        ordering = ("kind", "uploaded_at")
+        verbose_name = "means of verification"
+        verbose_name_plural = "means of verification"
+        # Pictures first, then papers. Templates group the prefetched list on
+        # `is_image` rather than issuing a query per accomplishment, and
+        # `{% regroup %}` only works on a list already sorted by its key.
+        ordering = ("-is_image", "mov_type", "uploaded_at")
 
     def __str__(self):
         return self.caption or self.filename
 
+    def save(self, *args, **kwargs):
+        self.is_image = self.extension in IMAGE_EXTENSIONS
+        super().save(*args, **kwargs)
+
     def clean(self):
-        extensions = (
+        if not self.file:
+            return
+        # A photograph has to be one. Everything else may be a document or a
+        # picture of a document, which is how most certificates arrive.
+        allowed = (
             IMAGE_EXTENSIONS
-            if self.kind == AttachmentKind.PHOTO
-            else DOCUMENT_EXTENSIONS
+            if self.mov_type == MovType.PHOTO
+            else IMAGE_EXTENSIONS + DOCUMENT_EXTENSIONS
         )
-        if self.file:
-            FileExtensionValidator(extensions)(self.file)
+        FileExtensionValidator(allowed)(self.file)
 
     @property
     def filename(self):
         return self.file.name.rsplit("/", 1)[-1] if self.file else ""
 
     @property
+    def extension(self):
+        name = self.file.name if self.file else ""
+        return name.rsplit(".", 1)[-1].lower() if "." in name else ""
+
+    @property
     def is_photo(self):
-        return self.kind == AttachmentKind.PHOTO
+        """Kept for readability where a template asks the visual question."""
+        return self.is_image
+
+    @property
+    def label(self):
+        """How the evidence is named in a list: what it is, then what it shows."""
+        return self.caption or self.get_mov_type_display()
 
     @property
     def alt_text(self):
         """Never an empty alt on a content image, and never a bare filename."""
-        return self.caption or self.update.title
+        return self.caption or f"{self.get_mov_type_display()}: {self.update.title}"
 
 
 # ---------------------------------------------------------------------------

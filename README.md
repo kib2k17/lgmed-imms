@@ -44,7 +44,7 @@ record of its own work. Authorised staff - the Division Chief included -
 contribute activities, communications, accomplishments, photographs, POPS Plan
 progress, ways forward and what is coming to **one weekly division record**,
 updated every Thursday. The Chief reviews it, selects what leads the **Monday
-convocation** and clears what the public may see. The figures are LGMEDD's
+convocation** and clears what the public may see. The figures are LGMED's
 throughout: the module records what the Division accomplished, never a ranking
 of who accomplished it.
 
@@ -75,8 +75,9 @@ venv\Scripts\python manage.py refresh_notifications
 venv\Scripts\python manage.py runserver
 ```
 
-To let someone outside this network see the running server, see
-*Sharing a demo over ngrok* below.
+To let a colleague on this network open the system in their own browser, run
+`.\run-lan.ps1` instead of step 7 — see *Sharing on the office network*
+below. For someone outside the building, see *Sharing a demo over ngrok*.
 
 | URL | Purpose |
 |---|---|
@@ -148,7 +149,19 @@ RECAPTCHA_SECRET_KEY=...      # never leaves the server
 RECAPTCHA_MIN_SCORE=0.5       # refuse anything Google scores below this
 RECAPTCHA_TIMEOUT=5           # seconds to wait for Google
 RECAPTCHA_ENFORCE=1           # 0 = log the verdicts, refuse nobody
+
+DJANGO_SECRET_KEY=...         # any long random string in development
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.ngrok-free.app,.ngrok.app
+DJANGO_CSRF_TRUSTED_ORIGINS=https://*.ngrok-free.app,https://*.ngrok.app
+DJANGO_LAN_ACCESS=1           # serve to the office network - see below
+NGROK_DOMAIN=...              # the reserved tunnel hostname, if one is claimed
 ```
+
+Only `DJANGO_LAN_ACCESS` is likely to be touched again once written: it is the
+single switch behind *Sharing on the office network*. Addresses belong in these
+lines or in that switch, never in `config/settings.py` - the entry there is the
+default `os.environ.get` falls back to, and it is never reached while the
+variable is set.
 
 Keys come from <https://www.google.com/recaptcha/admin> and are tied to the
 domains listed there - add `localhost` or the check cannot verify in
@@ -192,6 +205,99 @@ allow hiding it *only* if the Privacy Policy and Terms are linked in the page
 instead - so if it is ever hidden, that notice has to go back in. One of the
 two must always stand. The badge is on the sign-in page alone; the script is
 loaded nowhere else in the system.
+
+---
+
+## Sharing on the office network
+
+`runserver` on its own answers `127.0.0.1` and nothing else, so a colleague at
+the next desk cannot reach it even though the machine is a few metres away.
+This puts the same server on this machine's network address instead - no
+tunnel, no third party, nothing leaving the building:
+
+```powershell
+.\run-lan.ps1              # serve on this machine's address, port 8000
+.\run-lan.ps1 -Port 8080   # a different port
+.\run-lan.ps1 -NoServe     # only check the address, settings and firewall
+```
+
+The script prints the URL to pass round. Colleagues open
+`http://<this machine>:8000/` for the public site, `/accounts/login/` to sign
+in; on this machine `http://127.0.0.1:8000/` still works as before.
+
+### The one thing to set
+
+One line in `venv\lgmed.env`, once:
+
+```
+DJANGO_LAN_ACCESS=1
+```
+
+That is the whole switch. Nothing else is edited when the machine moves
+between `DILG-CARAGA-RO`, a home router or a phone hotspot: `settings.py` asks
+the machine for its own addresses at start-up and adds them to `ALLOWED_HOSTS`
+and `CSRF_TRUSTED_ORIGINS` itself. Set it to `0` (or delete the line) and the
+server is back to answering `localhost` alone.
+
+**Restart the server fully after editing `lgmed.env`** - `Ctrl+C` and start
+again, not a reload. Django's autoreloader re-execs inside an environment that
+already holds the old value, and `config/env.py` never overwrites a variable
+that is already set, so an edit picked up by a reload appears to do nothing.
+
+### Why it is not written down
+
+The address is a **DHCP lease**. It changes when the lease expires, when the
+laptop rejoins, and every time it moves between networks - and an address typed
+into a settings file is stale by the next morning. Worse, the failure says
+nothing about which one is out of date: Django answers a request whose `Host`
+it does not recognise with a bare 400, *Invalid HTTP_HOST header*, which from
+the visitor's side reads as a broken site rather than as an old setting.
+`config/env.py` asks the machine instead, which is the only answer that stays
+true.
+
+One trap worth naming, because it costs an afternoon: **an address added to
+`settings.py` has no effect while `DJANGO_ALLOWED_HOSTS` is set.** The line
+there is the *default* argument to `os.environ.get`, reached only when the
+variable is absent - and `lgmed.env` sets it. The environment always wins;
+that is the whole point of `config/env.py`. Put addresses in the env file, or
+let `DJANGO_LAN_ACCESS` do it.
+
+### What the script takes care of
+
+- **The bind address.** `runserver 0.0.0.0:8000` is what makes the server
+  answer on every interface; the default `127.0.0.1` answers only this machine
+  whatever else is configured.
+- **The port.** CSRF compares scheme + host + **port**, so a server on 8080
+  needs an origin on 8080. `-Port` is passed through to Django as
+  `DJANGO_LAN_PORTS`, so it needs no second edit anywhere.
+- **The firewall.** Windows blocks inbound connections to `python.exe` by
+  default, so the site works here and times out everywhere else. The script
+  adds one inbound rule, asking for Administrator once, scoped to
+  **`LocalSubnet` on every profile**. Scoping it to the private profile instead
+  is the obvious move and the wrong one: Windows categorises `DILG-CARAGA-RO`
+  as a *public* network, where a private-only rule silently does not apply
+  while still being listed - the rule is there, the site is unreachable, and
+  nothing says why. `LocalSubnet` keeps the port shut to everything beyond the
+  local network on either kind. The script re-checks an existing rule's scope
+  for that reason.
+- **The check that it will work at all.** Before starting anything it asks
+  Django which addresses it will accept, rather than parsing `lgmed.env` a
+  second time, and stops with the line to add if the switch is off.
+
+Two further notes:
+
+- The **sign-in reCAPTCHA is registered per domain** and a bare IP address
+  cannot be registered at all, so the real check cannot pass over this URL.
+  `RECAPTCHA_ENFORCE=0` lets sign-in through and records the miss in the audit
+  log, exactly as it does for an unregistered hostname.
+- `DJANGO_LAN_ACCESS` is **ignored unless `DEBUG` is on**, and says so on
+  start-up if set anyway. `ALLOWED_HOSTS` is what stops a request carrying a
+  forged `Host` header from being answered; a deployed server names its own
+  hostnames in `DJANGO_ALLOWED_HOSTS` and never accepts whatever interface the
+  machine happens to have. This is also still a `DEBUG=True` server holding
+  demonstration accounts whose password is printed in this README, now
+  reachable by everyone on the network - the cautions in *Before opening a
+  tunnel* below apply unchanged.
 
 ---
 
@@ -366,9 +472,18 @@ core/                    The shared layer every module is built on
   icons.py               Inline SVG icon set (no icon font, no CDN)
   templatetags/ui.py     {% icon %}, {% status_badge %}, {% sort_link %}, ...
 
-lgus/  programs/  monitoring/  services/  announcements/
+lgus/  monitoring/  services/  announcements/
 reports/  activities/
                          One app per module: models, form, views, urls, admin
+programs/                Programs, Projects and Activities - the PPA module
+  models.py              The four-level tree, and the publication workflow
+  screening.py           Automated screening of uploaded files for personal
+                         and confidential information - a screening, never a
+                         decision
+  storage.py             The protected root internal documents are written to
+  publishing.py          Creating the separate public copy of an approved file
+                         - reached only once a memorandum authorises it
+  public.py              The only module allowed to query PPAs for a visitor
 documents/               Document Management - the Division's document register
   models.py              The document, its versions, its trail, retention
   workflow.py            Every transition, and what each one sets off
@@ -406,6 +521,8 @@ templates/
   dashboard/module_list.html      Generic table page every module extends
   dashboard/module_form.html      Generic sectioned data-entry form
   dashboard/module_confirm_delete.html
+  dashboard/ppa/         The PPA workbench, review queue and document review
+  public/ppa_detail.html One published PPA - and the page the preview renders
   includes/              topbar, sidebar, footer, alerts, breadcrumbs, pagination
   components/            stat_card, mini_stat, chart_card, table_toolbar,
                          th_sort, row_actions, bound_field, modal, empty_state,
@@ -415,6 +532,91 @@ static/
   css/app.css            Compiled stylesheet (generated — do not edit)
   js/app.js              Drawer, menus, dialogs, Chart.js defaults
 ```
+
+### Programs, Projects and Activities
+
+The PPA module is the one place in the system where a mistake is published
+rather than merely recorded, so it is worth describing what it actually
+enforces.
+
+**The tree.** Five Organizational Outcomes, fixed in code because they are the
+Department's and not this office's to invent. Under each: programmes, then
+projects, then sub-projects, then activities. An activity hangs off a project
+or a sub-project, never both and never neither - a database constraint, not
+only a `clean()`.
+
+**The workflow.** Eight states, and the only way between them is a method on
+the model called from a view that checked a capability first:
+
+```
+DRAFT -> FOR REVIEW -> SCREENING -> REVIEW REQUIRED -> APPROVED
+      -> PUBLISHED -> UNPUBLISHED -> ARCHIVED
+```
+
+Three capabilities, held by three different sets of people, because encoding,
+clearing and publishing are three different decisions:
+
+| Capability        | Who holds it                        | What it permits                      |
+| ----------------- | ----------------------------------- | ------------------------------------ |
+| `can_encode_ppa`  | Encoder, LGMED staff, admins        | Create records, upload files, submit |
+| `can_review_ppa`  | LGMED staff, Division Chief, admins | Read a screening, approve or return; record and cite memoranda |
+| `can_publish_ppa` | Administrators                      | Publish, unpublish, archive          |
+
+**Two storage roots, not one flag.** An uploaded file is written to
+`PROTECTED_MEDIA_ROOT`, which no web server maps to a URL, and is read back
+only through an authenticated view that re-checks the role and logs the access.
+Publishing writes a *separate copy* into the served media root under a random
+token; withdrawing deletes that copy. There is no state in which making the
+internal file public is a matter of setting a boolean.
+
+**A file is released under a written authority.** Approval says the content is
+fit to be seen; it does not say the office has decided it *be* seen. That
+second decision is a memorandum - `PublicationAuthority` - recorded on its own
+pages before anything cites it, and every released file is cited against one:
+
+```
+Memorandum recorded  ->  cited against the file  ->  file may be published
+```
+
+`SupportingDocument.publish()` refuses a file with no authority, or one whose
+authority has been withdrawn or has expired - so no code path reaches the
+public copy without it. Publishing a record still puts the *content* live and
+simply holds back the unauthorised files, naming each one and why, because
+stalling the whole record over one annex's paperwork is how people learn to
+route around a control. Withdrawing a memorandum stops it authorising anything
+further; it does not reach back and unpublish what it already released, and the
+page says so rather than acting alone. The same reasoning and the same shape as
+`documents.DisposalAuthority`, which guards the equivalent irreversible act in
+the document register.
+
+**The screening is a screening.** `programs/screening.py` reads PDF, the Office
+XML formats and plain text with the standard library alone, and reports what
+looks like personal data (Philippine government ID numbers, bank details,
+contact numbers, signatures, attendance sheets), confidentiality markings, or
+credentials. Evidence is masked before it is stored or shown. Crucially:
+
+- a clean result is `LOW RISK`, which means *nothing was found* - never
+  "safe", and never an approval;
+- a file the scanner could not read is raised to `REVIEW REQUIRED`, with the
+  reason recorded as a finding;
+- a `HIGH RISK` file cannot be approved until the reviewer ticks a box saying
+  they opened and read it.
+
+Two optional libraries widen the scanner's reach if the office installs them,
+and their absence is reported rather than silently tolerated:
+
+```
+pip install pypdf        # better PDF text extraction
+pip install pytesseract pillow   # OCR for scans and photographs
+                                 # (also needs the Tesseract binary)
+```
+
+**What the public gets.** Slugs, never database identifiers. Approved public
+copies, never internal files. `programs/public.py` is the only module that
+queries PPA records for a visitor, and `visible()` re-walks the whole chain to
+the programme on every request, so a published activity under a programme that
+was withdrawn this morning stops being reachable this morning - including its
+files.
 
 ### How to add a module
 
@@ -796,7 +998,7 @@ that single decision shapes every model, every figure and every page in it:
 Staff input → Division consolidation → Chief review → Monday convocation → Public publication
 ```
 
-The record is a **week of LGMEDD**, not a week of an employee.
+The record is a **week of LGMED**, not a week of an employee.
 `ReportingPeriod` is unique on its Monday, so there is one September 7-11 for
 the whole office and every contributor adds to the same one. The Division
 updates the system on **Thursday**; the week is presented at the **Monday
@@ -808,8 +1010,8 @@ convocation** that follows.
   entry says who can answer for the item; it is never a grouping key.
 - **"Weekly update completion" measures the week, not the roll.** A week is
   expected to carry seven things - activities, communications, accomplishments,
-  photographs, a POPS Plan update, ways forward and what is coming - and the
-  percentage is how many of them are filled in. A per-employee submission rate
+  a means of verification, a POPS Plan update, ways forward and what is coming
+  - and the percentage is how many of them are filled in. A per-employee submission rate
   would have been the performance monitor this module is explicitly not, and
   would answer a question nobody at the convocation asks. What the Chief gets
   instead is `missing_components`: which parts of the Division's week are still
@@ -828,6 +1030,32 @@ convocation** that follows.
   `convocation_order` and `is_public` are absent from `DivisionUpdateForm`
   entirely - the same rule as Incoming and Documents, where the encoder records
   and the Chief decides.
+
+**Every accomplishment can be answered for.** The Chief presents this record
+to the department, so an entry carries its **means of verification** - the
+photograph of the activity, the issuance that authorised it, the report it
+produced, a certificate, an attendance sheet, a letter. `UpdateAttachment` is
+that evidence, filed against the accomplishment it supports and shown beside
+it: on the record page, on the week, and - the point of the whole thing - under
+each major accomplishment on the convocation view, so the claim and its proof
+are on one screen.
+
+- **What a file *is* and how it *displays* are different questions.** `mov_type`
+  says which kind of evidence it is; `is_image` is derived from the file's own
+  extension on save. A photographed certificate is therefore filed as a
+  certificate and still appears in the gallery, rather than being mislabelled
+  "Photograph" to make it show. A file filed as a photograph must actually be
+  an image; everything else may be a document or a scan of one.
+- **Evidence is not demanded at save time.** An officer records the activity on
+  the day and files the photograph when it reaches them, and a system that
+  refuses the record until the evidence exists gets neither. What it does
+  instead is count the gap and put it where it will be acted on: a coverage
+  figure in the Division's statistics, an "awaiting a means of verification"
+  list on the week, a MOV column in the register, and a warning on the review
+  page naming any accomplishment the Chief has selected for Monday with
+  nothing behind it. Told, not blocked.
+- **Public disclosure stays item by item.** A photograph or document reaches
+  the public site only if it was cleared itself, on a week that was published.
 
 **Every headline figure carries its breakdown.** A bare "14 accomplishments"
 invites the next question rather than answering it, so each of the five cards
@@ -986,7 +1214,7 @@ due date, and documents whose retention period has run out or is about to.
 venv\Scripts\python manage.py test
 ```
 
-370 tests covering: every public and authenticated route renders; unauthenticated
+384 tests covering: every public and authenticated route renders; unauthenticated
 access redirects to sign-in; administration modules return 403 for
 non-administrators and 200 for administrators; the role permission matrix; that
 exactly one sidebar item is active (`/app/` prefixes every module URL); that
@@ -1143,6 +1371,19 @@ that an activity type recorded outside the activity category does not inflate
 that sum; that the completion card names the parts of the week that are
 missing rather than only its percentage; and that the upcoming figure splits
 by how soon the work falls.
+
+Means of verification adds: that evidence is typed, so a certificate is not
+read out as a photograph; that a picture of a certificate is filed as a
+certificate and still displays as a picture; that a file filed as a photograph
+must actually be an image while a document may be either; that an
+accomplishment knows whether it can be backed up and the division figures
+count how much of the record can be; that deleting an accomplishment takes its
+evidence with it; that the convocation shows each accomplishment's photographs
+and documents beside it and says so plainly when there are none; that the
+review page names any accomplishment selected for Monday with nothing behind
+it; that the week lists what is still awaiting evidence; that selecting an
+unevidenced accomplishment is warned rather than refused; and that a piece of
+evidence reaches the public site only if it was cleared itself.
 
 Sign-in protection adds: that a low score is refused and recorded as a failed
 sign-in; that a missing token is refused without calling Google at all; that a

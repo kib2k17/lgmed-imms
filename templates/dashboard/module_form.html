@@ -25,6 +25,13 @@
       </div>
     {% endif %}
 
+    {% if form_note %}
+      <div class="mb-5 flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-900">
+        <span class="mt-0.5 shrink-0 text-blue-700">{% icon "info" "size-5" %}</span>
+        <p class="leading-relaxed">{{ form_note }}</p>
+      </div>
+    {% endif %}
+
     <div class="space-y-5">
       {% for title, fields in form.get_sections %}
         <section class="card" {% if title %}aria-labelledby="section-{{ forloop.counter }}"{% endif %}>

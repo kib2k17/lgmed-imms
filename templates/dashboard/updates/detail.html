@@ -33,81 +33,66 @@
         </div>
       </section>
 
-      {# ---- Photo documentation ------------------------------------------ #}
-      <section class="card" aria-labelledby="photos-heading">
+      {# ---- Means of verification ----------------------------------------- #}
+      <section class="card" aria-labelledby="mov-heading">
         <div class="card-header">
           <div>
-            <h2 id="photos-heading" class="card-title">Photo Documentation</h2>
+            <h2 id="mov-heading" class="card-title">Means of Verification</h2>
             <p class="mt-0.5 text-meta text-slate-500">
-              {{ photos|length }} photograph{{ photos|length|pluralize }} filed against this entry
+              The evidence this accomplishment is presented with
             </p>
           </div>
+          {% if record.mov_count %}
+            {% status_badge "verified" record.mov_count|stringformat:"d"|add:" on file" %}
+          {% else %}
+            {% status_badge "pending" "None filed" %}
+          {% endif %}
         </div>
-        {% if photos %}
-          <div class="card-body">
-            <ul class="grid gap-4 sm:grid-cols-2">
-              {% for photo in photos %}
-                <li class="overflow-hidden rounded-md border border-slate-200">
-                  <img src="{{ photo.file.url }}" alt="{{ photo.alt_text }}"
-                       class="h-44 w-full bg-slate-50 object-cover">
-                  <div class="flex items-start justify-between gap-2 px-3 py-2">
-                    <div class="min-w-0">
-                      <p class="text-meta text-slate-600">{{ photo.caption|default:"No caption recorded" }}</p>
-                      {% if photo.is_public %}
-                        <p class="mt-1 text-meta font-medium text-green-700">Cleared for the public website</p>
-                      {% endif %}
-                    </div>
-                    {% if user.can_encode %}
-                      <a href="{% url 'updates:attachment_delete' photo.pk %}"
-                         class="btn btn-ghost btn-sm shrink-0 text-red-700 hover:bg-red-50">
-                        {% icon "delete" "size-3.5" %}<span class="sr-only">Remove {{ photo }}</span>
-                      </a>
-                    {% endif %}
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        {% else %}
-          {% include "components/empty_state.html" with icon="view" title="No photographs yet" message="Photographs of the activity are added below and appear at the convocation." %}
-        {% endif %}
-      </section>
 
-      {# ---- Supporting documents ------------------------------------------ #}
-      <section class="card" aria-labelledby="documents-heading">
-        <div class="card-header">
-          <h2 id="documents-heading" class="card-title">Supporting Documents</h2>
-        </div>
-        {% if documents %}
+        {% if record.movs %}
           <ul class="divide-y divide-slate-100">
-            {% for document in documents %}
-              <li class="flex items-center justify-between gap-3 px-4 py-3">
-                <div class="flex min-w-0 items-center gap-3">
-                  <span aria-hidden="true" class="shrink-0 text-slate-400">{% icon "file" "size-4" %}</span>
-                  <div class="min-w-0">
-                    <a href="{{ document.file.url }}" class="text-sm font-medium text-brand-700 hover:underline">
-                      {{ document.caption|default:document.filename }}
-                    </a>
-                    <p class="text-meta text-slate-500">
-                      {{ document.filename }} &middot; uploaded
-                      {{ document.uploaded_at|date:"j M Y" }}
-                      {% if document.uploaded_by %}by {{ document.uploaded_by.get_display_name }}{% endif %}
-                    </p>
-                  </div>
+            {% for mov in record.movs %}
+              <li class="flex items-start gap-4 px-4 py-3">
+                {% if mov.is_image %}
+                  <a href="{{ mov.file.url }}" target="_blank" rel="noopener" class="shrink-0">
+                    <img src="{{ mov.file.url }}" alt="{{ mov.alt_text }}"
+                         class="h-16 w-24 rounded border border-slate-200 bg-slate-50 object-cover">
+                    <span class="sr-only">Open (in a new tab)</span>
+                  </a>
+                {% else %}
+                  <span aria-hidden="true" class="mt-1 grid size-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-500">
+                    {% icon "file" "size-4" %}
+                  </span>
+                {% endif %}
+
+                <div class="min-w-0 flex-1">
+                  <a href="{{ mov.file.url }}" target="_blank" rel="noopener"
+                     class="text-sm font-medium text-brand-700 hover:underline">
+                    {{ mov.label }}<span class="sr-only"> (opens in a new tab)</span>
+                  </a>
+                  <p class="mt-0.5 text-meta text-slate-500">
+                    {{ mov.get_mov_type_display }} &middot; {{ mov.filename }}
+                  </p>
+                  <p class="text-meta text-slate-500">
+                    Filed {{ mov.uploaded_at|date:"j M Y" }}
+                    {% if mov.uploaded_by %}by {{ mov.uploaded_by.get_display_name }}{% endif %}
+                    {% if mov.is_public %}
+                      &middot; <span class="font-medium text-green-700">cleared for the public website</span>
+                    {% endif %}
+                  </p>
                 </div>
+
                 {% if user.can_encode %}
-                  <a href="{% url 'updates:attachment_delete' document.pk %}"
+                  <a href="{% url 'updates:attachment_delete' mov.pk %}"
                      class="btn btn-ghost btn-sm shrink-0 text-red-700 hover:bg-red-50">
-                    {% icon "delete" "size-3.5" %}<span class="sr-only">Remove {{ document }}</span>
+                    {% icon "delete" "size-3.5" %}<span class="sr-only">Remove {{ mov.label }}</span>
                   </a>
                 {% endif %}
               </li>
             {% endfor %}
           </ul>
         {% else %}
-          <div class="card-body">
-            <p class="text-sm text-slate-500">No supporting documents have been filed.</p>
-          </div>
+          {% include "components/empty_state.html" with icon="warning" title="No evidence filed yet" message="The Division Chief presents this record to the department, so every accomplishment should be answerable with a photograph, an issuance, a report or an attendance sheet. Add one below." %}
         {% endif %}
       </section>
 
@@ -115,7 +100,13 @@
       {% if user.can_encode %}
         <section class="card" aria-labelledby="attach-heading">
           <div class="card-header">
-            <h2 id="attach-heading" class="card-title">Attach a Photograph or Document</h2>
+            <div>
+              <h2 id="attach-heading" class="card-title">Add a Means of Verification</h2>
+              <p class="mt-0.5 text-meta text-slate-500">
+                A photograph, an issuance, a report, a certificate or an
+                attendance sheet
+              </p>
+            </div>
           </div>
           <form method="post" enctype="multipart/form-data"
                 action="{% url 'updates:attachment_add' record.pk %}" novalidate>
@@ -131,7 +122,7 @@
             </div>
             <div class="card-footer justify-end">
               <button type="submit" class="btn btn-primary">
-                {% icon "upload" "size-4" %}Attach file
+                {% icon "upload" "size-4" %}File the evidence
               </button>
             </div>
           </form>
@@ -199,7 +190,7 @@
         <div class="card-body">
           <p class="mb-4 text-meta leading-relaxed text-slate-500">
             Recorded so the Division knows who can answer for this item. The
-            accomplishment belongs to LGMEDD, and no figure in this system is
+            accomplishment belongs to LGMED, and no figure in this system is
             broken down by staff member.
           </p>
           <dl class="space-y-4">

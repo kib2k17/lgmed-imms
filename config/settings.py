@@ -9,7 +9,7 @@ DILG Regional Office XIII - Caraga
 import os
 from pathlib import Path
 
-from .env import env, env_bool, env_float, load_venv_env
+from .env import env, env_bool, env_float, env_list, load_venv_env, local_ipv4_addresses
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,6 +41,52 @@ CSRF_TRUSTED_ORIGINS = [
     for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if o.strip()
 ]
+
+
+# ---------------------------------------------------------------------------
+# Serving to the office network
+# ---------------------------------------------------------------------------
+#
+# Set DJANGO_LAN_ACCESS=1 (in <venv>/lgmed.env) and this machine's own
+# addresses are added to both lists above, so colleagues on the same network
+# can open the server in their browser. See run-lan.ps1 and the README.
+#
+# It is worked out at start-up rather than written down because the address is
+# a DHCP lease: it changes with the lease, with a reconnection, and with every
+# move between office networks. A hand-written entry is stale by the next
+# morning, and the failure it produces - Django's bare 400 "Invalid HTTP_HOST
+# header" - reads as a broken site rather than as an out-of-date setting.
+#
+# DEBUG gates it, and that is deliberate. ALLOWED_HOSTS is what stops a request
+# carrying a forged Host header from being answered, and a production host must
+# name its own hostnames explicitly rather than accept whatever interface the
+# machine happens to have. On a deployed server the flag does nothing, and it
+# says so rather than leaving that to be discovered.
+LAN_ACCESS = env_bool("DJANGO_LAN_ACCESS", False)
+
+# The ports an origin is trusted on. CSRF compares scheme + host + PORT, so a
+# server started on 8080 needs 8080 here; run-lan.ps1 sets this to the port it
+# was asked for, so the ordinary case needs no thought.
+LAN_PORTS = env_list("DJANGO_LAN_PORTS", "8000")
+
+LAN_ADDRESSES: list[str] = []
+if LAN_ACCESS and DEBUG:
+    LAN_ADDRESSES = local_ipv4_addresses()
+    for _address in LAN_ADDRESSES:
+        if _address not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_address)
+        for _port in LAN_PORTS:
+            _origin = f"http://{_address}:{_port}"
+            if _origin not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(_origin)
+elif LAN_ACCESS:
+    import warnings
+
+    warnings.warn(
+        "DJANGO_LAN_ACCESS is set but DEBUG is off, so it is ignored. "
+        "A deployed server must name its hostnames in DJANGO_ALLOWED_HOSTS.",
+        stacklevel=2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -190,8 +236,32 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# ---------------------------------------------------------------------------
+# Protected media
+# ---------------------------------------------------------------------------
+#
+# MEDIA_ROOT is a *public* directory: the development server serves it wholesale
+# (see config/urls.py) and in production the web server is configured to do the
+# same. Anything written there is one guessed URL away from the internet.
+#
+# Internal documents - the supporting files staff upload against a programme,
+# project or activity before anyone has cleared them - must therefore not live
+# there. They are written to PROTECTED_MEDIA_ROOT, which no web server maps to a
+# URL, and are read back only through an authenticated Django view that
+# re-checks the user's role on every request.
+#
+# A file becomes publicly reachable only when an authorised reviewer approves it
+# and the system writes a separate, approved copy into MEDIA_ROOT. Flipping a
+# boolean on the internal file is deliberately not enough.
+PROTECTED_MEDIA_ROOT = BASE_DIR / "protected"
+
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Rooted at PROTECTED_MEDIA_ROOT and given no base_url, so asking a
+    # protected file for its .url fails loudly rather than handing a template a
+    # link that leaks the path. The location is read from the setting when the
+    # storage is used - see programs/storage.py for why that matters.
+    "protected": {"BACKEND": "programs.storage.ProtectedFileSystemStorage"},
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
         if DEBUG

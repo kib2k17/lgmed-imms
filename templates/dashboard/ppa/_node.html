@@ -1,0 +1,46 @@
+{% load ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One row of the programme tree: what the record is called, where it stands,
+   and the way in.
+
+   {% include "dashboard/ppa/_node.html" with record=project level="project" %}
+
+   Kept as a partial because the four levels differ only in their label and
+   their children. Writing the row out four times is how the copy governing
+   sub-projects comes to show a badge the others have stopped showing.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+  <a href="{% url 'programs:detail' level record.pk %}"
+     class="min-w-0 text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline">
+    {{ record.title }}
+  </a>
+
+  {% status_badge record.status_tone record.get_publication_status_display %}
+
+  {% if record.publication_status == "PUBLISHED" %}
+    <span class="inline-flex items-center gap-1 text-meta font-medium text-green-700">
+      {% icon "view" "size-3.5" %}Public
+    </span>
+  {% endif %}
+
+  {% if record.document_count %}
+    <span class="inline-flex items-center gap-1 text-meta text-slate-500">
+      {% icon "documents" "size-3.5" %}{{ record.document_count }}
+      <span class="sr-only">supporting document{{ record.document_count|pluralize }}</span>
+    </span>
+  {% endif %}
+
+  {% if record.activity_date %}
+    <span class="text-meta text-slate-500">{{ record.activity_date|date:"j M Y" }}</span>
+  {% elif record.start_date %}
+    <span class="text-meta text-slate-500">
+      {{ record.start_date|date:"M Y" }}{% if record.end_date %} &ndash; {{ record.end_date|date:"M Y" }}{% endif %}
+    </span>
+  {% endif %}
+
+  {% if record.responsible_office %}
+    <span class="text-meta text-slate-500">{{ record.responsible_office.label }}</span>
+  {% endif %}
+</div>

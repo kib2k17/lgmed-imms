@@ -4,7 +4,7 @@ Updates and Accomplishments.
 The module has four faces onto the same records, and they are deliberately
 different pages rather than one page with tabs:
 
-    the division dashboard   what LGMEDD has accomplished, in figures
+    the division dashboard   what LGMED has accomplished, in figures
     the reporting weeks      one consolidated record per week
     the Chief's review       what to present, and what may be published
     the convocation view     the Monday slide, projected as it stands
@@ -69,7 +69,7 @@ from .models import (
 
 class DivisionDashboardView(LoginRequiredMixin, TemplateView):
     """
-    What has LGMEDD accomplished, how active is the Division, what is still
+    What has LGMED accomplished, how active is the Division, what is still
     open, and what is next - answered for the Division as a whole.
 
     Read-only and open to every signed-in role, on the same reasoning as the
@@ -96,12 +96,12 @@ class DivisionDashboardView(LoginRequiredMixin, TemplateView):
         """Every division figure on the page, as one file."""
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = (
-            f'attachment; filename="lgmedd-accomplishments-{year}.csv"'
+            f'attachment; filename="lgme-accomplishments-{year}.csv"'
         )
         response.write("﻿")
 
         writer = csv.writer(response)
-        writer.writerow([f"LGMEDD division accomplishments, {year}"])
+        writer.writerow([f"LGMED division accomplishments, {year}"])
         writer.writerow(
             ["Generated", timezone.localtime().strftime("%d %B %Y, %I:%M %p")]
         )
@@ -198,7 +198,7 @@ class PeriodListView(PeriodModuleMixin, ModuleListView):
 
 class PeriodDetailView(PeriodModuleMixin, ModuleDetailView):
     """
-    The consolidated LGMEDD weekly accomplishment summary.
+    The consolidated LGMED weekly accomplishment summary.
 
     Everything several people contributed, gathered into one record: the
     entries, the photographs, the POPS Plan movement, the ways forward, what
@@ -217,7 +217,7 @@ class PeriodDetailView(PeriodModuleMixin, ModuleDetailView):
 
         context.update(
             {
-                "page_title": "LGMEDD Weekly Updates & Accomplishments",
+                "page_title": "LGMED Weekly Updates & Accomplishments",
                 "page_subtitle": period.label,
                 "stats": figures,
                 "cards": stats.headline_cards(figures),
@@ -234,6 +234,9 @@ class PeriodDetailView(PeriodModuleMixin, ModuleDetailView):
                 "upcoming": period.upcoming,
                 "components": period.component_state,
                 "missing": period.missing_components,
+                "without_mov": period.accomplishments.filter(
+                    attachments__isnull=True
+                ).order_by("-activity_date"),
                 "can_review": self.request.user.can_approve,
             }
         )
@@ -297,6 +300,7 @@ class DivisionUpdateListView(UpdateModuleMixin, ModuleListView):
         ("LGU", "lgu.name"),
         ("Location", "location"),
         ("Focal person", "focal_person_label"),
+        ("Means of verification", "mov_count"),
         ("Presented at convocation", "is_major"),
         ("Published", "is_public"),
     )
@@ -329,8 +333,6 @@ class DivisionUpdateDetailView(UpdateModuleMixin, ModuleDetailView):
             self.object.get_category_display(), self.object.date_label
         )
         context["attachment_form"] = UpdateAttachmentForm()
-        context["photos"] = self.object.photos
-        context["documents"] = self.object.documents
         return context
 
 
@@ -352,7 +354,7 @@ class DivisionUpdateDeleteView(UpdateModuleMixin, ModuleDeleteView):
 
 
 class AttachmentCreateView(CanEncodeMixin, FormView):
-    """Files a photograph or a supporting document against one entry."""
+    """Files a means of verification against one accomplishment."""
 
     form_class = UpdateAttachmentForm
     http_method_names = ["post"]
@@ -368,14 +370,15 @@ class AttachmentCreateView(CanEncodeMixin, FormView):
         attachment.save()
         messages.success(
             self.request,
-            f"{attachment.get_kind_display()} added to {self.update.title}.",
+            f"{attachment.get_mov_type_display()} filed against "
+            f"{self.update.title}.",
         )
         return redirect(self.update.get_absolute_url())
 
     def form_invalid(self, form):
         messages.error(
             self.request,
-            "The file could not be attached: "
+            "The evidence could not be filed: "
             + "; ".join(
                 error for errors in form.errors.values() for error in errors
             ),
@@ -386,14 +389,14 @@ class AttachmentCreateView(CanEncodeMixin, FormView):
 class AttachmentDeleteView(ModuleDeleteView):
     model = UpdateAttachment
     module_key = "updates"
-    module_label = "Attachment"
+    module_label = "Means of Verification"
     module_url_name = "updates:list"
     list_label = "Division Updates"
     template_name = "dashboard/module_confirm_delete.html"
 
-    # Removing a file the office attached is not the same act as deleting the
-    # record it belongs to: whoever may encode the entry may take a wrongly
-    # filed photograph off it again.
+    # Removing a file the office filed is not the same act as deleting the
+    # accomplishment it evidences: whoever may encode the entry may take a
+    # wrongly filed photograph off it again.
     capability = "can_encode"
 
     def get_success_url(self):
@@ -546,6 +549,15 @@ class PeriodReviewView(CanApproveMixin, TemplateView):
                 "stats": figures,
                 "cards": stats.headline_cards(figures),
                 "missing": period.missing_components,
+                # What the Chief would be presenting without evidence behind
+                # it. Shown, not blocked: an officer records the activity on
+                # the day and files the photograph when it reaches them.
+                "selected_without_mov": period.updates.filter(
+                    is_major=True, attachments__isnull=True
+                ).order_by("convocation_order", "-activity_date"),
+                "without_mov": period.accomplishments.filter(
+                    attachments__isnull=True
+                ).order_by("-activity_date"),
                 "review_form": kwargs.get("review_form") or PeriodReviewForm(
                     instance=period
                 ),

@@ -15,6 +15,10 @@
 @source "../../templates";
 @source "../../core";
 @source "../../accounts";
+/* Our own scripts build elements from class strings - the upload preview grid
+   and the public photo gallery both do - so the classes they name have to be
+   compiled too. Scanning only the templates left those elements unstyled. */
+@source "../../static/js";
 
 /* --------------------------------------------------------------------------
    1. Design tokens

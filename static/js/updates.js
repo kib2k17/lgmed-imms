@@ -6,7 +6,7 @@
    as the dashboard and the analytics page rather than as a third style.
 
    Every series here is division-wide. None of these charts has a per-employee
-   dimension, and none should acquire one: the module records what LGMEDD
+   dimension, and none should acquire one: the module records what LGMED
    accomplished, not who accomplished it.
    ========================================================================== */
 

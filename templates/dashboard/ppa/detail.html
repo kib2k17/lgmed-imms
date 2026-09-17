@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One programme, project, sub-project or activity.
+
+   The page answers three questions in order, because that is the order in
+   which staff ask them: what is this record, what is attached to it, and what
+   happens to it next. The workflow panel on the right shows only the actions
+   this user's role actually permits - and the server re-checks every one of
+   them, so hiding a button is a courtesy rather than the control.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <div class="flex flex-wrap items-center gap-2">
+    {% if can_encode %}
+      <a href="{% url 'programs:preview' level record.pk %}" class="btn btn-secondary">
+        {% icon "view" "size-4" %}Preview public page
+      </a>
+      <a href="{% url 'programs:update' level record.pk %}" class="btn btn-secondary">
+        {% icon "edit" "size-4" %}Edit
+      </a>
+      <a href="{% url 'programs:document_upload' level record.pk %}" class="btn btn-primary">
+        {% icon "upload" "size-4" %}Upload document
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    {# =================== the record itself =========================== #}
+    <div class="space-y-4 xl:col-span-2">
+
+      <section class="card" aria-labelledby="about-heading">
+        <div class="card-header">
+          <h2 id="about-heading" class="card-title">{{ level_spec.label }} information</h2>
+          <span class="flex items-center gap-2">
+            {% status_badge record.status record.get_status_display %}
+            {% status_badge record.status_tone record.get_publication_status_display %}
+          </span>
+        </div>
+        <div class="card-body space-y-6">
+          {% if outcome %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                Organizational Outcome
+              </h3>
+              <p class="mt-1.5 text-sm text-slate-900">
+                <span class="font-semibold">{{ outcome.number }}.</span>
+                {{ record.outcome_label|default:outcome.short_label }}
+              </p>
+            </div>
+          {% endif %}
+
+          <div>
+            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Description</h3>
+            <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.description|default:"No description recorded." }}
+            </p>
+          </div>
+
+          {% if record.objectives %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Objectives</h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.objectives }}</p>
+            </div>
+          {% endif %}
+
+          {% if record.accomplishment %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                Accomplishment / remarks
+              </h3>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.accomplishment }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- children --------------------------------------------------- #}
+      {% for group in children %}
+        <section class="card" aria-labelledby="group-{{ forloop.counter }}">
+          <div class="card-header">
+            <h2 id="group-{{ forloop.counter }}" class="card-title">{{ group.label }}</h2>
+            {% if can_encode %}
+              <a href="{% url 'programs:create_child' level record.pk group.level %}"
+                 class="btn btn-secondary btn-sm">{% icon "plus" "size-3.5" %}Add</a>
+            {% endif %}
+          </div>
+          {% if group.records %}
+            <ul class="divide-y divide-slate-100">
+              {% for child in group.records %}
+                <li class="px-4 py-3 sm:px-5">
+                  {% include "dashboard/ppa/_node.html" with record=child level=group.level %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+              No {{ group.label|lower }} have been recorded yet.
+            </p>
+          {% endif %}
+        </section>
+      {% endfor %}
+
+      {# ---- supporting documents --------------------------------------- #}
+      <section class="card" aria-labelledby="documents-heading">
+        <div class="card-header">
+          <h2 id="documents-heading" class="card-title">Supporting documents</h2>
+          {% if can_encode %}
+            <span class="flex flex-wrap items-center gap-2">
+              {% comment %}
+               The gallery order is an editorial decision, so it lives beside
+               the files rather than inside the publish panel.
+              {% endcomment %}
+              {% if photograph_count %}
+                <a href="{% url 'programs:photo_arrange' level record.pk %}"
+                   class="btn btn-secondary btn-sm">
+                  {% icon "view" "size-3.5" %}Arrange {{ photograph_count }} photograph{{ photograph_count|pluralize }}
+                </a>
+              {% endif %}
+              <a href="{% url 'programs:document_upload' level record.pk %}"
+                 class="btn btn-secondary btn-sm">{% icon "upload" "size-3.5" %}Upload</a>
+            </span>
+          {% endif %}
+        </div>
+
+        {% if documents %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">
+                Files uploaded against this {{ level_spec.label|lower }}, with their
+                security screening result and review status
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Document</th>
+                  <th scope="col">Screening</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" class="hidden sm:table-cell">Uploaded</th>
+                  <th scope="col"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for document in documents %}
+                  <tr>
+                    <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                      <a href="{% url 'programs:document_review' document.pk %}"
+                         class="hover:text-brand-700 hover:underline">{{ document.title }}</a>
+                      <span class="block text-meta font-normal text-slate-500">
+                        {{ document.get_kind_display }} &middot; .{{ document.extension }}
+                        &middot; {{ document.size_bytes|filesize }}
+                      </span>
+                      {% if document.is_awaiting_release %}
+                        <span class="mt-0.5 block text-meta font-normal text-green-700">
+                          {% icon "check" "size-3 inline" %} Ready to publish
+                        </span>
+                      {% elif document.authority %}
+                        <span class="mt-0.5 block text-meta font-normal text-slate-500">
+                          {% icon "lock" "size-3 inline" %} {{ document.authority.reference }}
+                        </span>
+                      {% elif document.status == "APPROVED" %}
+                        <span class="mt-0.5 block text-meta font-normal text-amber-700">
+                          {% icon "warning" "size-3 inline" %} No memorandum recorded
+                        </span>
+                      {% endif %}
+                    </th>
+                    <td>
+                      {% if document.is_screened %}
+                        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-meta font-medium
+                          {% if document.risk_tone == 'success' %}border-green-200 bg-green-50 text-green-800
+                          {% elif document.risk_tone == 'danger' %}border-red-200 bg-red-50 text-red-800
+                          {% else %}border-amber-200 bg-amber-50 text-amber-800{% endif %}">
+                          {% if document.risk_tone == 'success' %}{% icon "check" "size-3.5" %}
+                          {% elif document.risk_tone == 'danger' %}{% icon "warning" "size-3.5" %}
+                          {% else %}{% icon "info" "size-3.5" %}{% endif %}
+                          {{ document.get_risk_level_display }}
+                        </span>
+                        {% if document.finding_count %}
+                          <span class="mt-0.5 block text-meta text-slate-500">
+                            {{ document.finding_count }} finding{{ document.finding_count|pluralize }}
+                          </span>
+                        {% endif %}
+                      {% else %}
+                        <span class="text-meta text-slate-500">Not yet screened</span>
+                      {% endif %}
+                    </td>
+                    <td>{% status_badge document.status document.get_status_display %}</td>
+                    <td class="hidden whitespace-nowrap sm:table-cell">
+                      <time datetime="{{ document.uploaded_at|date:'c' }}">{{ document.uploaded_at|date:"j M Y" }}</time>
+                      <span class="block text-meta text-slate-500">{{ document.uploaded_by.get_display_name|default:"&mdash;" }}</span>
+                    </td>
+                    <td class="text-right whitespace-nowrap">
+                      <a href="{% url 'programs:document_review' document.pk %}" class="btn btn-ghost btn-sm">
+                        {% if can_review %}Review{% else %}Open{% endif %}
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            No files have been uploaded against this {{ level_spec.label|lower }}.
+          </p>
+        {% endif %}
+      </section>
+    </div>
+
+    {# =================== the workflow =============================== #}
+    <div class="space-y-4">
+
+      <section class="card" aria-labelledby="workflow-heading">
+        <div class="card-header">
+          <h2 id="workflow-heading" class="card-title">Publication</h2>
+        </div>
+        <div class="card-body space-y-4">
+
+          {% comment %}
+            The eight states as a plain list rather than a graphic: the one the
+            record is in is highlighted, and the rest stay legible.
+          {% endcomment %}
+          <ol class="flex flex-wrap gap-1 text-meta">
+            {% for label in workflow_states %}
+              <li class="rounded px-1.5 py-0.5 font-medium
+                {% if label.active %}bg-brand-100 text-brand-800
+                {% elif label.done %}bg-slate-100 text-slate-600
+                {% else %}text-slate-400{% endif %}">{{ label.label }}</li>
+            {% endfor %}
+          </ol>
+
+          <p class="text-sm leading-relaxed text-slate-700">{{ workflow_help }}</p>
+
+          {% if record.review_comments %}
+            <div class="rounded-md border border-amber-200 bg-amber-50 p-3">
+              <p class="text-meta font-semibold tracking-wide text-amber-800 uppercase">
+                Reviewer's remarks
+              </p>
+              <p class="mt-1 text-sm whitespace-pre-line text-amber-900">{{ record.review_comments }}</p>
+            </div>
+          {% endif %}
+
+          <div class="flex flex-col gap-2">
+            {% if can_encode and record.can_be_submitted %}
+              <form method="post" action="{% url 'programs:submit' level record.pk %}" data-once>
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary w-full">
+                  {% icon "check-circle" "size-4" %}Submit for review
+                </button>
+              </form>
+              <p class="text-meta text-slate-500">
+                Attached files are screened for personal and confidential
+                information when you submit.
+              </p>
+            {% endif %}
+
+            {% if can_publish and record.publication_status == "APPROVED" %}
+              {% if unauthorised_documents %}
+                <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-meta text-amber-900">
+                  {% icon "warning" "size-3.5 inline" %}
+                  {{ unauthorised_documents|length }} approved
+                  file{{ unauthorised_documents|length|pluralize }} will
+                  <strong>not</strong> be published: no memorandum authorises
+                  {{ unauthorised_documents|length|pluralize:"its,their" }} release.
+                  The record itself will go live.
+                </p>
+              {% endif %}
+              {% if record.can_be_published %}
+                <form method="post" action="{% url 'programs:publish' level record.pk %}" data-once>
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary w-full">
+                    {% icon "upload" "size-4" %}Publish to the public website
+                  </button>
+                </form>
+              {% else %}
+                <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-meta text-amber-900">
+                  {{ record.parent.title }} is not published, so this record
+                  cannot appear on the public website yet. Publish it first.
+                </p>
+              {% endif %}
+            {% endif %}
+
+            {% if ready_documents and can_publish %}
+              <div class="rounded-md border border-green-200 bg-green-50 p-3">
+                <p class="text-meta font-semibold text-green-900">
+                  {% icon "check" "size-3.5 inline" %}
+                  {{ ready_documents|length }} file{{ ready_documents|length|pluralize }}
+                  ready to publish
+                </p>
+                <p class="mt-0.5 text-meta text-green-900">
+                  Approved and authorised. A file you took down earlier is
+                  here too &mdash; putting it back is this one button.
+                </p>
+                <ul class="mt-2 space-y-1.5">
+                  {% for document in ready_documents %}
+                    <li class="flex flex-wrap items-center justify-between gap-2">
+                      <span class="min-w-0">
+                        <a href="{% url 'programs:document_review' document.pk %}"
+                           class="text-meta font-medium text-green-900 underline">
+                          {{ document.title }}
+                        </a>
+                        {% if document.status == "WITHDRAWN" %}
+                          <span class="block text-meta text-green-800">
+                            Taken down {{ document.withdrawn_at|date:"j M Y" }};
+                            the file and its details are unchanged.
+                          </span>
+                        {% endif %}
+                      </span>
+                      <form method="post" action="{% url 'programs:document_publish' document.pk %}" data-once>
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'programs:detail' level record.pk %}">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                          {% if document.status == "WITHDRAWN" %}Publish again{% else %}Publish{% endif %}
+                        </button>
+                      </form>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% elif ready_documents %}
+              <p class="rounded-md border border-green-200 bg-green-50 p-3 text-meta text-green-900">
+                {{ ready_documents|length }} file{{ ready_documents|length|pluralize }}
+                {{ ready_documents|length|pluralize:"is,are" }} cleared and
+                authorised, waiting for an administrator to publish
+                {{ ready_documents|length|pluralize:"it,them" }}.
+              </p>
+            {% endif %}
+
+            {% comment %}
+              The other direction, in the same place and at the same cost: one
+              button per file, one confirmation, the file itself untouched.
+              Taking a photograph down used to mean opening its review screen
+              to find the button, which is part of why it felt like several
+              steps.
+            {% endcomment %}
+            {% if published_documents and can_publish %}
+              <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p class="text-meta font-semibold text-slate-800">
+                  {% icon "view" "size-3.5 inline" %}
+                  {{ published_documents|length }} file{{ published_documents|length|pluralize }}
+                  on the public website
+                </p>
+                <p class="mt-0.5 text-meta text-slate-600">
+                  Taking one down deletes its public copy only. The file, its
+                  details and its approval stay here.
+                </p>
+                <ul class="mt-2 space-y-1.5">
+                  {% for document in published_documents %}
+                    <li class="flex flex-wrap items-center justify-between gap-2">
+                      <a href="{% url 'programs:document_review' document.pk %}"
+                         class="min-w-0 text-meta font-medium text-slate-800 underline">
+                        {{ document.title }}
+                      </a>
+                      <form method="post" action="{% url 'programs:document_withdraw' document.pk %}" data-once>
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'programs:detail' level record.pk %}">
+                        <button type="submit" class="btn btn-secondary btn-sm">Take down</button>
+                      </form>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+
+            {% if can_publish and record.is_published %}
+              <form method="post" action="{% url 'programs:unpublish' level record.pk %}" data-once>
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger w-full">
+                  {% icon "view-off" "size-4" %}Take off the public website
+                </button>
+              </form>
+              <p class="text-meta text-slate-500">
+                Anything published beneath this record comes down with it, and the
+                public copies of its files are deleted. Nothing leaves the
+                system: publishing the record again puts those same files back.
+              </p>
+            {% endif %}
+
+            {% if can_publish %}
+              {% if record.is_archived %}
+                <form method="post" action="{% url 'programs:restore' level record.pk %}" data-once>
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-secondary w-full">
+                    {% icon "inbox" "size-4" %}Restore from the archive
+                  </button>
+                </form>
+              {% else %}
+                <form method="post" action="{% url 'programs:archive' level record.pk %}" data-once>
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-secondary w-full">
+                    {% icon "inbox" "size-4" %}Archive
+                  </button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      {# ---- the reviewer's decision ------------------------------------ #}
+      {% if can_review and record.can_be_reviewed %}
+        <section class="card border-brand-200" aria-labelledby="decision-heading">
+          <div class="card-header bg-brand-50/60">
+            <h2 id="decision-heading" class="card-title">Your decision</h2>
+          </div>
+          <form method="post" action="{% url 'programs:decide' level record.pk %}" class="card-body space-y-4">
+            {% csrf_token %}
+
+            {% if record.flagged_documents %}
+              <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                <p class="font-semibold">
+                  {% icon "warning" "size-4 inline" %}
+                  The screening flagged {{ record.flagged_documents.count }}
+                  attached file{{ record.flagged_documents.count|pluralize }}.
+                </p>
+                <ul class="mt-1.5 space-y-1">
+                  {% for document in record.flagged_documents %}
+                    <li>
+                      <a href="{% url 'programs:document_review' document.pk %}"
+                         class="font-medium underline">{{ document.title }}</a>
+                      &mdash; {{ document.get_risk_level_display }}
+                    </li>
+                  {% endfor %}
+                </ul>
+                <p class="mt-1.5">Read each file before approving the content.</p>
+              </div>
+            {% endif %}
+
+            <fieldset>
+              <legend class="form-label">Decision</legend>
+              <div class="space-y-2">
+                {% for choice in decision_form.decision %}
+                  <label class="flex items-center gap-2 text-sm text-slate-800">
+                    {{ choice.tag }} {{ choice.choice_label }}
+                  </label>
+                {% endfor %}
+              </div>
+            </fieldset>
+
+            {% include "components/form_field.html" with field=decision_form.comments %}
+
+            <button type="submit" class="btn btn-primary w-full">Record decision</button>
+          </form>
+        </section>
+      {% endif %}
+
+      {# ---- who did what ----------------------------------------------- #}
+      <section class="card" aria-labelledby="trail-heading">
+        <div class="card-header">
+          <h2 id="trail-heading" class="card-title">Record trail</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-3 text-sm">
+            {% for row in trail %}
+              <div class="flex justify-between gap-3">
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ row.label }}</dt>
+                <dd class="text-right text-slate-900">
+                  {{ row.who }}
+                  {% if row.when %}<span class="block text-meta text-slate-500">{{ row.when|date:"j M Y, H:i" }}</span>{% endif %}
+                </dd>
+              </div>
+            {% endfor %}
+          </dl>
+          {% if user.can_administer %}
+            <p class="mt-4 border-t border-slate-100 pt-3 text-meta">
+              <a href="{% url 'audit:list' %}?q={{ record.title|urlencode }}"
+                 class="font-medium text-brand-700 hover:underline">
+                Full audit trail for this record
+              </a>
+            </p>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if user.can_publish_ppa %}
+        <section class="card border-red-200">
+          <div class="card-header">
+            <h2 class="card-title text-red-800">Delete</h2>
+          </div>
+          <div class="card-body">
+            <p class="text-sm text-slate-600">
+              Archiving keeps the record; deleting removes it and everything
+              beneath it, including the uploaded files.
+            </p>
+            <a href="{% url 'programs:delete' level record.pk %}"
+               class="btn btn-secondary btn-sm mt-3">{% icon "delete" "size-3.5" %}Delete this {{ level_spec.label|lower }}</a>
+          </div>
+        </section>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

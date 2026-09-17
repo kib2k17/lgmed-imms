@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Arrange one record's photographs.
+
+   The thumbnails here are the *internal* copies, served through
+   `programs:document_download` - which authenticates the session and checks
+   the role before a byte leaves the protected directory. That is on purpose:
+   the person arranging a gallery has to see pictures that are not published
+   yet, and the public copy of an unpublished picture does not exist.
+
+   Order is the only thing this page changes. No approving, no publishing, no
+   deleting - each of those is somebody's decision, made on its own screen.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block page_actions %}
+  <a href="{{ upload_url }}" class="btn btn-secondary">
+    {% icon "upload" "size-4" %}Upload more
+  </a>
+  <a href="{{ cancel_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}Back to the record
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% if photographs %}
+    <form method="post" data-arrange-form>
+      {% csrf_token %}
+      {{ form.order.as_hidden }}
+
+      <section class="card" aria-labelledby="arrange-heading">
+        <div class="card-header">
+          <div class="min-w-0">
+            <h2 id="arrange-heading" class="card-title">Gallery order</h2>
+            <p class="mt-0.5 text-meta text-slate-500">
+              {{ photographs|length }} photograph{{ photographs|length|pluralize }} attached{% if published_count %},
+              {{ published_count }} already on the public website{% endif %}.
+            </p>
+          </div>
+          <p class="text-meta text-slate-500" data-arrange-hint>
+            Drag a photograph, or use the arrows on it, then save.
+          </p>
+        </div>
+
+        <div class="card-body">
+          <div class="mb-4 flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-900">
+            <span class="mt-0.5 shrink-0 text-blue-700">{% icon "info" "size-5" %}</span>
+            <p class="leading-relaxed">
+              This is the order visitors see on the public page, left to right
+              and top to bottom. Only photographs a reviewer has approved and an
+              administrator has published actually appear there &mdash; the rest
+              are listed here so the order is already settled when they do.
+            </p>
+          </div>
+
+          <ol data-arrange-list
+              class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {% for photograph in photographs %}
+              <li data-arrange-item data-pk="{{ photograph.pk }}" draggable="true"
+                  class="group relative flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs">
+                <div class="relative flex aspect-4/3 items-center justify-center border-b border-slate-200 bg-slate-100">
+                  <img src="{% url 'programs:document_download' photograph.pk %}"
+                       alt="{{ photograph.alt_text }}" loading="lazy"
+                       class="size-full object-cover">
+                  <span data-arrange-position
+                        class="absolute top-2 left-2 inline-flex size-6 items-center justify-center rounded-full bg-brand-700 text-[0.6875rem] font-semibold text-white">
+                    {{ forloop.counter }}
+                  </span>
+                  <span class="absolute top-2 right-2">
+                    {% status_badge photograph.status photograph.get_status_display %}
+                  </span>
+                </div>
+
+                <div class="flex flex-1 flex-col gap-2 p-3">
+                  <p class="text-sm font-medium text-slate-900">{{ photograph.title }}</p>
+                  {% if photograph.description %}
+                    <p class="text-meta text-slate-600">{{ photograph.description }}</p>
+                  {% endif %}
+                  <p class="text-meta text-slate-500">
+                    <time datetime="{{ photograph.uploaded_at|date:'c' }}">{{ photograph.uploaded_at|date:"j M Y" }}</time>
+                    {% if photograph.uploaded_by %}
+                      &middot; {{ photograph.uploaded_by.get_display_name }}
+                    {% endif %}
+                  </p>
+
+                  <div class="mt-auto flex items-center gap-1 pt-1">
+                    <button type="button" data-arrange-move="-1"
+                            aria-label="Move {{ photograph.title }} earlier"
+                            class="inline-flex size-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                      {% icon "chevron-left" "size-4" %}
+                    </button>
+                    <button type="button" data-arrange-move="1"
+                            aria-label="Move {{ photograph.title }} later"
+                            class="inline-flex size-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                      {% icon "chevron-right" "size-4" %}
+                    </button>
+                    <a href="{% url 'programs:document_review' photograph.pk %}"
+                       class="ml-auto text-meta font-medium text-brand-700 hover:underline">Review</a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+        </div>
+
+        <div class="card-footer">
+          <p class="text-meta text-slate-500" data-arrange-status aria-live="polite">
+            Nothing moved yet.
+          </p>
+          <span class="flex items-center gap-2">
+            <a href="{{ cancel_url }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm">
+              {% icon "check" "size-4" %}Save this order
+            </button>
+          </span>
+        </div>
+      </section>
+    </form>
+  {% else %}
+    <section class="card">
+      <div class="card-body text-center">
+        <p class="text-sm text-slate-600">
+          No photographs are attached to this {{ record.level_label|lower }} yet.
+        </p>
+        <a href="{{ upload_url }}" class="btn btn-primary mt-4">
+          {% icon "upload" "size-4" %}Upload photographs
+        </a>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/ppa-arrange.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

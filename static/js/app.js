@@ -114,6 +114,68 @@
   });
 
   /* ----------------------------------------------------------------------
+     One submission per click
+
+     A form marked `data-once` may be posted once. The workflow buttons -
+     publish a file, take it back down, submit a record for review - are not
+     idempotent in the eyes of the person clicking them, and a server that
+     takes a second or two invites a second click. Without this, that second
+     click posts the same action again and the page that comes back says
+     something the person did not ask for: "already on the public website", or
+     a second line in the audit trail for one decision.
+
+     Bound once, on the document, so an element that arrives later cannot end
+     up with two listeners firing twice - which is the shape of bug this is
+     here to prevent, not to create.
+
+     The submission is never cancelled on the first click. The buttons are
+     disabled on the next tick, after the browser has taken the post, so the
+     form still travels and a keyboard submission behaves like a click.
+
+     None of this is a control. The server re-checks every one of these
+     actions and refuses a repeat on its own; this only spares the person a
+     confusing message.
+     ---------------------------------------------------------------------- */
+
+  var onceButtons = function (form) {
+    return form.querySelectorAll("button[type=submit], input[type=submit]");
+  };
+
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form || !form.matches || !form.matches("form[data-once]")) return;
+
+    if (form.dataset.onceSubmitted === "true") {
+      event.preventDefault();
+      return;
+    }
+    form.dataset.onceSubmitted = "true";
+
+    window.setTimeout(function () {
+      Array.prototype.forEach.call(onceButtons(form), function (button) {
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
+      });
+    }, 0);
+  });
+
+  /* A page restored from the back/forward cache comes back with the buttons
+     still disabled and the guard still set, which would leave the action
+     unusable. Putting them back is the whole of the fix. */
+
+  window.addEventListener("pageshow", function (event) {
+    if (!event.persisted) return;
+    var forms = document.querySelectorAll("form[data-once]");
+    Array.prototype.forEach.call(forms, function (form) {
+      delete form.dataset.onceSubmitted;
+      Array.prototype.forEach.call(onceButtons(form), function (button) {
+        button.disabled = false;
+        button.removeAttribute("aria-disabled");
+      });
+    });
+  });
+
+  /* ----------------------------------------------------------------------
      Confirmation dialogs
      Native <dialog> gives us focus trapping and Escape handling for free.
      ---------------------------------------------------------------------- */

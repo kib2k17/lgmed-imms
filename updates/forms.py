@@ -98,22 +98,22 @@ class DivisionUpdateForm(GovModelForm):
 
 class UpdateAttachmentForm(forms.ModelForm):
     """
-    A photograph or a supporting document against one entry.
+    A means of verification filed against one accomplishment.
 
     A plain ModelForm rather than a `GovModelForm`: this is rendered inline on
-    the record page beside the files already filed, not as a sectioned form of
-    its own.
+    the record page beside the evidence already filed, not as a sectioned form
+    of its own.
     """
 
     class Meta:
         model = UpdateAttachment
-        fields = ["kind", "file", "caption", "is_public"]
+        fields = ["mov_type", "file", "caption", "is_public"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from core.forms_base import CHECKBOX_CLASS, FILE_CLASS, SELECT_CLASS, TEXT_CLASS
 
-        self.fields["kind"].widget.attrs["class"] = SELECT_CLASS
+        self.fields["mov_type"].widget.attrs["class"] = SELECT_CLASS
         self.fields["file"].widget.attrs["class"] = FILE_CLASS
         self.fields["caption"].widget.attrs["class"] = TEXT_CLASS
         self.fields["is_public"].widget.attrs["class"] = CHECKBOX_CLASS

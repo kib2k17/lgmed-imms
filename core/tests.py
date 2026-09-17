@@ -95,16 +95,39 @@ class PublicSiteTests(TestCase):
         self.assertContains(response, "(085) 975-9830 to 34")
 
     def test_public_site_shows_only_published_records(self):
+        """
+        An active programme is not thereby a public one.
+
+        The two used to be the same question - the public page listed whatever
+        was Active or Completed. They are now separate: how the work is going
+        is `status`, and whether the public may read about it is
+        `publication_status`, which only a reviewer and a publisher can move.
+        """
+        from programs.models import PublicationStatus
+
         _, _, category, program, _ = make_records()
         Program.objects.create(
             title="Unpublished draft program",
             category=category,
             start_date=datetime.date(2026, 2, 1),
-            status=ProgramStatus.PENDING,
+            status=ProgramStatus.ACTIVE,
         )
-        response = self.client.get(reverse("core:public_programs"))
-        self.assertContains(response, program.title)
-        self.assertNotContains(response, "Unpublished draft program")
+        program.publication_status = PublicationStatus.PUBLISHED
+        program.save()
+
+        outcome = self.client.get(
+            reverse("core:public_outcome", args=[program.outcome_detail["slug"]])
+        )
+        self.assertContains(outcome, program.title)
+        self.assertNotContains(outcome, "Unpublished draft program")
+
+        # And the draft is not reachable by its own address either.
+        self.assertEqual(
+            self.client.get(
+                reverse("core:public_program", args=["unpublished-draft-program"])
+            ).status_code,
+            404,
+        )
 
     def test_login_page_renders(self):
         self.assertEqual(self.client.get(reverse("accounts:login")).status_code, 200)
@@ -257,6 +280,10 @@ class StatusVocabularyTests(TestCase):
         from incoming.models import IncomingStatus
         from lgus.models import ComplianceStatus
         from reports.models import ReportStatus
+        from programs.models import (
+            DocumentStatus as PPADocumentStatus,
+            PublicationStatus,
+        )
         from updates.models import PeriodStatus, UpdateStatus, WayForwardStatus
 
         known = set(STATUS_MAP) | set(STATUS_STYLES)
@@ -270,6 +297,8 @@ class StatusVocabularyTests(TestCase):
             PeriodStatus.values,
             UpdateStatus.values,
             WayForwardStatus.values,
+            PublicationStatus.values,
+            PPADocumentStatus.values,
         ):
             values.update(v.lower() for v in choices)
         # Compliance statuses are mapped through LGU.compliance_tone.
@@ -288,3 +317,42 @@ class StatusVocabularyTests(TestCase):
         )
         self.assertIn("Approved", rendered)
         self.assertIn("<svg", rendered)
+
+
+class LanAccessTests(TestCase):
+    """
+    The addresses the server accepts when DJANGO_LAN_ACCESS is on.
+
+    Worked out at start-up rather than written into a settings file, because
+    the address is a DHCP lease - see config/env.py. What matters is that the
+    two addresses which are never reachable from another machine cannot end up
+    in ALLOWED_HOSTS, where they would make a broken network look configured.
+    """
+
+    def test_detected_addresses_exclude_loopback_and_apipa(self):
+        from config.env import local_ipv4_addresses
+
+        addresses = local_ipv4_addresses()
+        for address in addresses:
+            self.assertFalse(
+                address.startswith(("127.", "169.254.")),
+                f"{address} is not reachable from another machine",
+            )
+
+    def test_detected_addresses_are_not_repeated(self):
+        from config.env import local_ipv4_addresses
+
+        addresses = local_ipv4_addresses()
+        self.assertEqual(len(addresses), len(set(addresses)))
+
+    def test_env_list_splits_and_drops_blanks(self):
+        import os
+
+        from config.env import env_list
+
+        os.environ["LGMED_TEST_PORTS"] = " 8000 , ,8080 "
+        try:
+            self.assertEqual(env_list("LGMED_TEST_PORTS"), ["8000", "8080"])
+        finally:
+            del os.environ["LGMED_TEST_PORTS"]
+        self.assertEqual(env_list("LGMED_TEST_ABSENT", "8000"), ["8000"])

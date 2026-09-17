@@ -1,7 +1,7 @@
 import json
 
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
@@ -195,22 +195,146 @@ def public_about(request):
     )
 
 
+# ---------------------------------------------------------------------------
+# Programs, projects and activities
+# ---------------------------------------------------------------------------
+#
+# Every one of these views reads through `programs.public`, which is the only
+# module allowed to query PPA records for a visitor. Nothing here filters on
+# publication status itself: doing it in five places is how the fifth one comes
+# to be forgotten.
+
+
 @public_view
 def public_programs(request):
-    from programs.models import Program, ProgramStatus
+    """The five Organizational Outcomes, and what has been published under each."""
+    from programs import public as ppa
 
+    figures = ppa.public_statistics()
     return render(
         request,
         "public/programs.html",
         {
-            "meta_title": "Programs",
-            "page_title": "Programs",
-            "page_subtitle": "Programs and projects administered by the Division",
-            "programs": Program.objects.select_related("category")
-            .filter(status__in=(ProgramStatus.ACTIVE, ProgramStatus.COMPLETED))
-            .order_by("-start_date"),
+            "meta_title": "Programs, Projects and Activities",
+            "page_title": "Programs, Projects and Activities",
+            "page_subtitle": (
+                "What the Division delivers, grouped under the Department's "
+                "five Organizational Outcomes"
+            ),
+            "outcomes": ppa.outcome_summary(),
+            "figures": figures,
+            # The five figures in the order the module brief asks for them:
+            # the Outcomes are a constant, the rest are what has been published.
+            "figure_rows": [
+                {"label": "Organizational Outcomes", "value": figures["outcomes"]},
+                {"label": "Programs", "value": figures["programs"]},
+                {"label": "Projects", "value": figures["projects"]},
+                {"label": "Sub-Projects", "value": figures["sub_projects"]},
+                {"label": "Activities", "value": figures["activities"]},
+            ],
+            "programs": ppa.published_programs(),
         },
     )
+
+
+@public_view
+def public_outcome(request, slug):
+    """One Organizational Outcome and the programmes published under it."""
+    from programs import public as ppa
+    from programs.models import OUTCOME_DETAIL, OrganizationalOutcome
+
+    outcome = ppa.outcome_from_slug(slug)
+    detail = OUTCOME_DETAIL[outcome]
+    programs = ppa.published_programs(outcome)
+
+    return render(
+        request,
+        "public/ppa_outcome.html",
+        {
+            "meta_title": OrganizationalOutcome(outcome).label,
+            "page_title": f"Organizational Outcome {detail['number']}",
+            "page_subtitle": OrganizationalOutcome(outcome).label,
+            "outcome": detail,
+            "outcome_value": outcome,
+            "outcome_label": OrganizationalOutcome(outcome).label,
+            "programs": programs,
+            "outcomes": ppa.outcome_summary(),
+        },
+    )
+
+
+def _ppa_detail(request, model, slug):
+    from programs import public as ppa
+
+    record = ppa.get_public(model, slug)
+    return render(request, "public/ppa_detail.html", ppa.public_detail_context(record))
+
+
+@public_view
+def public_program(request, slug):
+    from programs.models import Program
+
+    return _ppa_detail(request, Program, slug)
+
+
+@public_view
+def public_project(request, slug):
+    from programs.models import Project
+
+    return _ppa_detail(request, Project, slug)
+
+
+@public_view
+def public_subproject(request, slug):
+    from programs.models import SubProject
+
+    return _ppa_detail(request, SubProject, slug)
+
+
+@public_view
+def public_activity(request, slug):
+    from programs.models import Activity
+
+    return _ppa_detail(request, Activity, slug)
+
+
+@public_view
+def public_document_file(request, token):
+    """
+    Serve the approved public copy of a supporting document.
+
+    Not a redirect to a media path, and not a link a template builds by hand:
+    a view, so that the four conditions for release - the document is
+    published, the public copy exists, the record it belongs to is published,
+    and every record above that one is published too - are all checked at the
+    moment the bytes are handed over. A file whose programme was withdrawn
+    this morning stops being downloadable this morning, even from a link
+    somebody saved last year.
+    """
+    from django.http import FileResponse, Http404
+
+    from programs import public as ppa
+    from programs.models import SupportingDocument
+
+    try:
+        document = SupportingDocument.objects.get(public_token=token)
+    except (SupportingDocument.DoesNotExist, ValidationError, ValueError):
+        raise Http404("No such document.")
+
+    owner = document.owner
+    if (
+        document.public_url is None
+        or owner is None
+        or not ppa.visible(owner)
+    ):
+        raise Http404("No such document.")
+
+    response = FileResponse(
+        document.public_file.open("rb"),
+        as_attachment=request.GET.get("download") == "1",
+        filename=document.public_file.name.rsplit("/", 1)[-1],
+    )
+    return response
 
 
 @public_view
@@ -406,8 +530,8 @@ def public_updates(request):
     What the Division has accomplished - the same statistics the office works
     from, published.
 
-    The Division is the subject throughout: the figures are LGMEDD's, the
-    accomplishments are LGMEDD's, and no individual's record appears here.
+    The Division is the subject throughout: the figures are LGMED's, the
+    accomplishments are LGMED's, and no individual's record appears here.
 
     The figures cover the weeks the Chief has **published** *and* left inside
     the disclosure window, so nothing reaches this page before it has been
@@ -443,7 +567,7 @@ def public_updates(request):
         "public/updates.html",
         {
             "meta_title": "Accomplishments",
-            "page_title": "LGMEDD Updates & Accomplishments",
+            "page_title": "LGMED Updates & Accomplishments",
             "page_subtitle": (
                 "What the Local Government Monitoring and Evaluation Division "
                 "accomplished, week by week"
@@ -511,7 +635,7 @@ def public_update_week(request, pk):
                 f"What the Local Government Monitoring and Evaluation Division "
                 f"accomplished during {period.label}."
             ),
-            "page_title": "LGMEDD Updates & Accomplishments",
+            "page_title": "LGMED Updates & Accomplishments",
             "page_subtitle": period.label,
             "period": period,
             "stats": figures,
@@ -521,6 +645,9 @@ def public_update_week(request, pk):
                 "convocation_order", "-activity_date"
             ),
             "photos": period.photos.filter(is_public=True),
+            # Evidence that is not a picture - an issuance, a report - listed
+            # rather than shown, and only where it was cleared one by one.
+            "documents": period.supporting_documents.filter(is_public=True),
             "pops_updates": pops_updates,
             "pops_compliance": {
                 "target": target,

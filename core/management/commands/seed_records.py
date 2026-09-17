@@ -35,7 +35,16 @@ from documents.models import Document, DocumentStatus, DocumentType
 from incoming.models import IncomingDocument, IncomingStatus, IncomingUpdate, Priority
 from lgus.models import LGU, ComplianceStatus
 from monitoring.models import MonitoringActivity, MonitoringStatus
-from programs.models import Program, ProgramCategory, ProgramStatus
+from programs.models import (
+    Activity as PPAActivity,
+    OrganizationalOutcome,
+    Program,
+    ProgramCategory,
+    ProgramStatus,
+    Project,
+    PublicationAuthority,
+    SubProject,
+)
 from reports.models import Report, ReportPeriod, ReportStatus
 from services.models import FrontlineService, ServiceType
 from updates.models import ActivityType as UpdateActivityType
@@ -117,20 +126,59 @@ NEWS = [
      "", False),
 ]
 
+# Programme, category, implementation status, Organizational Outcome.
 PROGRAMS = [
-    ("Seal of Good Local Governance", "Governance", ProgramStatus.ACTIVE),
-    ("Barangay Development Plan Review", "Monitoring and Evaluation", ProgramStatus.ACTIVE),
-    ("Full Disclosure Policy Compliance Monitoring", "Governance", ProgramStatus.ACTIVE),
-    ("Local Governance Capacity Development Program", "Capacity Development", ProgramStatus.ACTIVE),
-    ("Local Development Council Functionality Assessment", "Governance", ProgramStatus.ACTIVE),
-    ("Annual Investment Program Validation", "Fiscal Administration", ProgramStatus.ACTIVE),
-    ("Local Disaster Risk Reduction Fund Utilisation Review", "Disaster Risk Reduction", ProgramStatus.ACTIVE),
-    ("Community-Based Monitoring System Rollout", "Monitoring and Evaluation", ProgramStatus.PENDING),
-    ("Local Revenue Mobilisation Assistance", "Fiscal Administration", ProgramStatus.PENDING),
-    ("Barangay Officials Orientation", "Capacity Development", ProgramStatus.COMPLETED),
-    ("Local Nutrition Program Monitoring", "Social Services", ProgramStatus.COMPLETED),
-    ("Katarungang Pambarangay Performance Review", "Governance", ProgramStatus.ARCHIVED),
+    ("Seal of Good Local Governance", "Governance", ProgramStatus.ACTIVE,
+     OrganizationalOutcome.OO1),
+    ("Barangay Development Plan Review", "Monitoring and Evaluation",
+     ProgramStatus.ACTIVE, OrganizationalOutcome.OO1),
+    ("Full Disclosure Policy Compliance Monitoring", "Governance",
+     ProgramStatus.ACTIVE, OrganizationalOutcome.OO5),
+    ("Local Governance Capacity Development Program", "Capacity Development",
+     ProgramStatus.ACTIVE, OrganizationalOutcome.OO1),
+    ("Local Development Council Functionality Assessment", "Governance",
+     ProgramStatus.ACTIVE, OrganizationalOutcome.OO4),
+    ("Annual Investment Program Validation", "Fiscal Administration",
+     ProgramStatus.ACTIVE, OrganizationalOutcome.OO1),
+    ("Local Disaster Risk Reduction Fund Utilisation Review",
+     "Disaster Risk Reduction", ProgramStatus.ACTIVE, OrganizationalOutcome.OO3),
+    ("Community-Based Monitoring System Rollout", "Monitoring and Evaluation",
+     ProgramStatus.PENDING, OrganizationalOutcome.OO4),
+    ("Local Revenue Mobilisation Assistance", "Fiscal Administration",
+     ProgramStatus.PENDING, OrganizationalOutcome.OO1),
+    ("Barangay Officials Orientation", "Capacity Development",
+     ProgramStatus.COMPLETED, OrganizationalOutcome.OO2),
+    ("Local Nutrition Program Monitoring", "Social Services",
+     ProgramStatus.COMPLETED, OrganizationalOutcome.OO4),
+    ("Katarungang Pambarangay Performance Review", "Governance",
+     ProgramStatus.ARCHIVED, OrganizationalOutcome.OO2),
 ]
+
+# The tree beneath a programme: project -> (sub-projects, activities).
+# Only some programmes get one, so the workbench shows both a filled branch and
+# an empty one - which is what the office will actually have.
+PPA_TREE = {
+    "Seal of Good Local Governance": [
+        ("SGLG Regional Assessment 2026",
+         ["Agusan del Norte and Butuan City Cluster",
+          "Surigao del Sur Cluster"],
+         ["Orientation of Regional Assessors",
+          "Regional Validation Conference"]),
+        ("SGLG Technical Assistance to Non-Passers",
+         [],
+         ["Coaching Session for Municipal Focal Persons"]),
+    ],
+    "Local Disaster Risk Reduction Fund Utilisation Review": [
+        ("LDRRMF Utilisation Review 2026",
+         ["Flood-Prone Municipalities Review"],
+         ["Regional Orientation on the Review Guidelines"]),
+    ],
+    "Local Governance Capacity Development Program": [
+        ("Newly Elected Officials Program",
+         [],
+         ["Regional Rollout Planning Workshop"]),
+    ],
+}
 
 ACTIVITY_TITLES = [
     "SGLG Assessment - Table Validation",
@@ -253,6 +301,7 @@ class Command(BaseCommand):
 
         self.seed_reference_data()
         programs = self.seed_programs(today)
+        self.seed_ppa_tree(programs, today)
         self.seed_monitoring(programs, today)
         self.seed_services()
         self.seed_documents(today)
@@ -266,6 +315,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Illustrative records created:"))
         for label, count in [
             ("Programs", Program.objects.count()),
+            ("Projects", Project.objects.count()),
+            ("Sub-projects", SubProject.objects.count()),
+            ("PPA activities", PPAActivity.objects.count()),
+            ("Publication authorities", PublicationAuthority.objects.count()),
             ("Monitoring activities", MonitoringActivity.objects.count()),
             ("Frontline services", FrontlineService.objects.count()),
             ("Documents", Document.objects.count()),
@@ -310,7 +363,7 @@ class Command(BaseCommand):
 
     def seed_programs(self, today):
         created = []
-        for index, (title, category_name, status) in enumerate(PROGRAMS):
+        for index, (title, category_name, status, outcome) in enumerate(PROGRAMS):
             category = ProgramCategory.objects.get(name=category_name)
             start = today.replace(month=1, day=15) - datetime.timedelta(days=index * 21)
             end = None
@@ -321,6 +374,7 @@ class Command(BaseCommand):
                 title=title,
                 defaults={
                     "category": category,
+                    "outcome_code": outcome,
                     "status": status,
                     "start_date": start,
                     "end_date": end,
@@ -346,6 +400,152 @@ class Command(BaseCommand):
                 )
             created.append(program)
         return created
+
+    def seed_ppa_tree(self, programs, today):
+        """
+        Projects, sub-projects and activities under some of the programmes,
+        each left in a different stage of the publication workflow.
+
+        The spread is the point. A demonstration in which everything is already
+        published shows none of what this module is for, so the seeded tree
+        leaves work at every stage: live on the public website, approved and
+        waiting on an administrator, sitting in a reviewer's queue, and still a
+        draft.
+        """
+        from accounts.models import Role, Section, User
+
+        publisher = User.objects.filter(role=Role.ADMIN).first()
+        reviewer = User.objects.filter(role=Role.LGMED_STAFF).first() or publisher
+        encoder = User.objects.filter(role=Role.ENCODER).first() or publisher
+        if publisher is None:
+            self.stdout.write(
+                "  no accounts yet - run `bootstrap_demo` first for a "
+                "seeded PPA tree"
+            )
+            return
+
+        # A standing memorandum. Without one the Publication Authorities page
+        # is empty and a demonstration cannot show a file being released at
+        # all - which is the part of this module worth showing.
+        PublicationAuthority.objects.get_or_create(
+            reference=f"LGMED Memorandum No. {today.year}-001",
+            defaults={
+                "title": (
+                    "Standing authority to publish programme, project and "
+                    "activity information"
+                ),
+                "approved_on": today.replace(month=1, day=15),
+                "approved_by": "Regional Director",
+                "scope": (
+                    "Covers descriptive information and accomplishment "
+                    "reports on the Division's programmes, projects, "
+                    "sub-projects and activities. Does not cover attendance "
+                    "sheets, participant lists or any document carrying "
+                    "personal information."
+                ),
+                "created_by": publisher,
+            },
+        )
+
+        # The tree itself is seeded once; the memorandum above is reference
+        # data and is recorded either way.
+        if Project.objects.exists():
+            return
+
+        section = Section.objects.first()
+        by_title = {program.title: program for program in programs}
+        counter = 0
+
+        for program_title, projects in PPA_TREE.items():
+            program = by_title.get(program_title)
+            if program is None:
+                continue
+            self.advance_ppa(program, counter, encoder, reviewer, publisher)
+
+            for project_title, sub_titles, activity_titles in projects:
+                counter += 1
+                project = Project.objects.create(
+                    title=project_title,
+                    program=program,
+                    responsible_office=section,
+                    status=program.status,
+                    start_date=program.start_date,
+                    end_date=program.end_date,
+                    description=(
+                        f"{project_title} is delivered under {program.title}. "
+                        "It covers the preparation, conduct and reporting of the "
+                        "work with the local government units concerned."
+                    ),
+                    created_by=encoder,
+                )
+                self.advance_ppa(project, counter, encoder, reviewer, publisher)
+
+                for sub_title in sub_titles:
+                    counter += 1
+                    sub = SubProject.objects.create(
+                        title=sub_title,
+                        project=project,
+                        responsible_office=section,
+                        status=project.status,
+                        description=(
+                            f"{sub_title}: the component of {project.title} "
+                            "covering this group of local government units."
+                        ),
+                        created_by=encoder,
+                    )
+                    self.advance_ppa(sub, counter, encoder, reviewer, publisher)
+
+                for offset, activity_title in enumerate(activity_titles):
+                    counter += 1
+                    activity = PPAActivity.objects.create(
+                        title=activity_title,
+                        project=project,
+                        responsible_office=section,
+                        activity_date=today - datetime.timedelta(days=14 * offset + 7),
+                        location=random.choice(
+                            ["Butuan City", "Surigao City", "Bayugan City",
+                             "Tandag City", "Cabadbaran City"]
+                        ),
+                        status=ProgramStatus.COMPLETED,
+                        description=f"{activity_title}, conducted under {project.title}.",
+                        accomplishment=(
+                            "Conducted as scheduled. The participating local "
+                            "government units received the guidelines and the "
+                            "schedule of the next round of validation."
+                        ),
+                        created_by=encoder,
+                    )
+                    self.advance_ppa(activity, counter, encoder, reviewer, publisher)
+
+    @staticmethod
+    def advance_ppa(record, counter, encoder, reviewer, publisher):
+        """
+        Move a seeded record to one of four stages, in rotation.
+
+        Goes through the model's own transition methods rather than writing the
+        status column, so a seeded record carries the same provenance - who
+        submitted it, who approved it, who published it - that a real one does.
+        """
+        from django.core.exceptions import ValidationError
+
+        if record.publication_status != "DRAFT":
+            return  # already advanced: a programme shared by two projects
+
+        stage = counter % 4
+        if stage == 3:
+            return  # left as a draft
+        record.submit_for_review(encoder)
+        if stage == 2:
+            return  # left in the reviewer's queue
+        record.approve(reviewer, "Reviewed for the public website.")
+        if stage == 1:
+            return  # approved, waiting on an administrator
+        try:
+            record.publish(publisher)
+        except ValidationError:
+            # A child whose parent is not published cannot go live. That is the
+            # rule working, not a failure: leave the record approved.
+            pass
 
     def seed_monitoring(self, programs, today):
         if MonitoringActivity.objects.exists():
@@ -1092,6 +1292,8 @@ class Command(BaseCommand):
             "Documents": Document.objects.all().delete()[0],
             "Frontline services": FrontlineService.objects.all().delete()[0],
             "Monitoring activities": MonitoringActivity.objects.all().delete()[0],
+            # Cascades to projects, sub-projects, activities and every
+            # document attached to any of them.
             "Programs": Program.objects.all().delete()[0],
         }
         LGU.objects.update(compliance_status=ComplianceStatus.NOT_ASSESSED)

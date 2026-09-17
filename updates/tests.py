@@ -23,12 +23,14 @@ from accounts.models import Role, User
 from .models import (
     ActivityType,
     DisclosureWindow,
+    MovType,
     DivisionUpdate,
     PeriodStatus,
     PublicDisclosure,
     PopsPlanUpdate,
     ReportingPeriod,
     UpdateCategory,
+    UpdateAttachment,
     UpdateStatus,
     WayForward,
     month_start,
@@ -338,7 +340,7 @@ class DivisionStatisticsTests(TestCase):
             if c["label"] == "Weekly update completion"
         )
         missing = [p["label"] for p in card["parts"] if p["display"] == "Not yet"]
-        self.assertEqual(missing, ["Photo documentation", "Upcoming activities"])
+        self.assertEqual(missing, ["Means of verification", "Upcoming activities"])
 
     def test_the_upcoming_card_splits_by_how_soon(self):
         DivisionUpdate.objects.create(
@@ -371,7 +373,7 @@ class DivisionStatisticsTests(TestCase):
         """
         self.assertEqual(
             self.period.missing_components,
-            ["Photo documentation", "Upcoming activities"],
+            ["Means of verification", "Upcoming activities"],
         )
         self.assertEqual(self.period.completion_percent, 71)
 
@@ -858,6 +860,212 @@ class DisclosureWindowTests(TestCase):
         self.assertEqual(PublicDisclosure.load().weeks_shown, 6)
 
 
+class MeansOfVerificationTests(TestCase):
+    """
+    Evidence, linked to the accomplishment it supports.
+
+    The Chief presents this record to the department, so the test that matters
+    is not that a file uploads - it is that the file appears beside the claim
+    it backs up, wherever that claim is shown.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.media_root = tempfile.mkdtemp()
+        cls._media_override = override_settings(MEDIA_ROOT=cls.media_root)
+        cls._media_override.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls._media_override.disable()
+        shutil.rmtree(cls.media_root, ignore_errors=True)
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.period = ReportingPeriod.objects.create(
+            start_date=LAST_MONDAY, end_date=LAST_FRIDAY
+        )
+        cls.chief = User.objects.create_user(
+            username="chief", password="pw", role=Role.ADMIN
+        )
+        cls.encoder = User.objects.create_user(
+            username="encoder", password="pw", role=Role.ENCODER
+        )
+        cls.evidenced = DivisionUpdate.objects.create(
+            period=cls.period,
+            title="Conducted the SGLGB orientation",
+            activity_date=LAST_MONDAY,
+        )
+        cls.bare = DivisionUpdate.objects.create(
+            period=cls.period,
+            title="Coordination meeting with the PDMU",
+            activity_date=LAST_MONDAY,
+        )
+
+    def file_evidence(self, update, filename, mov_type=MovType.PHOTO, public=False):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        attachment = UpdateAttachment(
+            update=update,
+            mov_type=mov_type,
+            caption="Participants of the orientation",
+            is_public=public,
+        )
+        attachment.file.save(
+            filename, SimpleUploadedFile(filename, b"evidence"), save=False
+        )
+        attachment.full_clean(exclude=["update"])
+        attachment.save()
+        return attachment
+
+    # -- what the evidence is ---------------------------------------------
+
+    def test_evidence_is_typed_so_it_is_not_all_read_out_as_a_photo(self):
+        certificate = self.file_evidence(
+            self.evidenced, "certificate.pdf", MovType.CERTIFICATE
+        )
+        self.assertEqual(certificate.get_mov_type_display(), "Certificate")
+        self.assertFalse(certificate.is_image)
+
+    def test_a_picture_of_a_certificate_is_still_a_certificate(self):
+        """
+        How a file displays and what it *is* are different questions, so a
+        photographed certificate is filed as a certificate and still shows.
+        """
+        scanned = self.file_evidence(
+            self.evidenced, "certificate.jpg", MovType.CERTIFICATE
+        )
+        self.assertEqual(scanned.mov_type, MovType.CERTIFICATE)
+        self.assertTrue(scanned.is_image)
+        self.assertIn(scanned, list(self.evidenced.photos))
+
+    def test_a_photograph_must_actually_be_an_image(self):
+        with self.assertRaises(ValidationError):
+            self.file_evidence(self.evidenced, "minutes.docx", MovType.PHOTO)
+
+    def test_a_document_may_be_a_file_or_a_scan_of_one(self):
+        for filename in ("issuance.pdf", "issuance.jpg"):
+            with self.subTest(filename=filename):
+                self.file_evidence(self.evidenced, filename, MovType.DOCUMENT)
+
+    def test_evidence_carries_alt_text_naming_what_it_is(self):
+        photo = self.file_evidence(self.evidenced, "activity.jpg")
+        photo.caption = ""
+        self.assertIn("Photograph", photo.alt_text)
+        self.assertIn(self.evidenced.title, photo.alt_text)
+
+    # -- the link to the accomplishment -------------------------------------
+
+    def test_an_accomplishment_knows_whether_it_can_be_backed_up(self):
+        self.file_evidence(self.evidenced, "activity.jpg")
+        self.assertTrue(self.evidenced.has_mov)
+        self.assertEqual(self.evidenced.mov_count, 1)
+        self.assertFalse(self.bare.has_mov)
+
+    def test_the_division_figures_count_what_can_be_evidenced(self):
+        self.file_evidence(self.evidenced, "activity.jpg")
+        figures = division_statistics(period=self.period)
+        self.assertEqual(figures["movs"], 1)
+        self.assertEqual(figures["with_mov"], 1)
+        self.assertEqual(figures["without_mov"], 1)
+        self.assertEqual(figures["mov_coverage"], 50)
+
+    def test_deleting_the_accomplishment_takes_its_evidence_with_it(self):
+        self.file_evidence(self.bare, "activity.jpg")
+        self.assertEqual(UpdateAttachment.objects.count(), 1)
+        self.bare.delete()
+        self.assertEqual(UpdateAttachment.objects.count(), 0)
+
+    # -- where the Chief sees it --------------------------------------------
+
+    def test_the_convocation_shows_the_evidence_beside_the_accomplishment(self):
+        """
+        The point of the whole feature: the Chief opens one page and the claim
+        and its proof are on it together.
+        """
+        photo = self.file_evidence(self.evidenced, "activity.jpg")
+        issuance = self.file_evidence(
+            self.evidenced, "memorandum.pdf", MovType.DOCUMENT
+        )
+        self.evidenced.is_major = True
+        self.evidenced.save(update_fields=["is_major"])
+
+        self.client.force_login(self.chief)
+        response = self.client.get(
+            reverse("updates:convocation", args=[self.period.pk])
+        )
+        self.assertContains(response, "Means of verification")
+        self.assertContains(response, photo.file.url)
+        self.assertContains(response, issuance.file.url)
+
+    def test_the_convocation_says_when_an_accomplishment_has_no_evidence(self):
+        self.bare.is_major = True
+        self.bare.save(update_fields=["is_major"])
+        self.client.force_login(self.chief)
+        response = self.client.get(
+            reverse("updates:convocation", args=[self.period.pk])
+        )
+        self.assertContains(response, "No means of verification filed yet")
+
+    def test_the_review_page_warns_before_the_chief_stands_up(self):
+        self.bare.is_major = True
+        self.bare.save(update_fields=["is_major"])
+        self.client.force_login(self.chief)
+        response = self.client.get(reverse("updates:review", args=[self.period.pk]))
+        self.assertContains(response, "no means of verification")
+        self.assertEqual(
+            [item.pk for item in response.context["selected_without_mov"]],
+            [self.bare.pk],
+        )
+
+    def test_the_week_lists_what_is_still_awaiting_evidence(self):
+        self.file_evidence(self.evidenced, "activity.jpg")
+        self.client.force_login(self.chief)
+        response = self.client.get(
+            reverse("updates:period_detail", args=[self.period.pk])
+        )
+        self.assertContains(response, "Awaiting a Means of Verification")
+        self.assertEqual(
+            [item.pk for item in response.context["without_mov"]], [self.bare.pk]
+        )
+
+    def test_selecting_an_unevidenced_accomplishment_is_warned_not_blocked(self):
+        """
+        An officer records the activity on the day and files the photograph
+        when it reaches them. Refusing the selection until the evidence exists
+        would get neither, so the Chief is told rather than stopped.
+        """
+        self.client.force_login(self.chief)
+        self.client.post(
+            reverse("updates:review", args=[self.period.pk]),
+            {"action": "selection", "selected": [self.bare.pk]},
+        )
+        self.bare.refresh_from_db()
+        self.assertTrue(self.bare.is_major)
+
+    # -- what reaches the public ---------------------------------------------
+
+    def test_only_evidence_cleared_one_by_one_reaches_the_public(self):
+        self.file_evidence(self.evidenced, "public.jpg", public=True)
+        withheld = self.file_evidence(
+            self.evidenced, "internal.pdf", MovType.DOCUMENT, public=False
+        )
+        shown = self.file_evidence(
+            self.evidenced, "issuance.pdf", MovType.DOCUMENT, public=True
+        )
+        self.evidenced.is_public = True
+        self.evidenced.save(update_fields=["is_public"])
+        self.period.publish(self.chief)
+
+        response = self.client.get(
+            reverse("core:public_update_week", args=[self.period.pk])
+        )
+        self.assertContains(response, shown.file.url)
+        self.assertNotContains(response, withheld.file.url)
+
+
 class ModulePageTests(TestCase):
     """The pages render, and the permission rules hold."""
 
@@ -1156,13 +1364,13 @@ class AttachmentTests(TestCase):
             username="viewer", password="pw", role=Role.VIEWER
         )
 
-    def upload(self, filename, kind="PHOTO", content=b"not really an image"):
+    def upload(self, filename, mov_type="PHOTO", content=b"not really an image"):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         return self.client.post(
             reverse("updates:attachment_add", args=[self.entry.pk]),
             {
-                "kind": kind,
+                "mov_type": mov_type,
                 "caption": "Participants of the orientation",
                 "file": SimpleUploadedFile(filename, content),
             },
@@ -1190,8 +1398,8 @@ class AttachmentTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.entry.attachments.count(), 0)
 
-    def test_a_photograph_counts_towards_the_week_being_complete(self):
+    def test_evidence_counts_towards_the_week_being_complete(self):
         self.client.force_login(self.encoder)
-        self.assertIn("Photo documentation", self.period.missing_components)
+        self.assertIn("Means of verification", self.period.missing_components)
         self.upload("orientation.jpg")
-        self.assertNotIn("Photo documentation", self.period.missing_components)
+        self.assertNotIn("Means of verification", self.period.missing_components)

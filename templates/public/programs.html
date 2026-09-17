@@ -1,34 +1,99 @@
 {% extends "public_base.html" %}
-{% load ui %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The public programme page: the Department's five Organizational Outcomes,
+   and what this region has published under each.
+
+   A visitor is offered the five Outcomes first and drills in from there,
+   rather than being handed every programme, project and activity at once.
+   Everything on this page has been through review, approval and publication -
+   the queries behind it live in programs/public.py, and nothing else on the
+   public site is allowed to read PPA records.
+   ---------------------------------------------------------------------------
+{% endcomment %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
   {% include "includes/public_page_header.html" %}
 
-  {# ---- What the Programs section holds -------------------------------- #}
-  <section class="border-b border-slate-200 bg-white" aria-labelledby="program-areas-heading">
-    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <h2 id="program-areas-heading" class="text-section-title font-semibold text-slate-900">
-        Three ways into the Division's work
-      </h2>
-      <div class="mt-6 grid gap-5 md:grid-cols-3">
+  {# ---- the figures ---------------------------------------------------- #}
+  <section class="border-b border-slate-200 bg-white" aria-labelledby="figures-heading">
+    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <h2 id="figures-heading" class="sr-only">What is published</h2>
+      <dl class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {% for figure in figure_rows %}
+          <div class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-4">
+            <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ figure.label }}</dt>
+            <dd class="mt-1 text-3xl leading-none font-bold tracking-tight text-slate-900 tabular">
+              {{ figure.value|intcomma }}
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+      <p class="mt-3 text-meta text-slate-500">
+        Published records only. Work that has not yet completed the Division's
+        review and approval is not counted here.
+      </p>
+    </div>
+  </section>
 
-        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
-          <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-            {% icon "programs" "size-5" %}
+  {# ---- the five Outcomes ---------------------------------------------- #}
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <h2 id="ppas" class="text-section-title font-semibold text-slate-900" tabindex="-1">
+      Programs, projects and activities
+    </h2>
+    <p class="mt-1.5 mb-6 max-w-3xl text-sm text-slate-600">
+      Every programme the Division administers reports against one of the
+      Department's five Organizational Outcomes. Choose an Outcome to see the
+      programmes under it, then a programme for its projects and activities.
+    </p>
+
+    <ul class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {% for outcome in outcomes %}
+        <li class="flex flex-col rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+          <span aria-hidden="true"
+                class="grid size-10 place-items-center rounded-md bg-brand-50 text-base font-bold text-brand-700">
+            {{ outcome.detail.number }}
           </span>
-          <h3 class="mt-4 text-card-title font-semibold text-slate-900">LGMED PPAs</h3>
-          <p class="mt-2 text-sm leading-relaxed text-slate-600">
-            The programs, projects and activities the Division administers for
-            local government units, with their period and coverage.
+          <p class="mt-4 text-meta font-semibold tracking-wide text-slate-500 uppercase">
+            Organizational Outcome {{ outcome.detail.number }}
           </p>
-          <p class="mt-3 text-meta">
-            <a href="#ppas" class="font-medium text-brand-700 hover:underline">See the list below</a>
+          <h3 class="mt-1 text-card-title font-semibold text-slate-900">
+            <a href="{% url 'core:public_outcome' outcome.detail.slug %}"
+               class="hover:text-brand-700 hover:underline">{{ outcome.label }}</a>
+          </h3>
+          <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">{{ outcome.detail.summary }}</p>
+          <p class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-meta">
+            <span class="text-slate-500">
+              {{ outcome.program_count }} published program{{ outcome.program_count|pluralize }}
+            </span>
+            <a href="{% url 'core:public_outcome' outcome.detail.slug %}"
+               class="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+              View{% icon "chevron-right" "size-3.5" %}
+              <span class="sr-only">programmes under Organizational Outcome {{ outcome.detail.number }}</span>
+            </a>
           </p>
-        </article>
+        </li>
+      {% endfor %}
+    </ul>
 
-        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+    {% if not programs %}
+      <div class="mt-6 rounded-lg border border-slate-200 bg-white">
+        {% include "components/empty_state.html" with icon="programs" title="No programs published yet" message="Programs appear here once the Division has reviewed, approved and published them. In the meantime the Division can be reached using the contact details below." %}
+      </div>
+    {% endif %}
+  </div>
+
+  {# ---- the rest of the Division's work -------------------------------- #}
+  <section class="border-t border-slate-200 bg-slate-50" aria-labelledby="elsewhere-heading">
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <h2 id="elsewhere-heading" class="text-section-title font-semibold text-slate-900">
+        Elsewhere on this site
+      </h2>
+      <div class="mt-6 grid gap-5 md:grid-cols-2">
+        <article class="rounded-lg border border-slate-200 bg-white p-5">
           <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
             {% icon "monitoring" "size-5" %}
           </span>
@@ -43,7 +108,7 @@
           </p>
         </article>
 
-        <article class="rounded-lg border border-slate-200 border-t-[3px] border-t-brand-700 bg-white p-5">
+        <article class="rounded-lg border border-slate-200 bg-white p-5">
           <span aria-hidden="true" class="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
             {% icon "documents" "size-5" %}
           </span>
@@ -60,49 +125,4 @@
       </div>
     </div>
   </section>
-
-  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 id="ppas" class="text-section-title font-semibold text-slate-900" tabindex="-1">
-      Programs, projects and activities
-    </h2>
-    <p class="mt-1.5 mb-6 text-sm text-slate-600">
-      Administered by the Division across the region.
-    </p>
-
-    {% if programs %}
-      <ul class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        {% for program in programs %}
-          <li class="flex flex-col rounded-lg border border-slate-200 bg-white p-5">
-            <p class="flex flex-wrap items-center gap-2">
-              {% status_badge program.status program.get_status_display %}
-              <span class="text-meta text-slate-500">{{ program.category.name }}</span>
-            </p>
-            <h3 class="mt-3 text-card-title font-semibold text-slate-900">{{ program.title }}</h3>
-            {% if program.description %}
-              <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
-                {{ program.description|truncatewords:30 }}
-              </p>
-            {% endif %}
-            <dl class="mt-4 border-t border-slate-100 pt-3 text-meta text-slate-500">
-              <div class="flex justify-between gap-3">
-                <dt>Period</dt>
-                <dd class="text-right text-slate-700">
-                  {{ program.start_date|date:"M Y" }}
-                  {% if program.end_date %}&ndash; {{ program.end_date|date:"M Y" }}{% endif %}
-                </dd>
-              </div>
-              <div class="mt-1 flex justify-between gap-3">
-                <dt>Coverage</dt>
-                <dd class="text-right text-slate-700">{{ program.coverage_label }}</dd>
-              </div>
-            </dl>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div class="rounded-lg border border-slate-200 bg-white">
-        {% include "components/empty_state.html" with icon="programs" title="No programs published yet" message="Programs appear here once they are recorded and active. In the meantime the Division can be reached using the contact details below." %}
-      </div>
-    {% endif %}
-  </div>
 {% endblock %}

@@ -1,0 +1,342 @@
+{% extends "public_base.html" %}
+{% load static ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   One published programme, project, sub-project or activity - and the same
+   template the preview uses.
+
+   That is deliberate. A preview rendered through a lookalike template is worth
+   nothing the moment the two drift apart, and they always drift. This page is
+   the public page; the preview banner is the only thing added to it, and the
+   publish button on that banner is the real one.
+
+   Note what a visitor never receives here: a database identifier, an internal
+   file path, or a link to anything but an approved public copy. Links to
+   documents go through `core:public_document_file`, which re-checks that the
+   whole chain above the file is still published before serving a byte.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}{{ record.title }}{% endblock %}
+
+{% block content %}
+
+  {% if preview %}
+    <div class="border-b-2 border-amber-400 bg-amber-50">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <p class="flex items-start gap-2 text-sm text-amber-900">
+          <span class="mt-0.5 shrink-0 text-amber-700">{% icon "view" "size-5" %}</span>
+          <span>
+            <strong class="font-semibold">Preview.</strong>
+            This is how the page will look on the public website. It is
+            <strong>not public yet</strong>{% if record.publication_status != "APPROVED" %} &mdash;
+            the record is {{ record.get_publication_status_display|lower }}{% endif %}.
+            Only files a reviewer has approved are shown.
+          </span>
+        </p>
+        <span class="flex shrink-0 items-center gap-2">
+          <a href="{{ preview_back_url }}" class="btn btn-secondary btn-sm">Back to the record</a>
+          {% if can_publish and record.can_be_published %}
+            <form method="post" action="{% url 'programs:publish' level record.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-primary btn-sm">Approve &amp; publish</button>
+            </form>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ---- header ------------------------------------------------------- #}
+  <div class="border-b border-slate-200 bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <nav aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-slate-500">
+          <li><a href="{% url 'core:home' %}" class="hover:text-brand-700 hover:underline">Home</a></li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+            <a href="{% url 'core:public_programs' %}" class="hover:text-brand-700 hover:underline">Programs</a>
+          </li>
+          {% if outcome %}
+            <li class="flex items-center gap-1.5">
+              <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+              <a href="{% url 'core:public_outcome' outcome.slug %}" class="hover:text-brand-700 hover:underline">
+                Outcome {{ outcome.number }}
+              </a>
+            </li>
+          {% endif %}
+          {% for ancestor in ancestors %}
+            <li class="flex items-center gap-1.5">
+              <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+              {% if preview %}
+                <span class="text-slate-600">{{ ancestor.title|truncatewords:5 }}</span>
+              {% else %}
+                <a href="{{ ancestor.public_url }}" class="hover:text-brand-700 hover:underline">
+                  {{ ancestor.title|truncatewords:5 }}
+                </a>
+              {% endif %}
+            </li>
+          {% endfor %}
+          <li class="flex items-center gap-1.5">
+            <span class="text-slate-300" aria-hidden="true">{% icon "chevron-right" "size-3.5" %}</span>
+            <span class="font-medium text-slate-700" aria-current="page">{{ record_level }}</span>
+          </li>
+        </ol>
+      </nav>
+
+      <p class="mt-3 flex flex-wrap items-center gap-2">
+        <span class="text-meta font-semibold tracking-wide text-brand-700 uppercase">{{ record_level }}</span>
+        {% status_badge record.status record.get_status_display %}
+      </p>
+      <h1 class="mt-1 text-page-title font-bold tracking-tight text-slate-900">{{ record.title }}</h1>
+      {% if outcome_label %}
+        <p class="mt-1.5 max-w-3xl text-[0.9375rem] text-slate-600">
+          Under Organizational Outcome {{ outcome.number }}: {{ outcome_label }}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="grid gap-8 lg:grid-cols-3">
+
+      {# ---- the substance --------------------------------------------- #}
+      <div class="space-y-8 lg:col-span-2">
+        {% if record.description %}
+          <section aria-labelledby="about-heading">
+            <h2 id="about-heading" class="text-section-title font-semibold text-slate-900">{{ headings.about }}</h2>
+            <p class="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.description }}
+            </p>
+          </section>
+        {% endif %}
+
+        {% if record.objectives %}
+          <section aria-labelledby="objectives-heading">
+            <h2 id="objectives-heading" class="text-section-title font-semibold text-slate-900">{{ headings.objectives }}</h2>
+            <p class="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.objectives }}
+            </p>
+          </section>
+        {% endif %}
+
+        {% if record.accomplishment %}
+          <section aria-labelledby="result-heading">
+            <h2 id="result-heading" class="text-section-title font-semibold text-slate-900">{{ headings.accomplishment }}</h2>
+            <p class="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-slate-700">
+              {{ record.accomplishment }}
+            </p>
+          </section>
+        {% endif %}
+
+        {# ---- photographs --------------------------------------------- #}
+        {% if images %}
+          <section aria-labelledby="images-heading">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 id="images-heading" class="text-section-title font-semibold text-slate-900">{{ headings.photographs }}</h2>
+              <p class="text-meta text-slate-500">
+                {{ images|length }} photograph{{ images|length|pluralize }}
+                &middot; <span class="hidden sm:inline">select one to enlarge it</span><span class="sm:hidden">tap one to enlarge it</span>
+              </p>
+            </div>
+
+            {% comment %}
+             A grid rather than a row of whatever sizes the pictures happen to
+             be. Every tile is the same 4:3 frame, so the gallery reads as one
+             set instead of a scrapbook, and the caption sits under the picture
+             where a visitor expects it rather than floating over it.
+
+             Each tile is a link to the picture itself. With JavaScript the
+             lightbox intercepts it; without, the link still opens the full
+             photograph, which is the whole of what the tile promised.
+            {% endcomment %}
+            <ul data-gallery
+                class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {% for image in images %}
+                <li>
+                  <a data-gallery-item
+                     data-index="{{ forloop.counter0 }}"
+                     data-caption="{{ image.title }}"
+                     data-description="{{ image.description }}"
+                     href="{% if preview %}{% url 'programs:document_download' image.pk %}{% else %}{{ image.public_url }}{% endif %}"
+                     class="group block overflow-hidden rounded-lg border border-slate-200 bg-white transition-shadow hover:border-brand-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                    <span class="relative block aspect-4/3 overflow-hidden bg-slate-100">
+                      <img src="{% if preview %}{% url 'programs:document_download' image.pk %}{% else %}{{ image.public_url }}{% endif %}"
+                           alt="{{ image.alt_text }}" loading="lazy" decoding="async"
+                           class="size-full object-cover transition-transform duration-300 group-hover:scale-105">
+                      <span class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/0 text-white opacity-0 transition group-hover:bg-slate-900/30 group-hover:opacity-100">
+                        {% icon "search" "size-6" %}
+                      </span>
+                    </span>
+                    <span class="block px-3 py-2">
+                      <span class="block truncate text-sm font-medium text-slate-800">{{ image.title }}</span>
+                      {% if image.description %}
+                        <span class="mt-0.5 block truncate text-meta text-slate-500">{{ image.description }}</span>
+                      {% endif %}
+                    </span>
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+
+        {# ---- what sits beneath this record --------------------------- #}
+        {% for group in children %}
+          <section aria-labelledby="children-{{ forloop.counter }}">
+            <h2 id="children-{{ forloop.counter }}" class="text-section-title font-semibold text-slate-900">
+              {{ group.label }}
+            </h2>
+            <ul class="mt-4 space-y-3">
+              {% for child in group.records %}
+                <li class="rounded-lg border border-slate-200 bg-white p-4">
+                  <p class="flex flex-wrap items-center gap-2">
+                    {% status_badge child.status child.get_status_display %}
+                    {% if child.activity_date %}
+                      <span class="text-meta text-slate-500">{{ child.activity_date|date:"j F Y" }}</span>
+                    {% elif child.start_date %}
+                      <span class="text-meta text-slate-500">
+                        {{ child.start_date|date:"M Y" }}{% if child.end_date %} &ndash; {{ child.end_date|date:"M Y" }}{% endif %}
+                      </span>
+                    {% endif %}
+                    {% if child.location %}
+                      <span class="inline-flex items-center gap-1 text-meta text-slate-500">
+                        {% icon "map-pin" "size-3.5" %}{{ child.location }}
+                      </span>
+                    {% endif %}
+                  </p>
+                  <h3 class="mt-2 text-card-title font-semibold text-slate-900">
+                    {% if preview %}
+                      {{ child.title }}
+                    {% else %}
+                      <a href="{{ child.public_url }}" class="hover:text-brand-700 hover:underline">{{ child.title }}</a>
+                    {% endif %}
+                  </h3>
+                  {% if child.description %}
+                    <p class="mt-1.5 text-sm leading-relaxed text-slate-600">
+                      {{ child.description|truncatewords:35 }}
+                    </p>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endfor %}
+      </div>
+
+      {# ---- the facts and the papers ---------------------------------- #}
+      <div class="space-y-6">
+        <section class="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="details-heading">
+          <h2 id="details-heading" class="text-card-title font-semibold text-slate-900">Details</h2>
+          <dl class="mt-4 space-y-4 text-sm">
+            {% if record.start_date or record.end_date %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Period</dt>
+                <dd class="mt-1 text-slate-900">
+                  {% if record.start_date %}
+                    <time datetime="{{ record.start_date|date:'Y-m-d' }}">{{ record.start_date|date:"j F Y" }}</time>
+                  {% endif %}
+                  {% if record.end_date %}
+                    &ndash; <time datetime="{{ record.end_date|date:'Y-m-d' }}">{{ record.end_date|date:"j F Y" }}</time>
+                  {% elif record.start_date %}
+                    <span class="text-slate-500">onward</span>
+                  {% endif %}
+                </dd>
+              </div>
+            {% endif %}
+
+            {% if record.activity_date %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Date</dt>
+                <dd class="mt-1 text-slate-900">
+                  <time datetime="{{ record.activity_date|date:'Y-m-d' }}">{{ record.activity_date|date:"j F Y" }}</time>
+                </dd>
+              </div>
+            {% endif %}
+
+            {% if record.location %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Location</dt>
+                <dd class="mt-1 text-slate-900">{{ record.location }}</dd>
+              </div>
+            {% endif %}
+
+            {% if record.responsible_office %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Responsible office</dt>
+                <dd class="mt-1 text-slate-900">{{ record.responsible_office.name }}</dd>
+              </div>
+            {% endif %}
+
+            {% if record.reference_number %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference</dt>
+                <dd class="mt-1 text-slate-900">{{ record.reference_number }}</dd>
+              </div>
+            {% endif %}
+
+            {% if record.coverage_label %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Coverage</dt>
+                <dd class="mt-1 text-slate-900">{{ record.coverage_label }}</dd>
+              </div>
+            {% endif %}
+
+            {% if record.published_at and not preview %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Published</dt>
+                <dd class="mt-1 text-slate-900">
+                  <time datetime="{{ record.published_at|date:'c' }}">{{ record.published_at|date:"j F Y" }}</time>
+                </dd>
+              </div>
+            {% endif %}
+          </dl>
+        </section>
+
+        {% if files %}
+          <section class="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="files-heading">
+            <h2 id="files-heading" class="text-card-title font-semibold text-slate-900">Documents</h2>
+            <ul class="mt-4 space-y-3">
+              {% for document in files %}
+                <li class="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                  <a href="{% if preview %}{% url 'programs:document_download' document.pk %}{% else %}{{ document.public_url }}{% endif %}"
+                     class="inline-flex items-start gap-2 text-sm font-medium text-brand-700 hover:underline">
+                    {% icon "file" "size-4 mt-0.5 shrink-0" %}
+                    <span>{{ document.title }}</span>
+                  </a>
+                  <p class="mt-1 text-meta text-slate-500">
+                    {{ document.get_kind_display }} &middot; {{ document.extension|upper }}
+                    {% if document.authority %}
+                      <span class="block">
+                        Released under {{ document.authority.reference }}
+                      </span>
+                    {% endif %}
+                  </p>
+                  {% if document.description %}
+                    <p class="mt-1 text-meta text-slate-600">{{ document.description }}</p>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+            <p class="mt-4 border-t border-slate-100 pt-3 text-meta text-slate-500">
+              {% if preview %}
+                These files have been approved for release. Publishing this
+                record creates a separate public copy of each; until then the
+                links above open the internal copy and work only for staff.
+              {% else %}
+                Documents published here have been reviewed and approved for
+                public release by the Division.
+              {% endif %}
+            </p>
+          </section>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% if images %}
+    <script src="{% static 'js/public-gallery.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+  {% endif %}
+{% endblock %}

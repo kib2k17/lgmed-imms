@@ -1,7 +1,7 @@
 """
 The Division's figures.
 
-Every function here aggregates at one level only: LGMEDD as a whole. There is
+Every function here aggregates at one level only: LGMED as a whole. There is
 no per-employee dimension anywhere in this file, and that is deliberate - the
 question the convocation asks is "what has the Division accomplished", not
 "who accomplished the most". The focal person recorded on an entry is
@@ -27,7 +27,6 @@ from .models import (
     ACCOMPLISHED_STATUSES,
     COMMUNICATION_CATEGORIES,
     ActivityType,
-    AttachmentKind,
     DivisionUpdate,
     PopsPlanUpdate,
     disclosed_periods,
@@ -246,6 +245,10 @@ def division_statistics(year=None, period=None, scope=None):
         open=Count("pk", filter=~Q(status=WayForwardStatus.COMPLETED)),
     )
 
+    accomplishments = updates.filter(status__in=ACCOMPLISHED_STATUSES)
+    evidenced = accomplishments.filter(attachments__isnull=False).distinct().count()
+    accomplishment_count = counts["accomplishments"]
+
     completion = completion_detail(scope=scope)
     next_upcoming = (
         updates.filter(
@@ -260,10 +263,18 @@ def division_statistics(year=None, period=None, scope=None):
         {
             "weeks": scope.week_count,
             "upcoming_next": next_upcoming,
+            "with_mov": evidenced,
+            "without_mov": accomplishment_count - evidenced,
+            "mov_coverage": (
+                round(evidenced * 100 / accomplishment_count)
+                if accomplishment_count
+                else 0
+            ),
             "completion_parts": completion["parts"],
             "photos": UpdateAttachment.objects.filter(
-                update__in=updates, kind=AttachmentKind.PHOTO
+                update__in=updates, is_image=True
             ).count(),
+            "movs": UpdateAttachment.objects.filter(update__in=updates).count(),
             "pops_entries": pops["entries"] or 0,
             "pops_target": target,
             "pops_accomplished": accomplished,
@@ -450,7 +461,10 @@ def headline_cards(stats):
                 {"label": "Pending", "value": stats["pending"],
                  "tone": "warning"},
             ],
-            "note": "Work still to come is counted separately.",
+            "note": (
+                f"{stats.get('with_mov', 0)} of them carry a means of "
+                f"verification."
+            ),
         },
         {
             "label": "Activities",
@@ -520,6 +534,17 @@ def breakdown_figures(stats):
         {"label": f"{stats['quarter_label']} to date", "value": stats["quarter_to_date"]},
         {"label": "Year to date", "value": stats["year_to_date"]},
         {"label": "Photo documentation", "value": stats["photos"]},
+        {"label": "Means of verification", "value": stats["movs"]},
+        {
+            "label": "Backed by evidence",
+            "value": f"{stats['mov_coverage']}%",
+            "tone": "success" if stats["mov_coverage"] == 100 else "warning",
+        },
+        {
+            "label": "Awaiting evidence",
+            "value": stats["without_mov"],
+            "tone": "warning" if stats["without_mov"] else "success",
+        },
     ]
 
 
@@ -533,7 +558,7 @@ def accomplishments_by_month(scope):
     return {
         "id": "accomplishmentsByMonth",
         "title": "Accomplishments by Month",
-        "subtitle": f"What LGMEDD accomplished across {scope.year}.",
+        "subtitle": f"What LGMED accomplished across {scope.year}.",
         "span": 2,
         "has_data": any(counts),
         "data": {"labels": MONTHS, "values": counts},

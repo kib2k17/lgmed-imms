@@ -170,6 +170,48 @@ class User(AbstractUser):
         """
         return self.is_superadmin
 
+    # -- programmes, projects and activities ---------------------------
+    #
+    # The PPA module separates three decisions that the rest of the system
+    # treats as one, because each of them can disclose something to the public
+    # that cannot be taken back:
+    #
+    #   encoding    - describing the work and uploading the papers behind it
+    #   reviewing   - reading the security screening and clearing the content
+    #   publishing  - putting the cleared content on the public website
+    #
+    # An encoder may never clear their own work, and a reviewer may clear
+    # content without being the one who decides the public website changes.
+
+    @property
+    def can_encode_ppa(self):
+        """Create programmes, projects, sub-projects, activities; upload files."""
+        return self.can_encode
+
+    @property
+    def can_review_ppa(self):
+        """
+        Read a document's security screening and decide whether it may be
+        released: approve, reject, or send it back for revision.
+
+        Held by the Division Chief, designated administrators and LGMED staff
+        assigned the reviewing role - the same people who already approve
+        monitoring records and clear reports.
+        """
+        return self.can_approve
+
+    @property
+    def can_publish_ppa(self):
+        """
+        Put approved content on the public website, take it down again, and
+        archive it.
+
+        Deliberately narrower than reviewing. Approval says the content is fit
+        to be seen; publication decides that it is seen, and is the act that
+        actually creates the public copy of a file. Administrators only.
+        """
+        return self.can_administer
+
     # -- document management -------------------------------------------
 
     @property

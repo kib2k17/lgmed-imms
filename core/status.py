@@ -52,11 +52,14 @@ STATUS_MAP = {
     "pending": "warning",
     "for_review": "warning",
     "for review": "warning",
+    "review_required": "warning",
+    "screening": "warning",
     "draft": "warning",
     "ongoing_review": "warning",
     "partial": "warning",
     "due_soon": "warning",
     "postponed": "warning",
+    "suspended": "warning",
     "open": "warning",
     "submitted": "warning",
     "for_revision": "warning",
@@ -78,6 +81,8 @@ STATUS_MAP = {
     # blue
     "in_progress": "info",
     "in progress": "info",
+    # The PPA module: a file that has been scanned but not yet decided on.
+    "screened": "info",
     "ongoing": "info",
     "scheduled": "info",
     "planned": "info",
@@ -90,6 +95,9 @@ STATUS_MAP = {
     "registered": "info",
     # slate
     "archived": "neutral",
+    "unpublished": "neutral",
+    "withdrawn": "neutral",
+    "uploaded": "neutral",
     "inactive": "neutral",
     "closed": "neutral",
     "not_started": "neutral",

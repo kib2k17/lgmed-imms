@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Everything waiting on a decision.
+
+   Files come before records, and the highest risk comes first within them,
+   because that is the order in which a mistake costs the most. A reviewer who
+   only has ten minutes should spend them at the top of this page.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block content %}
+  <div class="space-y-4">
+
+    {# ---- files ------------------------------------------------------- #}
+    <section class="card" aria-labelledby="files-heading">
+      <div class="card-header">
+        <h2 id="files-heading" class="card-title">Files awaiting review</h2>
+        <span class="text-meta text-slate-500">{{ documents|length }} file{{ documents|length|pluralize }}</span>
+      </div>
+
+      {% if documents %}
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Uploaded files that have been screened and need a decision</caption>
+            <thead>
+              <tr>
+                <th scope="col">Screening</th>
+                <th scope="col">Document</th>
+                <th scope="col" class="hidden md:table-cell">Attached to</th>
+                <th scope="col" class="hidden sm:table-cell">Uploaded by</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for document in documents %}
+                <tr>
+                  <td class="whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-meta font-semibold
+                      {% if document.risk_tone == 'success' %}border-green-200 bg-green-50 text-green-800
+                      {% elif document.risk_tone == 'danger' %}border-red-200 bg-red-50 text-red-800
+                      {% else %}border-amber-200 bg-amber-50 text-amber-800{% endif %}">
+                      {% if document.risk_tone == 'success' %}{% icon "check" "size-3.5" %}
+                      {% else %}{% icon "warning" "size-3.5" %}{% endif %}
+                      {{ document.get_risk_level_display }}
+                    </span>
+                    {% if document.finding_count %}
+                      <span class="mt-0.5 block text-meta text-slate-500">
+                        {{ document.finding_count }} finding{{ document.finding_count|pluralize }}
+                      </span>
+                    {% endif %}
+                  </td>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left font-medium text-slate-900">
+                    <a href="{% url 'programs:document_review' document.pk %}"
+                       class="hover:text-brand-700 hover:underline">{{ document.title }}</a>
+                    <span class="block text-meta font-normal text-slate-500">
+                      {{ document.get_kind_display }} &middot; .{{ document.extension }}
+                    </span>
+                  </th>
+                  <td class="hidden md:table-cell">{{ document.owner_label }}</td>
+                  <td class="hidden whitespace-nowrap sm:table-cell">
+                    {{ document.uploaded_by.get_display_name|default:"&mdash;" }}
+                    <span class="block text-meta text-slate-500">{{ document.uploaded_at|date:"j M Y" }}</span>
+                  </td>
+                  <td class="text-right whitespace-nowrap">
+                    <a href="{% url 'programs:document_review' document.pk %}" class="btn btn-primary btn-sm">Review</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+          No files are waiting on a decision.
+        </p>
+      {% endif %}
+    </section>
+
+    {# ---- content ----------------------------------------------------- #}
+    <section class="card" aria-labelledby="records-heading">
+      <div class="card-header">
+        <h2 id="records-heading" class="card-title">Content awaiting review</h2>
+        <span class="text-meta text-slate-500">{{ records|length }} record{{ records|length|pluralize }}</span>
+      </div>
+
+      {% if records %}
+        <ul class="divide-y divide-slate-100">
+          {% for row in records %}
+            <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <span class="min-w-0">
+                {% include "dashboard/ppa/_node.html" with record=row.record level=row.level %}
+                <span class="mt-0.5 block text-meta text-slate-500">
+                  {{ row.spec.label }}
+                  {% if row.record.submitted_by %}
+                    &middot; submitted by {{ row.record.submitted_by.get_display_name }}
+                  {% endif %}
+                  {% if row.record.submitted_at %}
+                    on {{ row.record.submitted_at|date:"j M Y" }}
+                  {% endif %}
+                </span>
+              </span>
+              <a href="{% url 'programs:detail' row.level row.record.pk %}" class="btn btn-primary btn-sm">Review</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+          Nothing has been submitted for review.
+        </p>
+      {% endif %}
+    </section>
+
+    {# ---- approved, waiting to be published --------------------------- #}
+    {% if can_publish %}
+      <section class="card" aria-labelledby="approved-heading">
+        <div class="card-header">
+          <h2 id="approved-heading" class="card-title">Approved, waiting to be published</h2>
+          <span class="text-meta text-slate-500">{{ approved|length }}</span>
+        </div>
+
+        {% if approved %}
+          <ul class="divide-y divide-slate-100">
+            {% for row in approved %}
+              <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                <span class="min-w-0">
+                  {% include "dashboard/ppa/_node.html" with record=row.record level=row.level %}
+                </span>
+                <span class="flex items-center gap-2">
+                  <a href="{% url 'programs:preview' row.level row.record.pk %}" class="btn btn-secondary btn-sm">
+                    {% icon "view" "size-3.5" %}Preview
+                  </a>
+                  {% if row.record.can_be_published %}
+                    <form method="post" action="{% url 'programs:publish' row.level row.record.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{% url 'programs:queue' %}">
+                      <button type="submit" class="btn btn-primary btn-sm">Publish</button>
+                    </form>
+                  {% else %}
+                    <span class="text-meta text-amber-700">Parent not published</span>
+                  {% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+            Nothing is approved and waiting.
+          </p>
+        {% endif %}
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

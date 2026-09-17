@@ -26,6 +26,14 @@ AUDITED_MODELS = [
     "lgus.LGU",
     "lgus.Province",
     "programs.Program",
+    "programs.Project",
+    "programs.SubProject",
+    "programs.Activity",
+    "programs.SupportingDocument",
+    # The written authority a release rests on. Audited for the same reason
+    # `documents.DisposalAuthority` is: it does not hold records itself, it
+    # decides what may be done with them.
+    "programs.PublicationAuthority",
     "programs.ProgramCategory",
     "monitoring.MonitoringActivity",
     "monitoring.MonitoringAttachment",

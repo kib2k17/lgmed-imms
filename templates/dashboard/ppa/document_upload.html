@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   Attach files to a PPA record.
+
+   The same government form layout as `dashboard/module_form.html` - sections
+   from the form's fieldsets, two columns at most - with one addition: a
+   preview panel directly beneath the file input.
+
+   The panel is where a batch upload stops being a leap of faith. It shows
+   what is actually selected, lets a picture be taken back out before anything
+   is stored, carries a caption for each one, and fixes the order they are
+   filed in. Without JavaScript it stays hidden and the form behaves as a
+   plain multiple file input, which still posts and still works.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block content %}
+  <form method="post" enctype="multipart/form-data" novalidate class="max-w-4xl">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div role="alert" class="mb-5 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+        <span class="mt-0.5 shrink-0 text-red-700">{% icon "error" "size-5" %}</span>
+        <div>
+          <p class="font-semibold">These files could not be stored</p>
+          {% for error in form.non_field_errors %}<p class="mt-0.5">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if form_note %}
+      <div class="mb-5 flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-900">
+        <span class="mt-0.5 shrink-0 text-blue-700">{% icon "info" "size-5" %}</span>
+        <p class="leading-relaxed">{{ form_note }}</p>
+      </div>
+    {% endif %}
+
+    <div class="space-y-5">
+      {% for title, fields in form.get_sections %}
+        <section class="card" {% if title %}aria-labelledby="section-{{ forloop.counter }}"{% endif %}>
+          {% if title %}
+            <div class="card-header">
+              <h2 id="section-{{ forloop.counter }}" class="card-title">{{ title }}</h2>
+              {% if forloop.first and photograph_count %}
+                <a href="{{ arrange_url }}" class="btn btn-secondary btn-sm">
+                  {% icon "view" "size-4" %}Arrange the {{ photograph_count }} photograph{{ photograph_count|pluralize }} already here
+                </a>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          <div class="card-body">
+            <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+              {% for field in fields %}
+                <div class="{% if field.is_wide %}sm:col-span-2{% endif %}" data-field="{{ field.name }}">
+                  {% include "components/bound_field.html" with field=field form=form %}
+
+                  {% if field.name == "files" %}
+                    {# ---- selected files, before anything is stored ------ #}
+                    <div hidden data-upload-preview
+                         class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-4 transition-shadow">
+                      <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-sm font-semibold text-slate-800">Selected files</h3>
+                        <div class="flex items-center gap-2">
+                          <button type="button" data-preview-add class="btn btn-secondary btn-sm">
+                            {% icon "plus" "size-3.5" %}Add more
+                          </button>
+                          <button type="button" hidden data-preview-clear class="btn btn-ghost btn-sm">
+                            {% icon "close" "size-3.5" %}Clear all
+                          </button>
+                        </div>
+                      </div>
+
+                      <p data-preview-summary aria-live="polite"
+                         class="mt-1 text-meta text-slate-500"></p>
+
+                      <p data-preview-problems hidden role="alert"
+                         class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-meta text-amber-900"></p>
+
+                      <p data-preview-empty class="mt-3 text-sm text-slate-500">
+                        Nothing selected yet. Choose files above, or drop them
+                        onto this panel. Photographs can be selected in one go
+                        and rearranged here before they are uploaded.
+                      </p>
+
+                      <ul hidden data-preview-list
+                          class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"></ul>
+
+                      <p class="mt-3 border-t border-slate-200 pt-3 text-meta text-slate-500">
+                        The order shown here is the order the gallery uses on
+                        the public website. Captions are optional; where one is
+                        given it replaces the shared description for that file.
+                      </p>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+
+    <div class="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-5">
+      <p class="mr-auto text-meta text-slate-500">
+        <span class="required-mark" aria-hidden="true">*</span> indicates a required field
+      </p>
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% icon "upload" "size-4" %}{{ submit_label }}
+      </button>
+    </div>
+  </form>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/ppa-upload.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

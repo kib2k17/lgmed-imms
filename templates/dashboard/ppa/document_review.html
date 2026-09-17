@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+{% comment %}
+ ---------------------------------------------------------------------------
+   The review screen for one uploaded file.
+
+   Everything needed for the decision is on this page, in the order a reviewer
+   works: what the file is and what it is attached to, what the automated
+   screening found, what the scanner could NOT do, the file itself, and only
+   then the buttons.
+
+   The evidence shown against a finding is masked. The review screen has to say
+   enough for a reviewer to find the problem in the file and no more - printing
+   an identification number here would put it on a second screen, in a second
+   database row, and in front of whoever is standing behind the desk.
+   ---------------------------------------------------------------------------
+{% endcomment %}
+
+{% block content %}
+
+  {# ---- the headline result ------------------------------------------- #}
+  <div class="rounded-lg border p-4
+    {% if document.risk_tone == 'success' %}border-green-200 bg-green-50
+    {% elif document.risk_tone == 'danger' %}border-red-200 bg-red-50
+    {% else %}border-amber-200 bg-amber-50{% endif %}">
+    <div class="flex items-start gap-3">
+      <span aria-hidden="true" class="mt-0.5 shrink-0
+        {% if document.risk_tone == 'success' %}text-green-700
+        {% elif document.risk_tone == 'danger' %}text-red-700
+        {% else %}text-amber-700{% endif %}">
+        {% if document.risk_tone == 'success' %}{% icon "check-circle" "size-6" %}
+        {% else %}{% icon "warning" "size-6" %}{% endif %}
+      </span>
+      <div class="min-w-0">
+        <p class="text-meta font-semibold tracking-wide uppercase
+          {% if document.risk_tone == 'success' %}text-green-800
+          {% elif document.risk_tone == 'danger' %}text-red-800
+          {% else %}text-amber-800{% endif %}">
+          Security screening result &mdash; {{ document.get_risk_level_display }}
+        </p>
+        <p class="mt-1 text-base font-semibold
+          {% if document.risk_tone == 'success' %}text-green-900
+          {% elif document.risk_tone == 'danger' %}text-red-900
+          {% else %}text-amber-900{% endif %}">
+          {{ document.risk_headline }}
+        </p>
+
+        <p class="mt-2 text-sm leading-relaxed
+          {% if document.risk_tone == 'success' %}text-green-900
+          {% elif document.risk_tone == 'danger' %}text-red-900
+          {% else %}text-amber-900{% endif %}">
+          {% if document.risk_level == "LOW" %}
+            The scanner found nothing obvious. That is a statement about the
+            scanner, not about the file: it does not mean the file is safe to
+            release. Open it and read it before you decide.
+          {% elif document.risk_level == "HIGH" %}
+            This file cannot be approved until you have opened it, read it in
+            full, and confirmed below that it contains nothing that should not
+            be released.
+          {% else %}
+            The scanner flagged something that needs a person to look at it.
+            Open the file and check each warning below.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 grid gap-4 xl:grid-cols-3">
+
+    {# ================= findings and the file ======================== #}
+    <div class="space-y-4 xl:col-span-2">
+
+      <section class="card" aria-labelledby="findings-heading">
+        <div class="card-header">
+          <h2 id="findings-heading" class="card-title">What the screening found</h2>
+          <span class="text-meta text-slate-500">
+            {{ findings|length }} finding{{ findings|length|pluralize }}
+          </span>
+        </div>
+
+        {% if findings %}
+          <ul class="divide-y divide-slate-100">
+            {% for finding in findings %}
+              <li class="px-4 py-3 sm:px-5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-meta font-semibold
+                    {% if finding.severity == 'HIGH' %}border-red-200 bg-red-50 text-red-800
+                    {% elif finding.severity == 'MEDIUM' %}border-amber-200 bg-amber-50 text-amber-800
+                    {% else %}border-slate-200 bg-slate-50 text-slate-700{% endif %}">
+                    {% if finding.severity == 'HIGH' %}{% icon "warning" "size-3.5" %}
+                    {% else %}{% icon "info" "size-3.5" %}{% endif %}
+                    {{ finding.severity|title }}
+                  </span>
+                  <span class="text-sm font-semibold text-slate-900">{{ finding.label }}</span>
+                  {% if finding.count > 1 %}
+                    <span class="text-meta text-slate-500">{{ finding.count }} occurrences</span>
+                  {% endif %}
+                </div>
+
+                {% if finding.locations %}
+                  <p class="mt-1 text-meta text-slate-500">
+                    Found in: {{ finding.locations|join:", " }}
+                  </p>
+                {% endif %}
+
+                {% if finding.advice %}
+                  <p class="mt-1.5 text-sm leading-relaxed text-slate-700">{{ finding.advice }}</p>
+                {% endif %}
+
+                {% if finding.evidence %}
+                  <div class="mt-2 rounded-md border border-slate-200 bg-slate-50 p-2.5">
+                    <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                      Examples (masked)
+                    </p>
+                    <ul class="mt-1 space-y-0.5">
+                      {% for example in finding.evidence %}
+                        <li class="font-mono text-xs break-all text-slate-700">{{ example }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="px-4 py-6 text-center sm:px-5">
+            <p class="text-sm text-slate-700">
+              The scanner flagged nothing in this file.
+            </p>
+            <p class="mt-1 text-meta text-slate-500">
+              A clean screening is not an approval. The decision is yours.
+            </p>
+          </div>
+        {% endif %}
+
+        {% if document.screening_notes %}
+          <div class="card-footer block">
+            <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+              How this file was read
+            </p>
+            <p class="mt-1 text-meta leading-relaxed whitespace-pre-line text-slate-600">{{ document.screening_notes }}</p>
+          </div>
+        {% endif %}
+      </section>
+
+      {# ---- the file itself -------------------------------------------- #}
+      <section class="card" aria-labelledby="file-heading">
+        <div class="card-header">
+          <h2 id="file-heading" class="card-title">The file</h2>
+          <span class="flex items-center gap-2">
+            <a href="{% url 'programs:document_download' document.pk %}" target="_blank" rel="noopener"
+               class="btn btn-secondary btn-sm">{% icon "view" "size-3.5" %}Open in a new tab</a>
+            <a href="{% url 'programs:document_download' document.pk %}?download=1"
+               class="btn btn-secondary btn-sm">{% icon "download" "size-3.5" %}Download</a>
+          </span>
+        </div>
+        <div class="card-body">
+          {% if document.is_image %}
+            <img src="{% url 'programs:document_download' document.pk %}"
+                 alt="Internal preview of {{ document.title }}"
+                 class="mx-auto max-h-[36rem] rounded-md border border-slate-200">
+          {% elif document.extension == "pdf" %}
+            <object data="{% url 'programs:document_download' document.pk %}"
+                    type="application/pdf"
+                    class="h-[36rem] w-full rounded-md border border-slate-200">
+              <p class="p-4 text-sm text-slate-600">
+                This browser cannot display the PDF here.
+                <a href="{% url 'programs:document_download' document.pk %}"
+                   class="font-medium text-brand-700 hover:underline">Open it in a new tab</a>
+                to read it.
+              </p>
+            </object>
+          {% else %}
+            <p class="text-sm text-slate-600">
+              {{ document.get_kind_display }} &middot; .{{ document.extension }} &middot;
+              {{ document.size_bytes|filesize }}.
+              A file of this type cannot be shown in the browser.
+              <a href="{% url 'programs:document_download' document.pk %}?download=1"
+                 class="font-medium text-brand-700 hover:underline">Download it</a>
+              and read it before deciding.
+            </p>
+          {% endif %}
+
+          <p class="mt-3 flex items-start gap-2 text-meta text-slate-500">
+            {% icon "lock" "size-3.5 mt-px shrink-0" %}
+            <span>
+              This is the internal copy. It is stored outside the public media
+              directory and is served only to signed-in staff; every time it is
+              opened, that is recorded against your name.
+            </span>
+          </p>
+        </div>
+      </section>
+    </div>
+
+    {# ================= facts and the decision ======================= #}
+    <div class="space-y-4">
+
+      <section class="card" aria-labelledby="facts-heading">
+        <div class="card-header">
+          <h2 id="facts-heading" class="card-title">Document</h2>
+          {% status_badge document.status document.get_status_display %}
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4 text-sm">
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Title</dt>
+              <dd class="mt-1 text-slate-900">{{ document.title }}</dd>
+            </div>
+            {% if document.description %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Description</dt>
+                <dd class="mt-1 text-slate-900">{{ document.description }}</dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Type</dt>
+              <dd class="mt-1 text-slate-900">{{ document.get_kind_display }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Attached to</dt>
+              <dd class="mt-1">
+                {% if record %}
+                  <a href="{% url 'programs:detail' record_level record.pk %}"
+                     class="font-medium text-brand-700 hover:underline">{{ record.title }}</a>
+                  <span class="block text-meta text-slate-500">{{ record.level_label }}</span>
+                {% else %}
+                  <span class="text-slate-500">Not attached</span>
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Uploaded by</dt>
+              <dd class="mt-1 text-slate-900">
+                {{ document.uploaded_by.get_display_name|default:"Not recorded" }}
+                <span class="block text-meta text-slate-500">
+                  <time datetime="{{ document.uploaded_at|date:'c' }}">
+                    {{ document.uploaded_at|date:"j F Y, H:i" }}
+                  </time>
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Screened</dt>
+              <dd class="mt-1 text-slate-900">
+                {% if document.screened_at %}
+                  <time datetime="{{ document.screened_at|date:'c' }}">
+                    {{ document.screened_at|date:"j F Y, H:i" }}
+                  </time>
+                {% else %}
+                  <span class="text-slate-500">Not yet screened</span>
+                {% endif %}
+              </dd>
+            </div>
+            {% if document.reviewed_at %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reviewed by</dt>
+                <dd class="mt-1 text-slate-900">
+                  {{ document.reviewed_by.get_display_name|default:"Not recorded" }}
+                  <span class="block text-meta text-slate-500">{{ document.reviewed_at|date:"j F Y, H:i" }}</span>
+                </dd>
+              </div>
+            {% endif %}
+            {% if document.published_at %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Published by</dt>
+                <dd class="mt-1 text-slate-900">
+                  {{ document.published_by.get_display_name|default:"Not recorded" }}
+                  <span class="block text-meta text-slate-500">{{ document.published_at|date:"j F Y, H:i" }}</span>
+                </dd>
+              </div>
+            {% endif %}
+            {% if document.review_comments %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Review comments</dt>
+                <dd class="mt-1 whitespace-pre-line text-slate-900">{{ document.review_comments }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+        </div>
+        {% if can_review %}
+          <div class="card-footer">
+            <form method="post" action="{% url 'programs:document_rescreen' document.pk %}" data-once>
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost btn-sm">
+                {% icon "shield" "size-3.5" %}Screen this file again
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      </section>
+
+      {# ---- the authority to release it --------------------------------- #}
+      <section class="card {% if document.release_blocker and document.status == 'APPROVED' %}border-amber-300{% endif %}"
+               aria-labelledby="authority-heading">
+        <div class="card-header {% if document.release_blocker and document.status == 'APPROVED' %}bg-amber-50/60{% endif %}">
+          <h2 id="authority-heading" class="card-title">Authority to publish</h2>
+          {% if document.authority %}
+            {% status_badge document.authority.status_tone document.authority.status_label %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-3">
+          {% if document.authority %}
+            <dl class="space-y-3 text-sm">
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                  Published under
+                </dt>
+                <dd class="mt-1">
+                  <a href="{% url 'programs:authority_detail' document.authority.pk %}"
+                     class="font-medium text-brand-700 hover:underline">
+                    {{ document.authority.reference }}
+                  </a>
+                  <span class="block text-meta text-slate-500">{{ document.authority.title }}</span>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Issued</dt>
+                <dd class="mt-1 text-slate-900">
+                  {{ document.authority.approved_on|date:"j F Y" }}
+                  &middot; {{ document.authority.approved_by }}
+                </dd>
+              </div>
+            </dl>
+          {% else %}
+            <p class="text-sm leading-relaxed text-slate-700">
+              No memorandum has been recorded against this file. It can be
+              approved, but it will <strong>not</strong> be published until one
+              is: a release rests on a written authority, not on the approval
+              alone.
+            </p>
+          {% endif %}
+
+          {% if document.status == "PUBLISHED" %}
+            <p class="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2.5 text-meta text-green-900">
+              {% icon "view" "size-3.5 mt-px shrink-0" %}
+              <span>This file is on the public website.</span>
+            </p>
+            {% if can_publish %}
+              <form method="post" action="{% url 'programs:document_withdraw' document.pk %}" data-once>
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm w-full">
+                  {% icon "view-off" "size-3.5" %}Take this file off the public website
+                </button>
+              </form>
+              <p class="text-meta text-slate-500">
+                Deletes the public copy of this one file. The file itself, its
+                details and its approval stay here, and you can publish it
+                again from this page whenever you like. The record it belongs
+                to stays published.
+              </p>
+            {% endif %}
+
+          {% elif document.is_awaiting_release %}
+            <p class="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2.5 text-meta text-green-900">
+              {% icon "check" "size-3.5 mt-px shrink-0" %}
+              <span>
+                {% if document.status == "WITHDRAWN" %}
+                  Taken off the public website
+                  {% if document.withdrawn_at %}on
+                    <time datetime="{{ document.withdrawn_at|date:'c' }}">
+                      {{ document.withdrawn_at|date:"j F Y" }}</time>{% endif %}{% if document.withdrawn_by %},
+                    by {{ document.withdrawn_by.get_display_name }}{% endif %}.
+                  The approval and the memorandum still stand, so putting it
+                  back is the one button below &mdash; it does not go back to a
+                  reviewer.
+                {% else %}
+                  Cleared and authorised, and <strong>{{ record.title }}</strong>
+                  is already on the public website &mdash; so this file is ready
+                  to go out on its own.
+                {% endif %}
+              </span>
+            </p>
+            {% if can_publish %}
+              <form method="post" action="{% url 'programs:document_publish' document.pk %}" data-once>
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm w-full">
+                  {% icon "upload" "size-3.5" %}
+                  {% if document.status == "WITHDRAWN" %}
+                    Put this file back on the public website
+                  {% else %}
+                    Publish this file
+                  {% endif %}
+                </button>
+              </form>
+            {% else %}
+              <p class="text-meta text-slate-500">
+                An administrator publishes it from this page. Nothing further is
+                needed from you.
+              </p>
+            {% endif %}
+
+          {% elif document.release_blocker %}
+            <p class="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-meta text-amber-900">
+              {% icon "warning" "size-3.5 mt-px shrink-0" %}
+              <span>
+                {% if document.status == "WITHDRAWN" %}
+                  Off the public website, and it cannot go back yet:
+                {% else %}
+                  Not yet published:
+                {% endif %}
+                {{ document.release_blocker }}
+              </span>
+            </p>
+          {% elif document.may_be_released %}
+            <p class="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2.5 text-meta text-green-900">
+              {% icon "check" "size-3.5 mt-px shrink-0" %}
+              <span>
+                Cleared and authorised. It goes on the public website when an
+                administrator publishes {{ record.title }}.
+              </span>
+            </p>
+          {% endif %}
+
+          {% if can_review %}
+            <form method="post" action="{% url 'programs:document_authority' document.pk %}" data-once
+                  class="space-y-2 border-t border-slate-100 pt-3">
+              {% csrf_token %}
+              {% include "components/form_field.html" with field=authority_form.authority %}
+              <button type="submit" class="btn btn-secondary btn-sm w-full">
+                {% icon "lock" "size-3.5" %}
+                {% if document.authority %}Change the memorandum{% else %}Record the memorandum{% endif %}
+              </button>
+              <p class="text-meta text-slate-500">
+                Not listed?
+                <a href="{% url 'programs:authority_create' %}"
+                   class="font-medium text-brand-700 hover:underline">Record a new memorandum</a>
+                first.
+              </p>
+            </form>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ---- the decision ----------------------------------------------- #}
+      {% if can_review %}
+        <section class="card border-brand-200" aria-labelledby="decision-heading">
+          <div class="card-header bg-brand-50/60">
+            <h2 id="decision-heading" class="card-title">Your decision</h2>
+          </div>
+          <form method="post" class="card-body space-y-4">
+            {% csrf_token %}
+
+            {% if decision_form.non_field_errors %}
+              <div role="alert" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                {% for error in decision_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+              </div>
+            {% endif %}
+
+            <fieldset>
+              <legend class="form-label">Decision</legend>
+              <div class="space-y-2">
+                {% for choice in decision_form.decision %}
+                  <label class="flex items-center gap-2 text-sm text-slate-800">
+                    {{ choice.tag }} {{ choice.choice_label }}
+                  </label>
+                {% endfor %}
+              </div>
+              {% for error in decision_form.decision.errors %}
+                <p class="form-error" role="alert">{% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span></p>
+              {% endfor %}
+            </fieldset>
+
+            {% include "components/form_field.html" with field=decision_form.authority %}
+            {% include "components/form_field.html" with field=decision_form.comments %}
+
+            {% if not document.may_be_approved_directly %}
+              <div class="rounded-md border border-red-200 bg-red-50 p-3">
+                <label class="flex items-start gap-2.5 text-sm text-red-900">
+                  <span class="mt-0.5">
+                    {{ decision_form.acknowledge_risk|field_class:"size-4 rounded" }}
+                  </span>
+                  <span>{{ decision_form.acknowledge_risk.label }}</span>
+                </label>
+                {% for error in decision_form.acknowledge_risk.errors %}
+                  <p class="form-error" role="alert">{% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span></p>
+                {% endfor %}
+                <p class="mt-2 text-meta text-red-800">
+                  Required for a high-risk file. Approving without reading it is
+                  the one mistake this module cannot undo for you.
+                </p>
+              </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary w-full">Record decision</button>
+
+            <p class="text-meta leading-relaxed text-slate-500">
+              Approving does not publish anything. The file becomes public only
+              when a memorandum authorises its release <em>and</em> an
+              administrator publishes the record it is attached to - and that
+              is the step which creates its public copy.
+            </p>
+          </form>
+        </section>
+      {% elif can_encode %}
+        <div class="rounded-md border border-slate-200 bg-slate-50 p-3.5 text-sm text-slate-600">
+          Your role does not permit approving documents. A reviewer or the
+          Division Chief decides what happens to this file.
+        </div>
+      {% endif %}
+
+      {% if can_encode and document.status != "PUBLISHED" %}
+        <section class="card border-red-200">
+          <div class="card-header">
+            <h2 class="card-title text-red-800">Remove</h2>
+          </div>
+          <div class="card-body">
+            <p class="text-sm text-slate-600">
+              Deletes the internal file. Use this for something uploaded by
+              mistake.
+              {% if document.status == "WITHDRAWN" %}
+                This is <strong>not</strong> how you take a file off the public
+                website &mdash; that has already happened, and this file is
+                still here so that it can go back.
+              {% endif %}
+            </p>
+            <a href="{% url 'programs:document_delete' document.pk %}"
+               class="btn btn-secondary btn-sm mt-3">{% icon "delete" "size-3.5" %}Delete this file</a>
+          </div>
+        </section>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

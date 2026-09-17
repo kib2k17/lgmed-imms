@@ -26,6 +26,7 @@ production host set them the ordinary way and ignore all of this.
 """
 
 import os
+import socket
 import sys
 from pathlib import Path
 
@@ -90,3 +91,54 @@ def env_float(name: str, default: float) -> float:
     except ValueError:
         # A typo in the file must not take the whole site down at import time.
         return default
+
+
+def env_list(name: str, default: str = "") -> list[str]:
+    """A comma-separated variable, split and cleaned of blanks."""
+    return [part.strip() for part in env(name, default).split(",") if part.strip()]
+
+
+def local_ipv4_addresses() -> list[str]:
+    """
+    Every IPv4 address this machine currently answers on.
+
+    The address a colleague types into their browser is handed out by DHCP, so
+    it changes when the lease expires, when the laptop rejoins, and whenever it
+    moves between office networks. Writing it into a settings file means that
+    file is wrong by the following morning - and the symptom, a bare 400
+    "Invalid HTTP_HOST header", says nothing about which of the two addresses
+    is stale. Asking the machine is the only answer that stays true.
+
+    Two sources, because neither is sufficient alone. The host lookup finds
+    every adapter, including one that is up but not carrying the default route;
+    the UDP socket finds the address the default route actually uses, which is
+    the one the host lookup misses on a machine whose name does not resolve.
+    No packet is ever sent - a datagram socket only has to pick a local
+    interface for the route to answer.
+
+    Loopback and APIPA (169.254.x, the address Windows invents when DHCP fails)
+    are dropped: neither is reachable from another machine, and listing them
+    would only make a broken network look configured.
+    """
+    found: list[str] = []
+
+    try:
+        found.extend(socket.gethostbyname_ex(socket.gethostname())[2])
+    except OSError:
+        pass                                    # no name resolution; the socket below still works
+
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("10.255.255.255", 1))    # unroutable on purpose; nothing is transmitted
+        found.append(probe.getsockname()[0])
+    except OSError:
+        pass                                    # no network at all - then there is nothing to share
+    finally:
+        probe.close()
+
+    addresses: list[str] = []
+    for address in found:
+        if address.startswith(("127.", "169.254.")) or address in addresses:
+            continue
+        addresses.append(address)
+    return addresses

@@ -37,7 +37,7 @@
         {{ agency.division|default:"Local Government Monitoring and Evaluation Division" }}
       </p>
       <h1 class="mt-2 text-page-title font-bold tracking-tight text-brand-900 uppercase">
-        LGMEDD Weekly Updates &amp; Accomplishments
+        LGMED Weekly Updates &amp; Accomplishments
       </h1>
       <p class="mt-1.5 text-lg font-semibold text-slate-700">{{ period.label }}</p>
       {% if period.theme %}
@@ -104,6 +104,12 @@
                 {% if item.narrative %}
                   <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ item.narrative }}</p>
                 {% endif %}
+
+                {# The evidence, beside the claim it supports. #}
+                <h4 class="mt-4 text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                  Means of verification
+                </h4>
+                {% include "components/mov_list.html" with movs=item.movs %}
               </div>
               <span class="ml-auto shrink-0">
                 {% status_badge item.status item.get_status_display %}

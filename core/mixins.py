@@ -70,6 +70,24 @@ class CanDisposeDocumentsMixin(CapabilityRequiredMixin):
     capability = "can_dispose_documents"
 
 
+class CanEncodePPAMixin(CapabilityRequiredMixin):
+    """Describe a programme, project or activity, and upload its papers."""
+
+    capability = "can_encode_ppa"
+
+
+class CanReviewPPAMixin(CapabilityRequiredMixin):
+    """Read a security screening and clear, reject or return a document."""
+
+    capability = "can_review_ppa"
+
+
+class CanPublishPPAMixin(CapabilityRequiredMixin):
+    """Publish approved PPA content to the public website, and withdraw it."""
+
+    capability = "can_publish_ppa"
+
+
 class CanDeleteMixin(CapabilityRequiredMixin):
     """Delete records. Administrators only."""
 
