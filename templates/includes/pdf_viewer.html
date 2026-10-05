@@ -1,0 +1,28 @@
+{% load ui %}
+{# The in-system PDF viewer, one per page. Opened by any link carrying     #}
+{# data-pdf-view (see components/pdf_view_button.html and static/js/app.js). #}
+{# The file is shown by the browser's own PDF reader, framed from a view    #}
+{# that re-checks access - see core/files.py.                               #}
+<dialog id="pdf-viewer" aria-labelledby="pdf-viewer-title"
+        class="pdf-viewer m-auto rounded-lg border border-slate-200 bg-white p-0 shadow-overlay">
+  <div class="flex h-full flex-col">
+    <div class="flex items-center gap-2 border-b border-slate-200 px-4 py-2.5">
+      <span aria-hidden="true" class="grid size-8 shrink-0 place-items-center rounded-md bg-red-50 text-red-700">
+        {% icon "file" "size-4" %}
+      </span>
+      <h2 id="pdf-viewer-title" class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900" data-pdf-title>
+        Document
+      </h2>
+      <a href="#" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" data-pdf-newtab>
+        {% icon "external" "size-3.5" %}<span class="hidden sm:inline">Open in new tab</span>
+      </a>
+      <a href="#" download class="btn btn-ghost btn-sm hidden" data-pdf-download>
+        {% icon "download" "size-3.5" %}<span class="hidden sm:inline">Download</span>
+      </a>
+      <button type="button" class="btn btn-secondary btn-sm" data-dialog-close>
+        {% icon "close" "size-3.5" %}<span class="sr-only">Close the viewer</span>
+      </button>
+    </div>
+    <iframe class="min-h-0 w-full flex-1 border-0 bg-slate-100" title="Document preview" data-pdf-frame></iframe>
+  </div>
+</dialog>

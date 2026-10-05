@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{% url 'esira:workspace' document.pk %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to signature boxes</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+
+  <form method="post" class="grid gap-4 xl:grid-cols-3" novalidate>
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <section class="card xl:col-span-2" aria-labelledby="route-heading">
+      <div class="card-header">
+        <h2 id="route-heading" class="card-title">Route</h2>
+        <span class="text-meta text-slate-500">Steps run in order, one at a time</span>
+      </div>
+
+      {% if formset.non_form_errors %}
+        <div class="mx-4 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 sm:mx-5" role="alert">
+          {% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+
+      <ol class="divide-y divide-slate-100" data-route-rows>
+        {% for form in formset %}
+          <li class="grid gap-3 p-4 sm:grid-cols-12 sm:px-5" data-route-row>
+            <p class="flex items-center gap-2 text-sm font-semibold text-slate-700 sm:col-span-12">
+              <span class="grid size-6 place-items-center rounded-full bg-brand-600 text-[0.6875rem] text-white" data-route-number>{{ forloop.counter }}</span>
+              Step
+              <label class="ml-auto inline-flex items-center gap-1.5 text-meta font-normal text-slate-500">{{ form.DELETE }} Remove this step</label>
+            </p>
+            <div class="sm:col-span-5">{% include "components/bound_field.html" with field=form.recipient %}</div>
+            <div class="sm:col-span-3">{% include "components/bound_field.html" with field=form.action %}</div>
+            <div class="sm:col-span-4">{% include "components/bound_field.html" with field=form.due_date %}</div>
+            <div class="sm:col-span-12">{% include "components/bound_field.html" with field=form.purpose %}</div>
+          </li>
+        {% endfor %}
+      </ol>
+
+      <template data-route-template>
+        <li class="grid gap-3 p-4 sm:grid-cols-12 sm:px-5" data-route-row>
+          <p class="flex items-center gap-2 text-sm font-semibold text-slate-700 sm:col-span-12">
+            <span class="grid size-6 place-items-center rounded-full bg-brand-600 text-[0.6875rem] text-white" data-route-number></span>
+            Step
+            <label class="ml-auto inline-flex items-center gap-1.5 text-meta font-normal text-slate-500">{{ formset.empty_form.DELETE }} Remove this step</label>
+          </p>
+          <div class="sm:col-span-5">{% include "components/bound_field.html" with field=formset.empty_form.recipient %}</div>
+          <div class="sm:col-span-3">{% include "components/bound_field.html" with field=formset.empty_form.action %}</div>
+          <div class="sm:col-span-4">{% include "components/bound_field.html" with field=formset.empty_form.due_date %}</div>
+          <div class="sm:col-span-12">{% include "components/bound_field.html" with field=formset.empty_form.purpose %}</div>
+        </li>
+      </template>
+
+      <div class="card-footer flex flex-wrap justify-between gap-2">
+        <button type="button" class="btn btn-secondary" data-route-add>{% icon "plus" "size-4" %}Add a step</button>
+        <button type="submit" class="btn btn-primary">{% icon "route" "size-4" %}Send on route</button>
+      </div>
+    </section>
+
+    <aside class="space-y-4">
+      <section class="card" aria-labelledby="doc-heading">
+        <div class="card-header"><h2 id="doc-heading" class="card-title">{{ document.reference_no }}</h2></div>
+        <div class="card-body text-sm text-slate-700">
+          <p class="font-medium text-slate-900">{{ document.title }}</p>
+          <p class="mt-1 text-meta text-slate-500">{{ document.page_count }} page{{ document.page_count|pluralize }}</p>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="rules-heading">
+        <div class="card-header"><h2 id="rules-heading" class="card-title">Before you send</h2></div>
+        <ul class="card-body list-disc space-y-2 pl-9 text-sm text-slate-700">
+          <li>Everyone with a signature box needs a <strong>Signature</strong> step
+            {% if box_signers %}({% for s in box_signers %}{{ s.signer__first_name|default:s.signer__username }} {{ s.signer__last_name }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}.</li>
+          <li>A signer without a box places their own when it is their turn.</li>
+          <li>Add yourself as step 1 to sign first.</li>
+          <li>Approvers, reviewers and those only informed need no box.</li>
+          <li>Each recipient sees the document only when it reaches them.</li>
+        </ul>
+      </section>
+    </aside>
+  </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var rows = document.querySelector("[data-route-rows]");
+    var template = document.querySelector("[data-route-template]");
+    var total = document.getElementById("id_steps-TOTAL_FORMS");
+    function renumber() {
+      var n = 0;
+      rows.querySelectorAll("[data-route-row]").forEach(function (row) {
+        var removed = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        row.style.opacity = removed && removed.checked ? "0.45" : "";
+        if (!(removed && removed.checked)) n += 1;
+        row.querySelector("[data-route-number]").textContent = removed && removed.checked ? "–" : n;
+      });
+    }
+    document.querySelector("[data-route-add]").addEventListener("click", function () {
+      var index = parseInt(total.value, 10);
+      var html = template.innerHTML.replace(/__prefix__/g, index);
+      rows.insertAdjacentHTML("beforeend", html);
+      total.value = index + 1;
+      renumber();
+    });
+    rows.addEventListener("change", renumber);
+    renumber();
+  })();
+</script>
+{% endblock %}

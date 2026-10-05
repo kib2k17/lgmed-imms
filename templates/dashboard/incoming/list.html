@@ -25,7 +25,7 @@
 {% endblock %}
 
 {% block table_head %}
-  {% include "components/th_sort.html" with field="docket_number" label="Docket" %}
+  {% include "components/th_sort.html" with field="lgmed_code" label="LGMED code / DNS No." %}
   {% include "components/th_sort.html" with field="subject" label="Subject" %}
   {% include "components/th_sort.html" with field="date_received" label="Received" th_class="hidden sm:table-cell" %}
   {% include "components/th_sort.html" with field="assigned_to__last_name" label="Focal person" th_class="hidden lg:table-cell" %}
@@ -38,7 +38,10 @@
   {% for record in records %}
     <tr>
       <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
-        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.docket_number }}</a>
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.tracking_number }}</a>
+        {% if record.lgmed_code %}
+          <span class="block text-meta font-normal text-slate-500">DNS {{ record.docket_number }}</span>
+        {% endif %}
         {% if record.priority == "URGENT" or record.priority == "HIGH" %}
           <span class="mt-0.5 block text-meta font-semibold text-red-700">{{ record.get_priority_display }} priority</span>
         {% endif %}
@@ -46,7 +49,7 @@
       <td>
         {{ record.subject|truncatechars:70 }}
         <span class="block text-meta text-slate-500">
-          {{ record.document_type.name }} &middot; from {{ record.source_office|truncatechars:40 }}
+          {{ record.document_type.name }}{% if record.source_office %} &middot; from {{ record.source_office|truncatechars:40 }}{% endif %}
         </span>
       </td>
       <td class="hidden whitespace-nowrap sm:table-cell">
@@ -64,7 +67,7 @@
             <span class="block text-meta text-amber-700">Not yet acknowledged</span>
           {% endif %}
         {% else %}
-          <span class="text-slate-400">Awaiting the Division Chief</span>
+          <span class="text-slate-400">{% if record.status == "IMPORTED" %}Not yet assigned{% else %}Awaiting the Division Chief{% endif %}</span>
         {% endif %}
       </td>
       <td>{% status_badge record.display_status record.display_status_label %}</td>
@@ -81,7 +84,7 @@
       <td class="text-right whitespace-nowrap">
         <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
           {% icon "view" "size-3.5" %}<span class="hidden sm:inline">Open</span>
-          <span class="sr-only">{{ record.docket_number }}</span>
+          <span class="sr-only">{{ record.tracking_number }}</span>
         </a>
       </td>
     </tr>

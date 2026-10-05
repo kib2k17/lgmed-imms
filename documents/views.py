@@ -24,8 +24,11 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import TemplateView, View
 
+from core.files import serve_inline
 from core.mixins import CapabilityRequiredMixin
 from core.views_base import (
     ModuleCreateView,
@@ -54,7 +57,10 @@ from .models import (
     DocumentStatus,
     DocumentType,
     DocumentVersion,
+    EventType,
+    FileSource,
     RetentionDisposition,
+    SupportingFile,
 )
 
 # The quick views offered beside the ordinary filters. Each is a question an
@@ -82,6 +88,14 @@ DATE_BASES = {
     "retention": ("retention_until", "Retention ends"),
 }
 DEFAULT_BASIS = "received"
+
+# Where an entry came from. Incoming and Outgoing Monitoring register their
+# documents here themselves; see incoming/register.py.
+SOURCES = (
+    ("incoming", "Incoming Monitoring"),
+    ("outgoing", "Outgoing Monitoring"),
+    ("direct", "Registered here"),
+)
 
 
 class DocumentModuleMixin:
@@ -200,9 +214,10 @@ class DocumentListView(DocumentModuleMixin, ModuleListView):
     create_url_name = "documents:create"
     create_label = "Register Document"
     empty_icon = "documents"
-    virtual_filters = ("view", "basis")
+    virtual_filters = ("view", "basis", "source")
     export_columns = (
         ("Control number", "reference_number"),
+        ("Source", "source_label"),
         ("Title", "title"),
         ("Subject", "subject"),
         ("Type", "document_type.name"),
@@ -243,6 +258,7 @@ class DocumentListView(DocumentModuleMixin, ModuleListView):
         )
         return (
             ("view", "View", QUICK_VIEWS),
+            ("source", "Source", SOURCES),
             ("status", "Status", DocumentStatus.choices),
             ("document_type", "Type",
              [(str(t.pk), t.name) for t in DocumentType.objects.filter(is_active=True)]),
@@ -286,6 +302,7 @@ class DocumentListView(DocumentModuleMixin, ModuleListView):
 
     def apply_extra_filters(self, queryset):
         """The quick views: questions about the record, not values in a column."""
+        queryset = _filter_source(queryset, self.request.GET.get("source", "").strip())
         view = self.request.GET.get("view", "").strip()
         user = self.request.user
         if view == "mine":
@@ -318,6 +335,16 @@ class DocumentListView(DocumentModuleMixin, ModuleListView):
         return context
 
 
+def _filter_source(queryset, source):
+    if source == "incoming":
+        return queryset.filter(incoming__isnull=False)
+    if source == "outgoing":
+        return queryset.filter(outgoing__isnull=False)
+    if source == "direct":
+        return queryset.filter(incoming__isnull=True, outgoing__isnull=True)
+    return queryset
+
+
 def _active_sections():
     from accounts.models import Section
 
@@ -337,7 +364,10 @@ class DocumentDetailView(DocumentModuleMixin, ModuleDetailView):
             "document_type", "owner", "assigned_to", "assigned_by", "unit",
             "reviewed_by", "approved_by", "archived_by", "disposed_by",
             "disposal_authority", "created_by", "updated_by",
-        ).prefetch_related("versions__uploaded_by", "events__actor")
+            "incoming__outgoing_record", "outgoing",
+        ).prefetch_related(
+            "versions__uploaded_by", "events__actor", "supporting_files__uploaded_by"
+        )
 
     def get_object(self, queryset=None):
         document = super().get_object(queryset)
@@ -369,9 +399,10 @@ class DocumentDetailView(DocumentModuleMixin, ModuleDetailView):
                 "can_restore": document.may_be_restored_by(user),
                 "can_dispose": document.may_be_disposed_by(user),
                 "can_set_retention": user.can_archive_documents,
-                "can_approve": user.can_approve,
+                "can_approve": user.can_approve and not document.is_synced,
                 "is_responsible": document.is_responsible(user),
                 "versions": document.versions.all(),
+                "supporting_files": document.supporting_files.all(),
                 "events": document.events.all()[:200],
                 "retention_warning_days": RETENTION_WARNING_DAYS,
                 "review_form": ReviewForm(
@@ -582,6 +613,244 @@ class VersionDownloadView(CapabilityRequiredMixin, View):
             raise Http404("This version's file is no longer held.")
 
         return _serve(document, version.file, request, request.user, version=version)
+
+
+@method_decorator(xframe_options_sameorigin, name="dispatch")
+class DocumentFileView(CapabilityRequiredMixin, View):
+    """
+    Show the current file in the PDF viewer.
+
+    Checked exactly as a download is, and written to the trail: reading a file
+    on screen is still the file leaving the register.
+    """
+
+    capability = "can_view"
+
+    def get(self, request, pk):
+        document = get_object_or_404(Document, pk=pk)
+        if not document.may_be_downloaded_by(request.user):
+            if document.is_disposed:
+                raise Http404(
+                    "This document has been disposed of; its file no longer exists."
+                )
+            raise PermissionDenied("You do not have access to this document's file.")
+        response = serve_inline(document.file)
+        workflow.log(
+            document, request.user, EventType.VIEWED,
+            detail=f"Opened {document.file_name} in the viewer", request=request,
+        )
+        return response
+
+
+@method_decorator(xframe_options_sameorigin, name="dispatch")
+class VersionFileView(CapabilityRequiredMixin, View):
+    """Show one earlier version in the PDF viewer, under the download's checks."""
+
+    capability = "can_view"
+
+    def get(self, request, pk, version_pk):
+        document = get_object_or_404(Document, pk=pk)
+        version = get_object_or_404(DocumentVersion, pk=version_pk, document=document)
+        if not document.may_be_viewed_by(request.user) or document.is_disposed:
+            raise PermissionDenied("You do not have access to this document.")
+        response = serve_inline(version.file)
+        workflow.log(
+            document, request.user, EventType.VIEWED,
+            detail=f"Opened version {version.version_number} ({version.file_name}) "
+                   "in the viewer",
+            request=request,
+        )
+        return response
+
+
+def _supporting_file(request, pk, file_pk):
+    """A captured file, under the same checks as the document's own file."""
+    document = get_object_or_404(Document, pk=pk)
+    supporting = get_object_or_404(SupportingFile, pk=file_pk, document=document)
+    if not document.may_be_viewed_by(request.user) or document.is_disposed:
+        raise PermissionDenied("You do not have access to this document.")
+    if not supporting.file:
+        raise Http404("This file is no longer held.")
+    return document, supporting
+
+
+class SupportingFileDownloadView(CapabilityRequiredMixin, View):
+    """Download a file captured from Incoming or Outgoing Monitoring."""
+
+    capability = "can_view"
+
+    def get(self, request, pk, file_pk):
+        document, supporting = _supporting_file(request, pk, file_pk)
+        try:
+            handle = supporting.file.open("rb")
+        except (FileNotFoundError, OSError, ValueError):
+            raise Http404(
+                "The file recorded here is not present in storage. Report this "
+                "to the system administrator."
+            )
+        workflow.log(
+            document, request.user, EventType.DOWNLOADED,
+            detail=f"Downloaded supporting file {supporting.file_name}", request=request,
+        )
+        return FileResponse(handle, as_attachment=True, filename=supporting.file_name)
+
+
+@method_decorator(xframe_options_sameorigin, name="dispatch")
+class SupportingFileView(CapabilityRequiredMixin, View):
+    """Show a captured file in the PDF viewer."""
+
+    capability = "can_view"
+
+    def get(self, request, pk, file_pk):
+        document, supporting = _supporting_file(request, pk, file_pk)
+        response = serve_inline(supporting.file)
+        workflow.log(
+            document, request.user, EventType.VIEWED,
+            detail=f"Opened supporting file {supporting.file_name} in the viewer",
+            request=request,
+        )
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Every file in the register
+# ---------------------------------------------------------------------------
+
+FILE_SOURCES = (
+    ("incoming", "Incoming document"),
+    ("update", "Focal person's update"),
+    ("outgoing", "Outgoing communication"),
+    ("direct", "Registered here"),
+)
+
+
+class FileLibraryView(CapabilityRequiredMixin, TemplateView):
+    """
+    Every file the register holds, in one list.
+
+    A document's own file and each earlier version, and every file captured
+    from Incoming and Outgoing Monitoring: whatever was uploaded to the system
+    for a document can be found here, searched, opened and downloaded - under
+    the same access rules as the document it belongs to.
+    """
+
+    capability = "can_view"
+    template_name = "dashboard/documents/files.html"
+    paginate_by = 30
+
+    def rows(self):
+        params = self.request.GET
+        term = params.get("q", "").strip()
+        source = params.get("source", "").strip()
+
+        visible = (
+            Document.objects.visible_to(self.request.user)
+            .exclude(retention_disposition=RetentionDisposition.DISPOSED)
+        )
+        versions = (
+            DocumentVersion.objects.filter(document__in=visible)
+            .exclude(file="")
+            .select_related("document", "uploaded_by")
+        )
+        supporting = (
+            SupportingFile.objects.filter(document__in=visible)
+            .exclude(file="")
+            .select_related("document", "uploaded_by")
+        )
+
+        if source == "incoming":
+            versions = versions.filter(document__incoming__isnull=False)
+            supporting = supporting.none()
+        elif source == "update":
+            versions = versions.none()
+            supporting = supporting.filter(source=FileSource.UPDATE)
+        elif source == "outgoing":
+            versions = versions.filter(document__outgoing__isnull=False)
+            supporting = supporting.filter(source=FileSource.OUTGOING)
+        elif source == "direct":
+            versions = versions.filter(
+                document__incoming__isnull=True, document__outgoing__isnull=True
+            )
+            supporting = supporting.none()
+
+        if term:
+            match = (
+                Q(file__icontains=term)
+                | Q(document__reference_number__icontains=term)
+                | Q(document__title__icontains=term)
+            )
+            versions = versions.filter(match)
+            supporting = supporting.filter(match | Q(title__icontains=term))
+
+        rows = []
+        for version in versions:
+            document = version.document
+            rows.append({
+                "when": version.uploaded_at,
+                "file": version.file,
+                "file_name": version.file_name,
+                "file_type": version.file_type,
+                "label": f"Document file - {version.label.lower()}",
+                "source": (
+                    "Incoming document" if document.incoming_id
+                    else "Outgoing communication" if document.outgoing_id
+                    else "Registered here"
+                ),
+                "document": document,
+                "uploader": version.uploader_label,
+                "view_url": reverse("documents:version_view", args=[document.pk, version.pk]),
+                "download_url": reverse(
+                    "documents:version_download", args=[document.pk, version.pk]
+                ),
+            })
+        for item in supporting:
+            document = item.document
+            rows.append({
+                "when": item.uploaded_at,
+                "file": item.file,
+                "file_name": item.file_name,
+                "file_type": item.file_type,
+                "label": item.title,
+                "source": item.get_source_display(),
+                "document": document,
+                "uploader": item.uploader_label,
+                "view_url": reverse(
+                    "documents:supporting_view", args=[document.pk, item.pk]
+                ),
+                "download_url": reverse(
+                    "documents:supporting_download", args=[document.pk, item.pk]
+                ),
+            })
+        rows.sort(key=lambda row: row["when"], reverse=True)
+        return rows
+
+    def get_context_data(self, **kwargs):
+        from django.core.paginator import Paginator
+
+        context = super().get_context_data(**kwargs)
+        page_obj = Paginator(self.rows(), self.paginate_by).get_page(
+            self.request.GET.get("page")
+        )
+        context.update({
+            "page_title": "Document Files",
+            "page_subtitle": (
+                "Every file held in the register - registered here or uploaded in "
+                "Incoming and Outgoing Monitoring"
+            ),
+            "breadcrumbs": [
+                {"label": "Documents", "url": reverse("documents:list")},
+                {"label": "Files"},
+            ],
+            "active_nav": "documents",
+            "tab": "files",
+            "page_obj": page_obj,
+            "file_sources": FILE_SOURCES,
+            "selected": {
+                "q": self.request.GET.get("q", ""),
+                "source": self.request.GET.get("source", ""),
+            },
+        })
+        return context
 
 
 # ---------------------------------------------------------------------------

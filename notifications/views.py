@@ -1,9 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_GET
 
+from administration.models import SystemSetting
+from core.middleware import mark_passive
 from core.views_base import ModuleListView
 
 from .models import Category, Level, Notification
@@ -106,3 +111,45 @@ def mark_all_read(request):
         else "There were no unread notifications.",
     )
     return redirect(request.META.get("HTTP_REFERER") or "notifications:list")
+
+
+@require_GET
+def notification_status(request):
+    """
+    The signed-in user's unread count and newest unread items, as JSON.
+
+    Read by the installed app (static/js/pwa.js) to keep the bell and the app
+    icon's badge current and to raise a device notification for anything new.
+    It is the same data the bell already draws on every page - the same
+    recipient-scoped query as core.context_processors.notifications - so it
+    shows nobody anything they could not already see.
+
+    Not @login_required: a background check that has outlived its session
+    must be told so, not handed the sign-in page's HTML. And it never extends
+    the session (core.middleware.mark_passive): a page checking in is not the
+    person using the system.
+    """
+    mark_passive(request)
+    if not request.user.is_authenticated:
+        response = JsonResponse({"authenticated": False}, status=401)
+    else:
+        unread = Notification.objects.for_user(request.user).unread()
+        response = JsonResponse({
+            "authenticated": True,
+            # The system notice rides along, so a page left open all day still
+            # receives an announcement made after it was loaded.
+            "notice": SystemSetting.load().notice_payload(),
+            "unread": unread.count(),
+            "latest": [
+                {
+                    "id": item.pk,
+                    "title": item.title,
+                    "level": item.level,
+                    # Through the open view, so following it marks it read.
+                    "url": reverse("notifications:open", args=[item.pk]),
+                }
+                for item in unread[:5]
+            ],
+        })
+    response["Cache-Control"] = "no-store, private"
+    return response

@@ -26,6 +26,13 @@
   <div class="border-b border-slate-200 bg-white">
     <div class="flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
 
+      {# An app added to an iPhone's home screen has no back button of its #}
+      {# own; static/js/pwa.js reveals this one there and nowhere else.    #}
+      <button type="button" class="btn btn-ghost -ml-1 px-2" data-pwa-back hidden>
+        {% icon "chevron-left" "size-5" %}
+        <span class="sr-only">Go back</span>
+      </button>
+
       <button type="button" id="sidebar-open"
               class="btn btn-ghost -ml-1 px-2 lg:hidden"
               aria-controls="sidebar" aria-expanded="false">
@@ -78,8 +85,7 @@
         <div class="relative" data-menu>
           <button type="button" class="btn btn-ghost gap-2 px-1.5 sm:px-2"
                   data-menu-button aria-expanded="false" aria-haspopup="true">
-            <span class="grid size-8 shrink-0 place-items-center rounded-md bg-brand-100 text-xs font-bold text-brand-800"
-                  aria-hidden="true">{{ user.get_initials }}</span>
+            {% include "accounts/includes/avatar.html" with person=user size="size-8 text-xs" %}
             <span class="hidden text-left sm:block">
               <span class="block text-[0.8125rem] leading-tight font-semibold text-slate-900">{{ user.get_display_name }}</span>
               <span class="block text-[0.6875rem] leading-tight text-slate-500">{{ user.position|default:user.get_role_label }}</span>
@@ -106,6 +112,10 @@
               <a href="{% url 'core:home' %}"
                  class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
                 {% icon "external" "size-4 text-slate-400" %}Public website</a>
+              {# Revealed by static/js/pwa.js only where the browser can install. #}
+              <button type="button" data-pwa-install hidden
+                      class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                {% icon "download" "size-4 text-slate-400" %}Install app</button>
             </div>
             <div class="border-t border-slate-200 p-1.5">
               <form method="post" action="{% url 'accounts:logout' %}">

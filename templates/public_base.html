@@ -13,7 +13,7 @@
    icon declared.
   {% endcomment %}
   <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
-  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  {% include "includes/pwa_head.html" %}
   <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
   {% block extra_head %}{% endblock %}
@@ -53,9 +53,6 @@
       </a>
 
       <div class="ml-auto flex shrink-0 items-center gap-2">
-        <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-sm sm:px-3 sm:py-2 sm:text-sm">
-          {% icon "lock" "size-4" %}<span class="hidden sm:inline">Staff Sign In</span>
-        </a>
         <button type="button" id="public-nav-toggle" class="btn btn-secondary px-2 lg:hidden"
                 aria-controls="public-nav" aria-expanded="false">
           {% icon "menu" "size-5" %}<span class="sr-only">Open menu</span>
@@ -85,7 +82,10 @@
 
   {% include "includes/footer.html" %}
 
+  {% include "includes/pwa.html" %}
   <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+  <script src="{% static 'js/pwa.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer
+          data-sw-url="{% url 'pwa_service_worker' %}"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var toggle = document.getElementById("public-nav-toggle");

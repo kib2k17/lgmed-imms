@@ -22,6 +22,25 @@ urlpatterns = [
         views.VersionDownloadView.as_view(),
         name="version_download",
     ),
+    # The same files shown in the in-system PDF viewer, under the same checks.
+    path("<int:pk>/view/", views.DocumentFileView.as_view(), name="view_file"),
+    # Files captured from Incoming and Outgoing Monitoring, and every file at once.
+    path(
+        "<int:pk>/files/<int:file_pk>/",
+        views.SupportingFileDownloadView.as_view(),
+        name="supporting_download",
+    ),
+    path(
+        "<int:pk>/files/<int:file_pk>/view/",
+        views.SupportingFileView.as_view(),
+        name="supporting_view",
+    ),
+    path("files/", views.FileLibraryView.as_view(), name="files"),
+    path(
+        "<int:pk>/versions/<int:version_pk>/view/",
+        views.VersionFileView.as_view(),
+        name="version_view",
+    ),
 
     # Workflow actions. Each is its own POST endpoint rather than a status
     # field on a form, so the trail records what was intended, not merely that

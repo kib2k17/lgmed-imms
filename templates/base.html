@@ -2,7 +2,7 @@
 <html lang="en" class="h-full">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %} &middot; {{ agency.system_name }}</title>
   <meta name="description" content="{{ agency.system_full_name }} - {{ agency.office_short }}">
@@ -14,7 +14,7 @@
    icon declared.
   {% endcomment %}
   <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
-  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  {% include "includes/pwa_head.html" %}
   <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
   {% block extra_head %}{% endblock %}
@@ -30,7 +30,7 @@
  full-height row below - stayed put, leaving a white band where the header
  should have been.
 {% endcomment %}
-<body class="min-h-full font-sans [--app-header-h:3.5rem] sm:[--app-header-h:5.25rem]">
+<body class="min-h-full font-sans [--app-header-h:3.5rem] sm:[--app-header-h:5.25rem] [--bottom-nav-h:3.75rem] lg:[--bottom-nav-h:0px]">
 
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
@@ -44,7 +44,7 @@
     <div id="sidebar-backdrop" hidden
          class="fixed inset-0 z-40 bg-slate-900/50 transition-opacity lg:hidden"></div>
 
-    <div class="flex min-h-[calc(100vh-var(--app-header-h))] min-w-0 flex-1 flex-col">
+    <div class="flex min-h-[calc(100vh-var(--app-header-h))] min-w-0 flex-1 flex-col pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] print:pb-0">
       <main id="main-content" tabindex="-1" class="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
         <div class="mx-auto w-full max-w-[100rem]">
           {% block breadcrumbs %}{% include "includes/breadcrumbs.html" %}{% endblock %}
@@ -80,7 +80,17 @@
     </div>
   </div>
 
+  {% if privacy_notice_pending %}{% include "includes/privacy_notice.html" %}{% endif %}
+  {% include "includes/pdf_viewer.html" %}
+  {% include "includes/page_loading.html" %}
+  {% include "includes/bottom_nav.html" %}
+  {% include "includes/pwa.html" %}
+
   <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+  <script src="{% static 'js/pwa.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer
+          data-sw-url="{% url 'pwa_service_worker' %}"
+          data-status-url="{% url 'notifications:status' %}"
+          data-icon-url="{% static 'img/pwa/icon-192.png' %}"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

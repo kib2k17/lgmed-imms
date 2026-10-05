@@ -1,0 +1,133 @@
+{% load static ui %}<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Sign in{% endblock %} &middot; {{ agency.system_name }}</title>
+  {% comment %}
+   The agency's own seal is the tab icon. Offering a second icon in another
+   format is not a fallback: a browser given both picks whichever it prefers -
+   Chrome takes the SVG - and the generic mark won, so the seal is now the only
+   icon declared.
+  {% endcomment %}
+  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
+  {% include "includes/pwa_head.html" %}
+  <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="flex h-full flex-col bg-linear-to-b from-slate-100 to-slate-200 font-sans">
+
+  <div class="bg-brand-950 text-brand-200">
+    <div class="mx-auto flex h-8 max-w-6xl items-center px-4 text-[0.6875rem] sm:px-6">
+      <p class="truncate">{{ agency.department }} <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span> {{ agency.office }}</p>
+    </div>
+  </div>
+
+  <main class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-md lg:max-w-4xl">
+
+      {% comment %}
+        Below lg the office identity stacks above the form, as before. From lg
+        it moves into a panel beside it: on a desktop the single narrow column
+        left most of the screen empty, and the standing notices (who this
+        system belongs to, and that access is logged) are better placed next to
+        the form than queued above and below it.
+      {% endcomment %}
+
+      {% comment %}
+        Small screens: the seal sits beside the name rather than above it, so
+        the form - the reason anyone is here - starts in the first screenful
+        instead of below a tall stack of identity.
+      {% endcomment %}
+      <div class="mb-5 flex items-center justify-center gap-3 lg:hidden">
+        {% include "includes/agency_logo.html" with size="size-14" %}
+        <div class="min-w-0">
+          <h1 class="text-xl font-bold tracking-tight text-brand-900">{{ agency.system_name }}</h1>
+          <p class="text-meta font-medium text-slate-500">{{ agency.division_short }} &middot; {{ agency.office_short }}</p>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-xl border-t-4 border-accent-400 bg-white shadow-overlay ring-1 ring-slate-900/5 lg:grid lg:grid-cols-5">
+
+        {# Identity panel - lg and up #}
+        <aside class="relative hidden overflow-hidden bg-linear-to-b from-brand-900 to-brand-950 p-8 text-brand-200 lg:col-span-2 lg:flex lg:flex-col">
+          {# The seal again, large and faint, so the panel reads as the office's own rather than an empty slab. #}
+          {% if agency.has_logo %}
+            <img src="{% static agency.logo_static_path %}" alt="" aria-hidden="true" width="447" height="447"
+                 class="pointer-events-none absolute -right-16 -bottom-16 size-72 opacity-[0.06] grayscale select-none">
+          {% endif %}
+
+          <div class="relative flex items-center gap-3.5">
+            {% include "includes/agency_logo.html" with size="size-14" on_dark=True %}
+            <div class="min-w-0">
+              <h1 class="text-xl font-bold tracking-tight text-white">{{ agency.system_name }}</h1>
+              <p class="text-meta font-medium text-brand-300">{{ agency.office_short }}</p>
+            </div>
+          </div>
+          <p class="relative mt-5 text-[0.8125rem] leading-relaxed">{{ agency.system_full_name }}</p>
+
+          <ul class="relative mt-6 mb-8 space-y-3 text-[0.8125rem] text-brand-100">
+            <li class="flex items-center gap-3">
+              <span class="grid size-8 shrink-0 place-items-center rounded-md bg-white/10 text-accent-300">{% icon "programs" "size-4" %}</span>
+              Programs, projects and LGU monitoring
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="grid size-8 shrink-0 place-items-center rounded-md bg-white/10 text-accent-300">{% icon "inbox" "size-4" %}</span>
+              Incoming and outgoing communications
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="grid size-8 shrink-0 place-items-center rounded-md bg-white/10 text-accent-300">{% icon "documents" "size-4" %}</span>
+              Documents, reports and the office calendar
+            </li>
+          </ul>
+
+          <div class="relative mt-auto flex items-start gap-2.5 border-t border-white/10 pt-5 text-meta leading-relaxed">
+            <span class="mt-0.5 shrink-0 text-brand-400">{% icon "shield" "size-4" %}</span>
+            <p>
+              This is an official government information system. Access is
+              restricted to authorized personnel. All activity is logged for
+              audit purposes.
+            </p>
+          </div>
+        </aside>
+
+        {# Form #}
+        <div class="p-5 sm:p-6 lg:col-span-3 lg:p-10">
+          {% block panel %}{% endblock %}
+        </div>
+
+        {# Security notice - small screens, as the card's own footer rather than a second box below it #}
+        <div class="flex items-start gap-2.5 border-t border-slate-200 bg-slate-50 px-5 py-3.5 text-meta leading-relaxed text-slate-600 sm:px-6 lg:hidden">
+          <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-4" %}</span>
+          <p>
+            Official government information system. Access is restricted to
+            authorized personnel, and all activity is logged.
+          </p>
+        </div>
+      </div>
+
+      {% block below_panel %}
+      <p class="mt-5 text-center text-meta text-slate-500">
+        <a href="{% url 'core:home' %}" class="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+          {% icon "chevron-left" "size-3.5" %}Return to the public website
+        </a>
+      </p>
+      {% endblock %}
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-meta text-slate-500 sm:px-6">
+    <p>&copy; {% now "Y" %} {{ agency.office_short }} &mdash; {{ agency.division }}</p>
+  </footer>
+
+  {% include "includes/page_loading.html" %}
+
+  {% block extra_scripts %}{% endblock %}
+  {% include "includes/pwa.html" %}
+  <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+  <script src="{% static 'js/pwa.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer
+          data-sw-url="{% url 'pwa_service_worker' %}"></script>
+</body>
+</html>

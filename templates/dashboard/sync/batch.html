@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% block page_actions %}
+  <a href="{% url 'datasync:home' %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Data Sync</span>
+  </a>
+  {% if batch.status == "COMMITTED" %}
+    <a href="{{ list_url }}" class="btn btn-primary">
+      {% icon "view" "size-4" %}Open {{ profile.label }}
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if batch.is_preview %}
+    <p class="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+      {% icon "info" "size-4 mt-0.5 shrink-0" %}
+      <span>
+        This is a preview. Nothing has been saved. Review it, then choose
+        <strong>Commit sync</strong> at the bottom of the page.
+        {{ summary.key_label }} is the key: an existing {{ summary.key_label }}
+        is updated and a new one is created. A blank cell never erases a stored value.
+      </span>
+    </p>
+  {% elif batch.status == "COMMITTED" %}
+    <p class="mb-4 flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900" role="status">
+      {% icon "check-circle" "size-4 mt-0.5 shrink-0" %}
+      <span>
+        Committed by {{ batch.committed_by.get_display_name|default:"-" }} on
+        {{ batch.committed_at|date:"j F Y, g:i A" }}.
+      </span>
+    </p>
+  {% else %}
+    <p class="mb-4 flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800" role="status">
+      {% icon "info" "size-4 mt-0.5 shrink-0" %}
+      <span>This file was discarded. Nothing was changed.</span>
+    </p>
+  {% endif %}
+
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+    {% if batch.is_preview %}
+      {% include "components/mini_stat.html" with label="Will be created" value=counts.created tone="success" %}
+      {% include "components/mini_stat.html" with label="Will be updated" value=counts.updated tone="info" %}
+    {% else %}
+      {% include "components/mini_stat.html" with label="Created" value=counts.created tone="success" %}
+      {% include "components/mini_stat.html" with label="Updated" value=counts.updated tone="info" %}
+    {% endif %}
+    {% include "components/mini_stat.html" with label="Already up to date" value=counts.unchanged %}
+    {% include "components/mini_stat.html" with label="Skipped" value=counts.skipped tone="warning" %}
+    {% include "components/mini_stat.html" with label="Kept, with a note" value=counts.flagged tone="warning" %}
+  </div>
+
+  {# ---- Sheets ---------------------------------------------------------- #}
+  <section class="card" aria-labelledby="sheets-heading">
+    <div class="card-header">
+      <h2 id="sheets-heading" class="card-title">Sheets</h2>
+      <span class="text-meta text-slate-500">{{ counts.blank|default:0|intcomma }} blank row{{ counts.blank|pluralize }} passed over</span>
+    </div>
+    <form method="post" action="{% url 'datasync:sheets' batch.pk %}" data-once>
+      {% csrf_token %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              {% if can_commit %}<th scope="col"><span class="sr-only">Include</span></th>{% endif %}
+              <th scope="col">Sheet</th>
+              <th scope="col">Rows</th>
+              <th scope="col">Skipped</th>
+              <th scope="col" class="hidden lg:table-cell">Columns found</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sheet in summary.sheets %}
+              <tr>
+                {% if can_commit %}
+                  <td>
+                    {% if sheet.status != "skipped" %}
+                      <input type="checkbox" name="sheets" value="{{ sheet.name }}" id="sheet-{{ forloop.counter }}"
+                             class="size-4 rounded border-slate-300 text-brand-600"
+                             {% if sheet.name in selected_sheets %}checked{% endif %}>
+                    {% endif %}
+                  </td>
+                {% endif %}
+                <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-top font-medium text-slate-900">
+                  <label for="sheet-{{ forloop.counter }}">{{ sheet.name }}</label>
+                  {% if sheet.status != "read" %}
+                    <span class="block text-meta font-normal text-slate-500">{{ sheet.reason }}</span>
+                  {% elif sheet.header_row %}
+                    <span class="block text-meta font-normal text-slate-500">Header on row {{ sheet.header_row }}</span>
+                  {% endif %}
+                </th>
+                <td class="tabular align-top">{% if sheet.status == "read" %}{{ sheet.rows }}{% else %}-{% endif %}</td>
+                <td class="tabular align-top">{% if sheet.status == "read" %}{{ sheet.skipped }}{% else %}-{% endif %}</td>
+                <td class="hidden align-top text-meta text-slate-600 lg:table-cell">
+                  {% for label, where in sheet.columns %}
+                    <span class="block"><span class="font-medium text-slate-800">{{ label }}</span> &larr; {{ where }}</span>
+                  {% endfor %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if can_commit %}
+        <div class="flex justify-end border-t border-slate-200 px-4 py-3">
+          <button type="submit" class="btn btn-secondary btn-sm">Redraw preview for the ticked sheets</button>
+        </div>
+      {% endif %}
+    </form>
+  </section>
+
+  {# ---- Skipped ---------------------------------------------------------- #}
+  <section class="card mt-4" aria-labelledby="skipped-heading">
+    <div class="card-header">
+      <h2 id="skipped-heading" class="card-title">Skipped rows ({{ counts.skipped|default:0|intcomma }})</h2>
+    </div>
+    {% if summary.skipped %}
+      <div class="table-wrap max-h-[32rem] overflow-y-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Sheet &amp; row</th>
+              <th scope="col">{{ summary.key_label }}</th>
+              <th scope="col">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in summary.skipped %}
+              <tr>
+                <td class="whitespace-nowrap">{{ row.sheet }} row {{ row.row }}</td>
+                <td class="text-slate-700">{{ row.key|default:"-" }}</td>
+                <td>{{ row.reason }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card-body"><p class="text-sm text-slate-500">No rows were skipped.</p></div>
+    {% endif %}
+  </section>
+
+  {# ---- Flagged ---------------------------------------------------------- #}
+  {% if summary.flagged %}
+    <section class="card mt-4" aria-labelledby="flagged-heading">
+      <div class="card-header">
+        <h2 id="flagged-heading" class="card-title">Kept, but worth a look ({{ counts.flagged }})</h2>
+      </div>
+      <div class="table-wrap max-h-[24rem] overflow-y-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Sheet &amp; row</th>
+              <th scope="col">{{ summary.key_label }}</th>
+              <th scope="col">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in summary.flagged %}
+              <tr>
+                <td class="whitespace-nowrap">{{ row.sheet }} row {{ row.row }}</td>
+                <td class="text-slate-700">{{ row.key }}</td>
+                <td>{{ row.notes|join:"; " }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  {# ---- Updates ---------------------------------------------------------- #}
+  <section class="card mt-4" aria-labelledby="updated-heading">
+    <div class="card-header">
+      <h2 id="updated-heading" class="card-title">
+        {% if batch.is_preview %}Will be updated{% else %}Updated{% endif %} ({{ counts.updated|default:0|intcomma }})
+      </h2>
+      {% if counts.updated > summary.list_limit %}<span class="text-meta text-slate-500">First {{ summary.list_limit }} shown</span>{% endif %}
+    </div>
+    {% if summary.updated %}
+      <div class="table-wrap max-h-[32rem] overflow-y-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">{{ summary.key_label }}</th>
+              <th scope="col">Changes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in summary.updated %}
+              <tr>
+                <td class="align-top">
+                  <span class="font-medium text-slate-900">{{ row.key }}</span>
+                  <span class="block text-meta text-slate-500">{{ row.sheet }} row {{ row.row }}</span>
+                </td>
+                <td class="align-top">
+                  {% for change in row.changes %}
+                    <p class="text-sm">
+                      <span class="font-medium">{{ change.field }}:</span>
+                      <span class="text-slate-500 line-through">{{ change.from|default:"(blank)"|truncatechars:80 }}</span>
+                      &rarr; {{ change.to|truncatechars:80 }}
+                    </p>
+                  {% endfor %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card-body"><p class="text-sm text-slate-500">No existing records {% if batch.is_preview %}would change{% else %}changed{% endif %}.</p></div>
+    {% endif %}
+  </section>
+
+  {# ---- Creates ---------------------------------------------------------- #}
+  <section class="card mt-4" aria-labelledby="created-heading">
+    <div class="card-header">
+      <h2 id="created-heading" class="card-title">
+        {% if batch.is_preview %}Will be created{% else %}Created{% endif %} ({{ counts.created|default:0|intcomma }})
+      </h2>
+      {% if counts.created > summary.list_limit %}<span class="text-meta text-slate-500">First {{ summary.list_limit }} shown</span>{% endif %}
+    </div>
+    {% if summary.created %}
+      <div class="table-wrap max-h-[32rem] overflow-y-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">{{ summary.key_label }}</th>
+              <th scope="col" class="hidden sm:table-cell">Date</th>
+              <th scope="col">Subject</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in summary.created %}
+              <tr>
+                <td class="align-top">
+                  <span class="font-medium text-slate-900">{{ row.key }}</span>
+                  <span class="block text-meta text-slate-500">{{ row.sheet }} row {{ row.row }}</span>
+                </td>
+                <td class="hidden whitespace-nowrap align-top sm:table-cell">{{ row.date|default:"-" }}</td>
+                <td class="align-top">{{ row.subject|default:"-"|truncatechars:110 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card-body"><p class="text-sm text-slate-500">No new records.</p></div>
+    {% endif %}
+  </section>
+
+  {% if can_commit %}
+    <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+      <form method="post" action="{% url 'datasync:discard' batch.pk %}" data-once>
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary">Discard</button>
+      </form>
+      <form method="post" action="{% url 'datasync:commit' batch.pk %}" data-once>
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">
+          {% icon "check" "size-4" %}Commit sync
+        </button>
+      </form>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{{ list_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to list</span>
+  </a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">
+    {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
+  </button>
+  {% if can_record_transmittal %}
+    <a href="{% url 'outgoing:transmittal' record.pk %}" class="btn btn-secondary">
+      {% icon "mail" "size-4" %}<span class="hidden sm:inline">{% if record.is_sent %}Edit communication sent{% else %}Record communication sent{% endif %}</span>
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 xl:grid-cols-3">
+    <div class="space-y-4 xl:col-span-2">
+
+      {% if document %}
+        {# ---- Progress --------------------------------------------------- #}
+        <section class="card" aria-labelledby="progress-heading">
+          <div class="card-header">
+            <h2 id="progress-heading" class="card-title">Action Progress</h2>
+            {% status_badge document.display_status document.display_status_label %}
+          </div>
+          <div class="card-body">
+            <ol class="flex flex-wrap gap-x-2 gap-y-3">
+              {% for stage in document.workflow %}
+                <li class="flex flex-1 basis-32 items-center gap-2">
+                  <span aria-hidden="true"
+                        class="grid size-6 shrink-0 place-items-center rounded-full border-2 text-[0.625rem] font-bold
+                               {% if stage.state == 'done' %}border-green-600 bg-green-600 text-white
+                               {% elif stage.state == 'current' %}border-brand-600 bg-brand-600 text-white
+                               {% elif stage.state == 'cancelled' %}border-red-600 bg-red-600 text-white
+                               {% else %}border-slate-300 bg-white text-slate-400{% endif %}">
+                    {% if stage.state == "done" %}{% icon "check" "size-3" %}{% else %}{{ forloop.counter }}{% endif %}
+                  </span>
+                  <span class="min-w-0 text-meta font-medium
+                               {% if stage.state == 'upcoming' %}text-slate-400{% else %}text-slate-800{% endif %}">
+                    {{ stage.label }}
+                    {% if stage.state == "current" %}<span class="sr-only">(current stage)</span>{% endif %}
+                    {% if stage.state == "done" %}<span class="sr-only">(completed)</span>{% endif %}
+                  </span>
+                </li>
+              {% endfor %}
+            </ol>
+
+            {% if document.is_overdue %}
+              <p class="mt-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="status">
+                {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+                <span>
+                  Action was due {{ document.due_date|date:"j F Y" }} &mdash;
+                  {{ document.days_overdue }} day{{ document.days_overdue|pluralize }} overdue.
+                </span>
+              </p>
+            {% elif document.awaits_acknowledgement %}
+              <p class="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                {% icon "clock" "size-4 mt-0.5 shrink-0" %}
+                <span>
+                  Reassigned to {{ document.assigned_to.get_display_name }}, who must
+                  acknowledge it on the incoming record before action continues.
+                </span>
+              </p>
+            {% endif %}
+          </div>
+        </section>
+
+        {# ---- What is to be done ----------------------------------------- #}
+        <section class="card" aria-labelledby="instruction-heading">
+          <div class="card-header">
+            <h2 id="instruction-heading" class="card-title">Document and Instructions</h2>
+          </div>
+          <div class="card-body space-y-5">
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Subject</h3>
+              <p class="mt-1 text-sm leading-relaxed text-slate-900">{{ document.subject }}</p>
+              <p class="mt-1 text-meta text-slate-500">
+                {{ document.document_type.name }} from {{ document.source_office }},
+                received {{ document.date_received|date:"j F Y" }}
+              </p>
+            </div>
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Division Chief&rsquo;s instructions</h3>
+              {% if document.review_notes or document.assignment_remarks %}
+                {% if document.review_notes %}
+                  <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ document.review_notes }}</p>
+                {% endif %}
+                {% if document.assignment_remarks %}
+                  <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ document.assignment_remarks }}</p>
+                {% endif %}
+              {% else %}
+                <p class="mt-1 text-sm text-slate-400">No instructions were recorded.</p>
+              {% endif %}
+            </div>
+            {% if document.attachment %}
+              <div>
+                <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Incoming document</h3>
+                <a {% if document.attachment|is_pdf %}href="{% url 'incoming:view_file' document.pk %}" data-pdf-view
+                   data-pdf-title="{{ record.control_code }} - incoming document"
+                   data-pdf-download="{{ document.attachment.url }}"{% else %}href="{{ document.attachment.url }}"{% endif %}
+                   target="_blank" rel="noopener"
+                   class="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline">
+                  {% icon "file" "size-3.5" %}{% if document.attachment|is_pdf %}View{% else %}Open{% endif %} the attached document ({{ document.file_type }})
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </section>
+
+        {# ---- Updates from the focal person -------------------------------- #}
+        <section class="card" aria-labelledby="updates-heading">
+          <div class="card-header">
+            <h2 id="updates-heading" class="card-title">Action and Updates</h2>
+            <p class="text-meta text-slate-500">
+              {{ updates|length }} update{{ updates|length|pluralize }}
+            </p>
+          </div>
+
+          {% include "dashboard/incoming/_updates_list.html" %}
+
+          {% if can_update %}
+            <form method="post" action="{% url 'outgoing:add_update' record.pk %}"
+                  enctype="multipart/form-data"
+                  class="space-y-4 border-t border-slate-200 p-4 sm:px-5 no-print">
+              {% csrf_token %}
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Provide an update</h3>
+              <div class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                  {% include "components/bound_field.html" with field=update_form.action_taken %}
+                </div>
+                <div class="sm:col-span-2">
+                  {% include "components/bound_field.html" with field=update_form.remarks %}
+                </div>
+                <div>{% include "components/bound_field.html" with field=update_form.status %}</div>
+                <div>{% include "components/bound_field.html" with field=update_form.attachment %}</div>
+              </div>
+              <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary">
+                  {% icon "check" "size-4" %}Record update
+                </button>
+              </div>
+            </form>
+          {% endif %}
+
+          {% if can_review and document.is_acknowledged and not document.is_completed %}
+            <form method="post" action="{% url 'outgoing:return' record.pk %}"
+                  class="space-y-3 border-t border-slate-200 p-4 sm:px-5 no-print">
+              {% csrf_token %}
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Return for revision</h3>
+              {% include "components/bound_field.html" with field=return_form.remarks %}
+              <div class="flex justify-end">
+                <button type="submit" class="btn btn-secondary text-red-700">
+                  {% icon "warning" "size-4" %}Return to focal person
+                </button>
+              </div>
+            </form>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      {# ---- The communication sent ---------------------------------------- #}
+      <section class="card" aria-labelledby="document-heading">
+        <div class="card-header">
+          <h2 id="document-heading" class="card-title">Communication Sent</h2>
+          {% if record.is_sent %}
+            {% if record.communication_type %}{% status_badge "information" record.communication_type %}{% else %}{% status_badge "completed" "Sent" %}{% endif %}
+          {% else %}
+            {% status_badge "pending" "Not yet sent" %}
+          {% endif %}
+        </div>
+        <div class="card-body space-y-5">
+          {% if record.is_sent or not document %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Subject / title</h3>
+              <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-900">{{ record.subject|default:"No subject recorded." }}</p>
+            </div>
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Remarks</h3>
+              <p class="mt-1 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ record.remarks|default:"None." }}</p>
+            </div>
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">File</h3>
+              {% if record.file %}
+                <a {% if record.file|is_pdf %}href="{% url 'outgoing:view_file' record.pk %}" data-pdf-view
+                   data-pdf-title="{{ record.control_code }} - communication sent"
+                   data-pdf-download="{{ record.file.url }}"{% else %}href="{{ record.file.url }}"{% endif %}
+                   target="_blank" rel="noopener"
+                   class="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline">
+                  {% icon "file" "size-3.5" %}{% if record.file|is_pdf %}View{% else %}Open{% endif %} {{ record.file_name }}
+                </a>
+                <p class="text-meta text-slate-500">Also filed in the Documents register.</p>
+              {% else %}
+                <p class="mt-1 text-sm text-slate-400">No file was uploaded.</p>
+              {% endif %}
+            </div>
+          {% else %}
+            <p class="text-sm text-slate-500">
+              No communication has been recorded as sent yet. When the reply goes
+              out, record when, to whom and how, under {{ record.control_code }}.
+            </p>
+          {% endif %}
+          {% if can_record_transmittal %}
+            <div class="flex justify-end no-print">
+              <a href="{% url 'outgoing:transmittal' record.pk %}" class="btn {% if record.is_sent %}btn-secondary{% else %}btn-primary{% endif %}">
+                {% icon "mail" "size-4" %}{% if record.is_sent %}Edit communication sent{% else %}Record communication sent{% endif %}
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+      {% include "components/record_provenance.html" %}
+    </div>
+
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="details-heading">
+        <div class="card-header">
+          <h2 id="details-heading" class="card-title">Details</h2>
+        </div>
+        <div class="card-body">
+          <dl class="space-y-4">
+            {% for label, value in details %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ label }}</dt>
+                <dd class="mt-1 text-sm whitespace-pre-line text-slate-900">{{ value|default:"Not recorded" }}</dd>
+              </div>
+            {% endfor %}
+            {% if referenced_incoming %}
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Incoming document</dt>
+                <dd class="mt-1 text-sm">
+                  <a href="{{ referenced_incoming.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">{{ referenced_incoming.docket_number }}</a>
+                  <span class="block text-meta text-slate-500">{{ referenced_incoming.subject|truncatechars:90 }}</span>
+                </dd>
+              </div>
+            {% endif %}
+          </dl>
+        </div>
+      </section>
+
+      {% if document %}
+        <section class="card" aria-labelledby="assignment-heading">
+          <div class="card-header">
+            <h2 id="assignment-heading" class="card-title">Assignment</h2>
+          </div>
+          <div class="card-body">
+            <dl class="space-y-4">
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Focal person</dt>
+                <dd class="mt-1 text-sm font-medium text-slate-900">{{ document.assigned_to.get_display_name|default:"Not assigned" }}</dd>
+                {% if document.is_acknowledged %}
+                  <dd class="text-meta text-slate-500">Acknowledged {{ document.acknowledged_at|date:"j F Y, g:i A" }}</dd>
+                {% endif %}
+              </div>
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Assigned by</dt>
+                <dd class="mt-1 text-sm text-slate-900">{{ document.assigned_by.get_display_name|default:"Not recorded" }}</dd>
+                <dd class="text-meta text-slate-500">{{ document.assigned_at|date:"j F Y, g:i A" }}</dd>
+              </div>
+              <div>
+                <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Priority / action due</dt>
+                <dd class="mt-1 text-sm {% if document.is_overdue %}font-medium text-red-700{% else %}text-slate-900{% endif %}">
+                  {{ document.get_priority_display }} &middot; {{ document.due_date|date:"j F Y"|default:"No deadline set" }}
+                </dd>
+              </div>
+            </dl>
+            <p class="mt-4 border-t border-slate-200 pt-3 text-meta">
+              <a href="{{ document.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">
+                Incoming record, DMS {{ document.docket_number }}
+              </a>
+              <span class="block text-slate-500">Receipt, review and the full audit trail</span>
+            </p>
+          </div>
+        </section>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

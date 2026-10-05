@@ -8,10 +8,12 @@ by the view rather than by hiding a button.
 
 import datetime
 
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import Role, User
+from administration.models import SystemSetting
 from lgus.models import LGU, LGUType, Province
 from monitoring.models import MonitoringActivity, MonitoringStatus
 from programs.models import Program, ProgramCategory, ProgramStatus
@@ -129,6 +131,45 @@ class PublicSiteTests(TestCase):
             404,
         )
 
+    def test_no_public_page_links_to_the_staff_login(self):
+        """
+        The public site and the staff login are separate doorways: staff type
+        the address, the public is never shown a way in. Decided 21 Sep 2026.
+        """
+        login_url = reverse("accounts:login")
+        for name in PUBLIC_ROUTES:
+            with self.subTest(route=name):
+                response = self.client.get(reverse(name))
+                self.assertNotContains(response, f'href="{login_url}"')
+                self.assertNotContains(response, "Staff Sign In")
+                self.assertNotContains(response, "Staff sign in")
+
+    def test_the_maintenance_page_carries_no_sign_in_link(self):
+        # SystemSetting.load() caches the row in the process cache, which the
+        # test transaction rollback does not undo - clear it or every later
+        # test sees the public site switched off.
+        self.addCleanup(cache.clear)
+
+        settings_row = SystemSetting.load()
+        settings_row.public_site_enabled = False
+        settings_row.save()
+
+        response = self.client.get(reverse("core:home"))
+        self.assertNotContains(
+            response, reverse("accounts:login"), status_code=503
+        )
+
+    def test_the_short_alias_reaches_the_login_page(self):
+        """
+        `/staff` is the address staff are given, with and without the trailing
+        slash people forget. `/accounts/login/` stays canonical.
+        """
+        for typed in ("/staff", "/staff/"):
+            with self.subTest(typed=typed):
+                self.assertRedirects(
+                    self.client.get(typed), reverse("accounts:login")
+                )
+
     def test_login_page_renders(self):
         self.assertEqual(self.client.get(reverse("accounts:login")).status_code, 200)
 
@@ -174,6 +215,14 @@ class AuthenticatedShellTests(TestCase):
                 response = self.client.get(reverse(name))
                 self.assertEqual(response.status_code, 302)
                 self.assertIn(reverse("accounts:login"), response["Location"])
+
+    def test_signing_out_lands_on_the_login_page(self):
+        """
+        Not the public homepage: nothing there links back in any more.
+        """
+        self.client.force_login(self.staff)
+        response = self.client.post(reverse("accounts:logout"))
+        self.assertRedirects(response, reverse("accounts:login"))
 
     def test_staff_routes_render_for_signed_in_user(self):
         self.client.force_login(self.staff)
@@ -356,3 +405,54 @@ class LanAccessTests(TestCase):
         finally:
             del os.environ["LGMED_TEST_PORTS"]
         self.assertEqual(env_list("LGMED_TEST_ABSENT", "8000"), ["8000"])
+
+
+class SystemVersionTests(TestCase):
+    """
+    The footer's build stamp.
+
+    It is derived from the checkout rather than typed in, so what is worth
+    asserting is the shape it takes and that a checkout without history still
+    produces something a page can print.
+    """
+
+    def test_the_stamp_is_calver_plus_the_commit(self):
+        import re
+
+        from django.conf import settings
+
+        from config.version import FALLBACK
+
+        stamp = settings.SYSTEM_VERSION
+        if stamp == FALLBACK:
+            self.skipTest("no git history here - nothing to derive a date from")
+
+        self.assertRegex(stamp, r"^\d{4}\.\d{2}\.\d{2}\+[0-9a-f]{7,}(-dev)?$")
+
+    def test_a_folder_without_history_falls_back(self):
+        import tempfile
+        from pathlib import Path
+
+        from config.version import FALLBACK, system_version
+
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertEqual(system_version(Path(folder)), FALLBACK)
+
+    def test_both_footers_print_the_stamp(self):
+        from django.template.loader import render_to_string
+
+        agency = {
+            "system_name": "LGMED-iMMS",
+            "system_full_name": "full name",
+            "division": "division",
+            "office_short": "office",
+            "address": "address",
+            "telephone": "telephone",
+            "telephone_link": "telephone",
+            "email": "email",
+            "system_version": "2026.09.17+abc1234",
+        }
+        for template in ("includes/footer.html", "includes/footer_app.html"):
+            with self.subTest(template=template):
+                rendered = render_to_string(template, {"agency": agency})
+                self.assertIn("2026.09.17+abc1234", rendered)

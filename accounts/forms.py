@@ -4,9 +4,10 @@ from django.contrib.auth.forms import AuthenticationForm, SetPasswordForm
 
 from audit.models import Action
 from audit.recording import client_ip, record
-from core.forms_base import TEXT_CLASS, GovModelForm
+from core.forms_base import FILE_CLASS, TEXT_CLASS, GovModelForm
 
-from . import recaptcha
+from . import photos, recaptcha
+from .emails import generate_temporary_password
 from .models import Role, User
 
 FIELD_CLASS = TEXT_CLASS
@@ -32,7 +33,7 @@ class LoginForm(AuthenticationForm):
                 "class": SIGNIN_FIELD_CLASS,
                 "autocomplete": "username",
                 "autofocus": True,
-                "placeholder": "juan.delacruz",
+                "placeholder": "e.g. juan.delacruz",
             }
         ),
     )
@@ -44,7 +45,6 @@ class LoginForm(AuthenticationForm):
                 # sign-in page places inside the field.
                 "class": SIGNIN_FIELD_CLASS + " pr-11",
                 "autocomplete": "current-password",
-                "placeholder": "Enter your password",
             }
         ),
     )
@@ -133,13 +133,13 @@ class UserForm(GovModelForm):
         model = User
         fields = [
             "username", "first_name", "last_name", "email",
-            "position", "office", "contact_number",
+            "position", "office", "contact_number", "code_initials",
             "role", "is_active",
         ]
 
     fieldsets = [
         ("Account", ["username", "first_name", "last_name", "email"]),
-        ("Designation", ["position", "office", "contact_number"]),
+        ("Designation", ["position", "office", "contact_number", "code_initials"]),
         ("Access", ["role", "is_active"]),
     ]
 
@@ -191,39 +191,23 @@ class UserForm(GovModelForm):
 
 
 class UserCreateForm(UserForm):
-    """Creating an account also sets its first password."""
+    """
+    Creating an account also sets its first password - generated here, never
+    typed by the administrator, and sent to the account holder by email.
+    """
 
-    password1 = forms.CharField(
-        label="Temporary password",
-        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
-        help_text="The account holder should change this at first sign-in.",
-    )
-    password2 = forms.CharField(
-        label="Confirm password",
-        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
-    )
-
-    fieldsets = [
-        ("Account", ["username", "first_name", "last_name", "email"]),
-        ("Designation", ["position", "office", "contact_number"]),
-        ("Access", ["role", "is_active"]),
-        ("Password", ["password1", "password2"]),
-    ]
-
-    def clean_password2(self):
-        from django.contrib.auth.password_validation import validate_password
-
-        first = self.cleaned_data.get("password1")
-        second = self.cleaned_data.get("password2")
-        if first and second and first != second:
-            raise forms.ValidationError("The two passwords do not match.")
-        if second:
-            validate_password(second)
-        return second
+    def prepare_fields(self):
+        super().prepare_fields()
+        self.fields["email"].required = True
+        self.fields["email"].help_text = (
+            "A temporary password is generated and emailed here, together "
+            "with the username and role."
+        )
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.set_password(self.cleaned_data["password2"])
+        self.temporary_password = generate_temporary_password()
+        user.set_password(self.temporary_password)
         if commit:
             user.save()
         return user
@@ -237,3 +221,62 @@ class AdminSetPasswordForm(SetPasswordForm):
         for field in self.fields.values():
             field.widget.attrs["class"] = FIELD_CLASS
             field.widget.attrs["autocomplete"] = "new-password"
+
+
+class ProfilePhotoForm(forms.Form):
+    """
+    A new profile photo for the signed-in account.
+
+    A plain FileField rather than an ImageField: `photos.process_photo` opens
+    and re-encodes the image anyway, and doing the checking there keeps the
+    rules - size, format, dimensions - in one place.
+    """
+
+    photo = forms.FileField(
+        label="Profile photo",
+        widget=forms.ClearableFileInput(
+            attrs={"class": FILE_CLASS, "accept": photos.ACCEPT}
+        ),
+        help_text="JPEG, PNG or WebP, up to 5 MB. It is cropped to a square.",
+    )
+
+    def clean_photo(self):
+        upload = self.cleaned_data["photo"]
+        self.processed = photos.process_photo(upload)
+        return upload
+
+
+class MFACodeForm(forms.Form):
+    """
+    One code: six digits from the authenticator app, or a recovery code.
+
+    The field asks the phone for a numeric keypad unless the page is asking
+    for a recovery code, which has letters in it.
+    """
+
+    code = forms.CharField(
+        label="Authentication code",
+        max_length=32,
+        widget=forms.TextInput(
+            attrs={
+                "class": SIGNIN_FIELD_CLASS + " font-mono tracking-[0.2em]",
+                "autocomplete": "one-time-code",
+                "autofocus": True,
+                "spellcheck": "false",
+                "autocapitalize": "off",
+            }
+        ),
+    )
+
+    def __init__(self, *args, recovery=False, dense=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        attrs = self.fields["code"].widget.attrs
+        if dense:
+            attrs["class"] = FIELD_CLASS + " font-mono tracking-[0.2em]"
+        if recovery:
+            self.fields["code"].label = "Recovery code"
+            attrs["placeholder"] = "xxxxx-xxxxx"
+            attrs["autocomplete"] = "off"
+        else:
+            attrs["inputmode"] = "numeric"
+            attrs["placeholder"] = "123456"

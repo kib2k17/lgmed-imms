@@ -68,6 +68,14 @@
                 {{ record.days_overdue }} day{{ record.days_overdue|pluralize }} overdue.
               </span>
             </p>
+          {% elif outgoing and not record.is_completed %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800" role="status">
+              {% icon "mail" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                Acknowledged and moved to Outgoing Monitoring. Action continues
+                there under {{ record.lgmed_code }}.
+              </span>
+            </p>
           {% elif record.awaits_acknowledgement %}
             <p class="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
               {% icon "clock" "size-4 mt-0.5 shrink-0" %}
@@ -79,6 +87,15 @@
               <span>
                 Recorded and waiting for the Division Chief to review it and
                 assign a focal person. No focal person may be named before then.
+              </span>
+            </p>
+          {% elif record.status == "IMPORTED" %}
+            <p class="mt-4 flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800" role="status">
+              {% icon "info" "size-4 mt-0.5 shrink-0" %}
+              <span>
+                Imported from the spreadsheet register. The register's routing
+                note is kept under Initial remarks. Assign a focal person to bring
+                this document into the workflow.
               </span>
             </p>
           {% endif %}
@@ -106,13 +123,16 @@
           <div>
             <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Attachment</h3>
             {% if record.attachment %}
-              <a href="{{ record.attachment.url }}" target="_blank" rel="noopener"
+              <a {% if record.attachment|is_pdf %}href="{% url 'incoming:view_file' record.pk %}" data-pdf-view
+                 data-pdf-title="{{ record.tracking_number }} - attached document"
+                 data-pdf-download="{{ record.attachment.url }}"{% else %}href="{{ record.attachment.url }}"{% endif %}
+                 target="_blank" rel="noopener"
                  class="mt-2 inline-flex items-center gap-2.5 rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50">
                 <span aria-hidden="true" class="grid size-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-500">
                   {% icon "file" "size-4" %}
                 </span>
                 <span class="min-w-0">
-                  <span class="block text-sm font-medium text-brand-700">Open the attached document</span>
+                  <span class="block text-sm font-medium text-brand-700">{% if record.attachment|is_pdf %}View{% else %}Open{% endif %} the attached document</span>
                   <span class="block text-meta text-slate-500">
                     {{ record.file_type }} &middot; {{ record.file_size|filesize }}
                   </span>
@@ -185,6 +205,12 @@
         <div class="card-body space-y-4">
           {% if record.is_assigned %}
             <dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+              {% if record.lgmed_code %}
+                <div class="sm:col-span-2">
+                  <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGMED code issued</dt>
+                  <dd class="mt-1 text-sm font-semibold text-slate-900">{{ record.lgmed_code }}</dd>
+                </div>
+              {% endif %}
               <div>
                 <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Focal person</dt>
                 <dd class="mt-1 text-sm font-medium text-slate-900">{{ record.assigned_to.get_display_name }}</dd>
@@ -244,6 +270,14 @@
                   {% include "components/bound_field.html" with field=assignment_form.assignment_remarks %}
                 </div>
               </div>
+              {% if not record.lgmed_code %}
+                <p class="text-meta text-slate-500">
+                  Assigning issues this document's LGMED code, built from the
+                  focal person's initials and today's date. It becomes the
+                  document's tracking code; the DNS number is kept as a
+                  secondary reference.
+                </p>
+              {% endif %}
               <div class="flex justify-end">
                 <button type="submit" class="btn btn-primary">
                   {% icon "users" "size-4" %}
@@ -251,104 +285,53 @@
                 </button>
               </div>
             </form>
-
-            {% if record.is_assigned and not record.is_completed %}
-              <form method="post" action="{% url 'incoming:return' record.pk %}"
-                    class="space-y-3 border-t border-slate-200 pt-4 no-print">
-                {% csrf_token %}
-                <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Return for revision</h3>
-                {% include "components/bound_field.html" with field=return_form.remarks %}
-                <div class="flex justify-end">
-                  <button type="submit" class="btn btn-secondary text-red-700">
-                    {% icon "warning" "size-4" %}Return to focal person
-                  </button>
-                </div>
-              </form>
-            {% endif %}
           {% endif %}
         </div>
       </section>
 
-      {# ---- Updates from the focal person ------------------------------ #}
-      <section class="card" aria-labelledby="updates-heading">
-        <div class="card-header">
-          <h2 id="updates-heading" class="card-title">Action and Updates</h2>
-          <p class="text-meta text-slate-500">
-            {{ record.updates.count }} update{{ record.updates.count|pluralize }}
-          </p>
-        </div>
-
-        {% if record.updates.all %}
-          <ul class="divide-y divide-slate-100">
-            {% for update in record.updates.all %}
-              <li class="px-4 py-4 sm:px-5">
-                <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-                  <p class="text-sm font-medium text-slate-900">
-                    {{ update.created_by.get_display_name|default:"An officer" }}
-                  </p>
-                  <div class="flex items-center gap-2">
-                    {% status_badge update.status update.get_status_display %}
-                    <time class="text-meta text-slate-500" datetime="{{ update.created_at|date:'c' }}">
-                      {{ update.created_at|date:"j M Y, g:i A" }}
-                    </time>
-                  </div>
-                </div>
-                <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ update.action_taken }}</p>
-                {% if update.remarks %}
-                  <p class="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta leading-relaxed whitespace-pre-line text-slate-600">
-                    {{ update.remarks }}
-                  </p>
-                {% endif %}
-                {% if update.attachment %}
-                  <a href="{{ update.attachment.url }}" target="_blank" rel="noopener"
-                     class="mt-2 inline-flex items-center gap-1.5 text-meta font-medium text-brand-700 hover:underline">
-                    {% icon "file" "size-3.5" %}
-                    Supporting attachment ({{ update.extension }}, {{ update.size|filesize }})
-                  </a>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
-            No update has been provided yet.
-            {% if record.is_assigned %}
-              The focal person is expected to report progress at least every
-              {{ update_reminder_days }} days.
+      {# ---- Where the action continues ------------------------------- #}
+      {% if record.lgmed_code %}
+        <section class="card" aria-labelledby="action-heading">
+          <div class="card-header">
+            <h2 id="action-heading" class="card-title">Action &mdash; Outgoing Monitoring</h2>
+            {% if outgoing %}
+              {% status_badge record.display_status record.display_status_label %}
+            {% else %}
+              {% status_badge "pending" "Awaiting acknowledgement" %}
             {% endif %}
-          </p>
-        {% endif %}
-
-        {% if can_update %}
-          <form method="post" action="{% url 'incoming:add_update' record.pk %}"
-                enctype="multipart/form-data"
-                class="space-y-4 border-t border-slate-200 p-4 sm:px-5 no-print">
-            {% csrf_token %}
-            <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Provide an update</h3>
-            {% if record.awaits_acknowledgement and is_focal_person %}
-              <p class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-meta text-amber-900">
-                Acknowledge receipt of this assignment first, using the button
-                at the top of the page.
+          </div>
+          <div class="card-body space-y-3">
+            {% if outgoing %}
+              <p class="text-sm text-slate-700">
+                Acknowledged by {{ record.assigned_to.get_display_name|default:"the focal person" }}
+                on {{ record.acknowledged_at|date:"j F Y" }} and moved to Outgoing
+                Monitoring. Progress updates, return for revision, completion and
+                the communication sent are recorded there under
+                <strong class="font-semibold text-slate-900">{{ record.lgmed_code }}</strong>.
+              </p>
+              {% with update=record.latest_update %}
+                {% if update %}
+                  <p class="text-meta text-slate-500">
+                    Latest update, {{ update.created_at|date:"j M Y" }}: {{ update.action_taken|truncatechars:120 }}
+                  </p>
+                {% endif %}
+              {% endwith %}
+              <div class="flex justify-end no-print">
+                <a href="{{ outgoing.get_absolute_url }}" class="btn btn-primary">
+                  {% icon "mail" "size-4" %}Open in Outgoing Monitoring
+                </a>
+              </div>
+            {% else %}
+              <p class="text-sm text-slate-500">
+                Once {{ record.assigned_to.get_display_name|default:"the focal person" }}
+                acknowledges this assignment, the document moves to Outgoing
+                Monitoring under {{ record.lgmed_code }}, and all action on it is
+                taken there.
               </p>
             {% endif %}
-            <div class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-              <div class="sm:col-span-2">
-                {% include "components/bound_field.html" with field=update_form.action_taken %}
-              </div>
-              <div class="sm:col-span-2">
-                {% include "components/bound_field.html" with field=update_form.remarks %}
-              </div>
-              <div>{% include "components/bound_field.html" with field=update_form.status %}</div>
-              <div>{% include "components/bound_field.html" with field=update_form.attachment %}</div>
-            </div>
-            <div class="flex justify-end">
-              <button type="submit" class="btn btn-primary">
-                {% icon "check" "size-4" %}Record update
-              </button>
-            </div>
-          </form>
-        {% endif %}
-      </section>
+          </div>
+        </section>
+      {% endif %}
     </div>
 
     {# ---- Details rail ------------------------------------------------- #}
@@ -360,8 +343,19 @@
         <div class="card-body">
           <dl class="space-y-4">
             <div>
-              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Docket number</dt>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">LGMED code</dt>
+              {% if record.lgmed_code %}
+                <dd class="mt-1 text-sm font-semibold text-slate-900">{{ record.lgmed_code }}</dd>
+                <dd class="text-meta text-slate-500">Primary tracking code</dd>
+              {% else %}
+                <dd class="mt-1 text-sm text-slate-400">Not yet issued</dd>
+                <dd class="text-meta text-slate-500">Issued when the Division Chief assigns a focal person</dd>
+              {% endif %}
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">DNS number</dt>
               <dd class="mt-1 text-sm font-medium text-slate-900">{{ record.docket_number }}</dd>
+              {% if record.lgmed_code %}<dd class="text-meta text-slate-500">Secondary reference</dd>{% endif %}
             </div>
             <div>
               <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Document type</dt>

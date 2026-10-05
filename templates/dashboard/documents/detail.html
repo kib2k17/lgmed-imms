@@ -9,6 +9,11 @@
     {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
   </button>
   {% if can_download %}
+    {% if record.file|is_pdf %}
+      {% url 'documents:view_file' record.pk as view_url %}
+      {% url 'documents:download' record.pk as download_url %}
+      {% include "components/pdf_view_button.html" with url=view_url title=record.reference_number|add:" - "|add:record.file_name download_url=download_url %}
+    {% endif %}
     <a href="{% url 'documents:download' record.pk %}" class="btn btn-primary">
       {% icon "download" "size-4" %}Download
     </a>
@@ -28,6 +33,31 @@
 {% block content %}
   <div class="grid gap-4 xl:grid-cols-3">
     <div class="space-y-4 xl:col-span-2">
+
+      {% if record.outgoing %}
+        <p class="flex items-start gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-slate-800" role="status">
+          {% icon "info" "size-4 mt-0.5 shrink-0" %}
+          <span>
+            Synchronised from
+            <a href="{{ record.outgoing.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">Outgoing Monitoring</a>
+            ({{ record.outgoing.control_code }}). Its details and file follow
+            the outgoing record; archiving and retention are handled here.
+          </span>
+        </p>
+      {% endif %}
+      {% if record.incoming %}
+        <p class="flex items-start gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-slate-800" role="status">
+          {% icon "info" "size-4 mt-0.5 shrink-0" %}
+          <span>
+            Synchronised from
+            <a href="{{ record.incoming.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">Incoming Monitoring</a>{% if record.incoming.outgoing_document %}
+            and <a href="{{ record.incoming.outgoing_document.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">Outgoing Monitoring</a>{% endif %}.
+            Its status follows the work done there; review, assignment and
+            action are taken there, not here. Archiving and retention are
+            handled here once it is completed.
+          </span>
+        </p>
+      {% endif %}
 
       {# ---- Lifecycle ------------------------------------------------- #}
       <section class="card" aria-labelledby="progress-heading">
@@ -123,6 +153,11 @@
                 </p>
               </div>
               {% if can_download %}
+                {% if record.file|is_pdf %}
+                  {% url 'documents:view_file' record.pk as view_url %}
+                  {% url 'documents:download' record.pk as download_url %}
+                  {% include "components/pdf_view_button.html" with url=view_url title=record.reference_number|add:" - "|add:record.file_name download_url=download_url %}
+                {% endif %}
                 <a href="{% url 'documents:download' record.pk %}" class="btn btn-primary">
                   {% icon "download" "size-4" %}Download
                 </a>
@@ -164,6 +199,11 @@
                       {% endif %}
                     </div>
                     {% if version.file and not record.is_disposed and can_download %}
+                      {% if version.file|is_pdf %}
+                        {% url 'documents:version_view' record.pk version.pk as view_url %}
+                        {% url 'documents:version_download' record.pk version.pk as download_url %}
+                        {% include "components/pdf_view_button.html" with url=view_url title=record.reference_number|add:" - "|add:version.label download_url=download_url btn_class="btn-ghost btn-sm" sr_label=version.label %}
+                      {% endif %}
                       <a href="{% url 'documents:version_download' record.pk version.pk %}"
                          class="btn btn-ghost btn-sm">
                         {% icon "download" "size-3.5" %}Download
@@ -173,6 +213,46 @@
                   </li>
                 {% endfor %}
               </ol>
+            </div>
+          {% endif %}
+
+          {% if supporting_files %}
+            <div>
+              <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+                Files from Incoming and Outgoing Monitoring
+              </h3>
+              <ul class="mt-2 divide-y divide-slate-100 border-t border-slate-100">
+                {% for item in supporting_files %}
+                  <li class="flex flex-wrap items-start gap-3 py-3">
+                    <span aria-hidden="true"
+                          class="grid size-8 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-500">
+                      {% if item.source == "OUTGOING" %}{% icon "mail" "size-4" %}{% else %}{% icon "file" "size-4" %}{% endif %}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-medium text-slate-900">{{ item.title }}</p>
+                      <p class="text-meta break-all text-slate-500">
+                        {{ item.file_name|default:"File no longer held" }}
+                        {% if item.file %}&middot; {{ item.file_type }} &middot; {{ item.file_size|filesize }}{% endif %}
+                      </p>
+                      <p class="text-meta text-slate-500">
+                        {{ item.get_source_display }} &middot; {{ item.uploader_label }} &middot;
+                        {{ item.uploaded_at|date:"j F Y, g:i A" }}
+                      </p>
+                    </div>
+                    {% if item.file and not record.is_disposed and can_download %}
+                      {% if item.file|is_pdf %}
+                        {% url 'documents:supporting_view' record.pk item.pk as view_url %}
+                        {% url 'documents:supporting_download' record.pk item.pk as download_url %}
+                        {% include "components/pdf_view_button.html" with url=view_url title=record.reference_number|add:" - "|add:item.title download_url=download_url btn_class="btn-ghost btn-sm" sr_label=item.title %}
+                      {% endif %}
+                      <a href="{% url 'documents:supporting_download' record.pk item.pk %}" class="btn btn-ghost btn-sm">
+                        {% icon "download" "size-3.5" %}Download
+                        <span class="sr-only">{{ item.title }}</span>
+                      </a>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
             </div>
           {% endif %}
 
@@ -402,7 +482,9 @@
             <h2 id="actions-heading" class="card-title">Actions</h2>
           </div>
           <div class="card-body space-y-3">
-            {% if record.status == "DRAFT" or record.status == "RECEIVED" %}
+            {% if record.is_synced %}
+              {# Moved from Incoming and Outgoing Monitoring; see the note above. #}
+            {% elif record.status == "DRAFT" or record.status == "RECEIVED" %}
               {% if can_edit %}
                 <form method="post" action="{% url 'documents:submit_for_review' record.pk %}">
                   {% csrf_token %}

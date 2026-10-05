@@ -1,0 +1,32 @@
+{% load ui %}
+{% comment %}
+ Tells the user, plainly, whether a signature made here is a PNPKI signature.
+ Needs `setup` from esira.views.signing_setup().
+{% endcomment %}
+{% if not setup.available %}
+  <div class="mb-4 flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-900" role="status">
+    {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+    <p><span class="font-semibold">Signing is not available.</span> {{ setup.unavailable_reason }}</p>
+  </div>
+{% elif not setup.roots_installed and setup.untrusted_allowed %}
+  <div class="mb-4 flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900" role="status">
+    {% icon "warning" "size-4 mt-0.5 shrink-0" %}
+    <p>
+      <span class="font-semibold">Development mode &mdash; test signatures only.</span>
+      No DICT PNPKI root certificates are installed, and untrusted certificates
+      are allowed for testing. Signatures made now are real cryptographic
+      signatures but are <strong>not</strong> PNPKI-verified, and are labelled
+      as such everywhere they appear.
+    </p>
+  </div>
+{% elif not setup.roots_installed %}
+  <div class="mb-4 flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900" role="status">
+    {% icon "info" "size-4 mt-0.5 shrink-0" %}
+    <p>
+      <span class="font-semibold">PNPKI signing is not yet configured on this server.</span>
+      Documents can be uploaded, prepared and routed for approval, but no one
+      can sign until the system administrator installs the DICT PNPKI root
+      certificates (see <span class="font-mono text-xs">docs/esira.md</span>).
+    </p>
+  </div>
+{% endif %}

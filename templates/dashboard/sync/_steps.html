@@ -1,0 +1,29 @@
+{% load ui %}
+{% comment %}
+ The migration's four steps. `steps` comes from datasync.views._steps: each
+ step is done, current or still to come, said in words as well as colour.
+{% endcomment %}
+<nav aria-label="Migration steps" class="mb-4">
+  <ol class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+    {% for step in steps %}
+      <li class="flex items-center gap-3 rounded-lg border px-3 py-2.5
+                 {% if step.state == 'current' %}border-brand-600 bg-brand-50
+                 {% elif step.state == 'done' %}border-green-200 bg-green-50
+                 {% else %}border-slate-200 bg-white{% endif %}"
+          {% if step.state == 'current' %}aria-current="step"{% endif %}>
+        <span aria-hidden="true"
+              class="grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold
+                     {% if step.state == 'current' %}bg-brand-600 text-white
+                     {% elif step.state == 'done' %}bg-green-600 text-white
+                     {% else %}bg-slate-100 text-slate-500{% endif %}">
+          {% if step.state == 'done' %}{% icon "check" "size-3.5" "2.5" %}{% else %}{{ step.number }}{% endif %}
+        </span>
+        <span class="min-w-0">
+          <span class="block text-meta font-semibold tracking-wide text-slate-500 uppercase">Step {{ step.number }}</span>
+          <span class="block text-sm font-medium {% if step.state == 'todo' %}text-slate-500{% else %}text-slate-900{% endif %}">{{ step.label }}</span>
+          <span class="sr-only">{% if step.state == 'done' %}(completed){% elif step.state == 'current' %}(current step){% else %}(not yet){% endif %}</span>
+        </span>
+      </li>
+    {% endfor %}
+  </ol>
+</nav>

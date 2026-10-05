@@ -26,11 +26,12 @@ class EventInline(admin.TabularInline):
 @admin.register(IncomingDocument)
 class IncomingDocumentAdmin(admin.ModelAdmin):
     list_display = (
-        "docket_number", "subject", "document_type", "date_received", "status",
+        "lgmed_code", "docket_number", "subject", "document_type", "date_received", "status",
         "assigned_to", "due_date",
     )
     list_filter = ("status", "priority", "document_type", "assigned_to")
-    search_fields = ("docket_number", "subject", "source_office")
+    search_fields = ("lgmed_code", "docket_number", "subject", "source_office")
+    readonly_fields = ("lgmed_code",)
     date_hierarchy = "date_received"
     inlines = [UpdateInline, EventInline]
 

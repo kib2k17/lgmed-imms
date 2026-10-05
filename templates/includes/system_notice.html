@@ -27,3 +27,54 @@
     </div>
   </div>
 {% endif %}
+
+{% comment %}
+ Full-screen announcement. When the administrator ticks "Cover the page and
+ sound an alert", the same notice also covers the screen with a beep until the
+ user acknowledges it (static/js/app.js). The dialog is always present, empty
+ when there is nothing to announce, so a notice posted while a page is open
+ (picked up by the status check in static/js/pwa.js) has somewhere to appear.
+ Acknowledgement is remembered per notice, so the banner above stays but the
+ cover is not shown again until the notice is changed.
+{% endcomment %}
+<dialog id="system-announcement"
+        aria-labelledby="system-announcement-title" aria-describedby="system-announcement-message"
+        {% if system_settings.notice_message and system_settings.notice_takeover %}
+          data-notice-key="{{ system_settings.notice_key }}"
+          data-notice-level="{{ system_settings.notice_level }}"
+        {% endif %}
+        class="m-auto w-[calc(100vw-2rem)] max-w-xl rounded-lg border-0 bg-transparent p-0 shadow-overlay backdrop:bg-slate-900/80 no-print">
+  <div data-notice-panel
+       class="overflow-hidden rounded-lg border-t-8 bg-white
+              {% if system_settings.notice_level == 'danger' %}border-red-600
+              {% elif system_settings.notice_level == 'warning' %}border-amber-500
+              {% else %}border-blue-600{% endif %}">
+    <div class="flex flex-col items-center gap-3 px-6 pb-6 pt-7 text-center">
+      <span aria-hidden="true" data-notice-icon
+            class="grid size-14 place-items-center rounded-full motion-safe:animate-pulse
+                   {% if system_settings.notice_level == 'danger' %}bg-red-100 text-red-700
+                   {% elif system_settings.notice_level == 'warning' %}bg-amber-100 text-amber-700
+                   {% else %}bg-blue-100 text-blue-700{% endif %}">
+        {% icon "bell" "size-7" %}
+      </span>
+      <p data-notice-label
+         class="text-meta font-semibold uppercase tracking-wide
+                {% if system_settings.notice_level == 'danger' %}text-red-700
+                {% elif system_settings.notice_level == 'warning' %}text-amber-700
+                {% else %}text-blue-700{% endif %}">
+        {% if system_settings.notice_level == 'danger' %}Urgent announcement
+        {% elif system_settings.notice_level == 'warning' %}Important announcement
+        {% else %}Announcement{% endif %}
+      </p>
+      <h2 id="system-announcement-title" class="sr-only">System announcement</h2>
+      <p id="system-announcement-message" data-notice-message
+         class="whitespace-pre-line text-lg font-semibold leading-snug text-slate-900 sm:text-xl">{{ system_settings.notice_message }}</p>
+      <p class="text-sm text-slate-500">From the {{ agency.system_name }} administrator</p>
+    </div>
+    <div class="flex justify-center border-t border-slate-200 bg-slate-50 px-6 py-4">
+      <button type="button" class="btn btn-primary min-w-48 justify-center" data-notice-acknowledge>
+        {% icon "check" "size-4" %}I have read this
+      </button>
+    </div>
+  </div>
+</dialog>

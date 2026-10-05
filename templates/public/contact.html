@@ -85,17 +85,6 @@
           {{ public_content.accessibility_statement }}
         </p>
       </section>
-
-      <section class="rounded-lg border border-slate-200 bg-slate-50 p-5" aria-labelledby="staff-heading">
-        <h2 id="staff-heading" class="text-card-title font-semibold text-slate-900">LGMED personnel</h2>
-        <p class="mt-2 text-sm text-slate-600">
-          Division staff can sign in to LGMED-iMMS to encode monitoring records
-          and manage documents.
-        </p>
-        <a href="{% url 'accounts:login' %}" class="btn btn-primary mt-4">
-          {% icon "lock" "size-4" %}Staff sign in
-        </a>
-      </section>
     </div>
   </div>
 {% endblock %}

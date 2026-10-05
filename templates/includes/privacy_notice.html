@@ -1,0 +1,106 @@
+{% load ui %}
+{% comment %}
+ Data Privacy Act notice, shown once after every sign-in (accounts/privacy.py).
+
+ It opens by itself and cannot be closed with Escape: the only ways out are to
+ agree, which is recorded in the audit log, or to sign out. Without scripting
+ the dialog is simply open in the page, and the same two forms still work.
+{% endcomment %}
+<dialog id="privacy-notice" open data-dialog-required
+        aria-labelledby="privacy-notice-title" aria-describedby="privacy-notice-body"
+        class="m-auto w-[calc(100vw-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/60">
+  <div class="flex max-h-[calc(100vh-2rem)] flex-col">
+
+  <div class="flex items-start gap-3.5 border-b border-slate-200 p-5">
+    <span aria-hidden="true" class="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700">
+      {% icon "shield" "size-5" %}
+    </span>
+    <div class="min-w-0">
+      <p class="text-meta font-semibold uppercase tracking-wide text-brand-700">Data Privacy Notice</p>
+      <h2 id="privacy-notice-title" class="text-card-title font-semibold text-slate-900">
+        Data Privacy Act of 2012 (Republic Act No. 10173)
+      </h2>
+    </div>
+  </div>
+
+  <div id="privacy-notice-body" tabindex="0"
+       class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4 text-sm leading-relaxed text-slate-700">
+    <p>
+      Welcome, <strong>{{ user.get_display_name }}</strong>. The
+      {{ agency.system_name }} of the {{ agency.office }} holds personal
+      information about local government officials, focal persons and DILG
+      personnel. Before you continue, please read the terms under which you
+      may use it.
+    </p>
+
+    <h3 class="pt-1 font-semibold text-slate-900">1. What the system collects</h3>
+    <p>
+      Your name, username, e-mail address, role and office; the records you
+      create, edit, upload or approve; and a log of your sign-ins and actions,
+      including the date, time and network address used. This is processed
+      only to monitor and evaluate local government programmes and to keep the
+      system secure and accountable.
+    </p>
+
+    <h3 class="pt-1 font-semibold text-slate-900">2. Your obligations as a user</h3>
+    <ul class="list-disc space-y-1 pl-5">
+      <li>Access and use personal information only as your official duties require.</li>
+      <li>Do not copy, download, print, share or disclose records to anyone not authorised to receive them.</li>
+      <li>Keep your password and authenticator codes to yourself, and sign out when you leave your computer.</li>
+      <li>Keep any exported or printed records secure, and dispose of them properly when no longer needed.</li>
+      <li>Report any suspected data breach, loss or unauthorised access to the system administrator at once.</li>
+    </ul>
+
+    <h3 class="pt-1 font-semibold text-slate-900">3. Rights of data subjects</h3>
+    <p>
+      Under Section 16 of the Act, the people whose information is kept here
+      have the right to be informed, to object, to access, to correct, to
+      erasure or blocking, to data portability, and to be indemnified for
+      damages. Treat every record accordingly.
+    </p>
+
+    <h3 class="pt-1 font-semibold text-slate-900">4. Monitoring and penalties</h3>
+    <p>
+      All activity in this system is recorded in the audit log. Unauthorised
+      processing, access or disclosure of personal information, and negligence
+      that leads to it, are punishable by imprisonment and fines under Chapter
+      VIII of Republic Act No. 10173, in addition to administrative sanctions.
+    </p>
+
+    <h3 class="pt-1 font-semibold text-slate-900">5. Questions</h3>
+    <p>
+      For questions about this notice or how personal information is handled,
+      contact the {{ agency.office_short }} at
+      <a href="mailto:{{ agency.email }}" class="font-medium text-brand-700 underline">{{ agency.email }}</a>.
+    </p>
+  </div>
+
+  <div class="rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-4">
+    <form id="privacy-notice-form" method="post" action="{% url 'accounts:privacy_notice_accept' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <label class="flex items-start gap-2.5 text-sm text-slate-800">
+        <input type="checkbox" name="agree" value="1" required data-agree-checkbox
+               class="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-600">
+        <span>
+          I have read and understood this notice, and I agree to use
+          {{ agency.system_name }} in accordance with the Data Privacy Act of
+          2012 (Republic Act No. 10173).
+        </span>
+      </label>
+    </form>
+
+    <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary">
+          {% icon "logout" "size-4" %}Decline and sign out
+        </button>
+      </form>
+      <button type="submit" form="privacy-notice-form" class="btn btn-primary" data-agree-submit>
+        {% icon "check" "size-4" %}I Agree and Continue
+      </button>
+    </div>
+  </div>
+  </div>
+</dialog>

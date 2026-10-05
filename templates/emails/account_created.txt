@@ -1,0 +1,21 @@
+{% autoescape off %}A new {{ agency.system_name }} account has been created.
+
+  Name:        {{ user.get_display_name }}
+  Username:    {{ user.username }}
+  Email:       {{ user.email }}
+  Role:        {{ role }}
+  Position:    {{ user.position|default:"Not recorded" }}
+  Created by:  {{ created_by.get_display_name }} ({{ created_by.username }})
+  Created on:  {{ user.date_joined|date:"j F Y, g:i A" }}
+
+A welcome email with the sign-in details and a temporary password was sent to {{ user.email }}. The temporary password is not included in this notice.
+
+View the account: {{ detail_url }}
+
+If this account was not expected, deactivate it from Users & Roles and review the audit log.
+
+{{ agency.division }}
+{{ agency.office_short }}
+
+This is an automated message. Please do not reply.
+{% endautoescape %}

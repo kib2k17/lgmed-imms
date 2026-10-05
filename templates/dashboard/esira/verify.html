@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{{ document.get_absolute_url }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to document</span>
+  </a>
+  <a href="{% url 'esira:file' document.pk %}?v={{ version.number }}&amp;download=1" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Download v{{ version.number }}</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+
+  <div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-slate-600">Version:</span>
+    {% for v in versions %}
+      <a href="?v={{ v.number }}" class="rounded-full border px-3 py-1 text-meta font-medium {% if v.number == version.number %}border-brand-600 bg-brand-600 text-white{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %}">v{{ v.number }}</a>
+    {% endfor %}
+  </div>
+
+  <section class="card mb-4" aria-labelledby="integrity-heading">
+    <div class="card-header">
+      <h2 id="integrity-heading" class="card-title">File Integrity</h2>
+      {% if integrity_ok %}{% status_badge "verified" "Matches recorded fingerprint" %}{% else %}{% status_badge "critical" "Fingerprint mismatch" %}{% endif %}
+    </div>
+    <div class="card-body text-sm text-slate-700">
+      {% if integrity_ok %}
+        The stored file for version {{ version.number }} is byte-for-byte the file recorded when it was written.
+        <p class="mt-1 font-mono text-[0.6875rem] break-all text-slate-500">SHA-256 {{ version.sha256 }}</p>
+      {% else %}
+        <p class="text-red-800">The stored file no longer matches the fingerprint recorded when it was written. It has been changed outside e-SIRA. This has been logged; report it to the system administrator.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="sigs-heading">
+    <div class="card-header">
+      <h2 id="sigs-heading" class="card-title">Signatures in This File</h2>
+      <span class="text-meta text-slate-500">Checked from the PDF itself, not from e-SIRA's records</span>
+    </div>
+    {% if not roots_installed %}
+      <p class="border-b border-slate-100 bg-amber-50 px-4 py-2.5 text-meta text-amber-900 sm:px-5">
+        No DICT PNPKI root certificates are installed on this server, so no signature can be shown as PNPKI-trusted here.
+        Integrity and validity are still checked.
+      </p>
+    {% endif %}
+    {% if reports %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">Every digital signature embedded in version {{ version.number }}, with the result of verifying it.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Signer (from certificate)</th>
+              <th scope="col">Result</th>
+              <th scope="col" class="hidden md:table-cell">Signed at</th>
+              <th scope="col" class="hidden lg:table-cell">Later changes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for report in reports %}
+              <tr>
+                <td>
+                  <span class="font-medium text-slate-900">{{ report.signer }}</span>
+                  <span class="block text-meta text-slate-500">Issuer: {{ report.issuer }} &middot; serial {{ report.serial }}</span>
+                  {% if report.esira_signature %}
+                    <span class="block text-meta text-slate-500">e-SIRA record: {{ report.esira_signature.signer.get_display_name }}, {{ report.esira_signature.signed_at|date:"j M Y, g:i A" }}</span>
+                  {% else %}
+                    <span class="block text-meta text-amber-700">Not applied through e-SIRA (present in the uploaded file)</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% status_badge report.tone report.verdict %}
+                  <span class="mt-1 block text-meta text-slate-500">
+                    Intact: {{ report.intact|yesno:"Yes,No" }} &middot; Valid: {{ report.valid|yesno:"Yes,No" }} &middot; PNPKI-trusted: {{ report.trusted|yesno:"Yes,No" }}
+                  </span>
+                </td>
+                <td class="hidden text-meta whitespace-nowrap md:table-cell">{{ report.signing_time|date:"j M Y, g:i:s A"|default:"—" }}</td>
+                <td class="hidden text-meta lg:table-cell">{{ report.modification|default:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="border-t border-slate-100 px-4 py-2.5 text-meta text-slate-500 sm:px-5">
+        &ldquo;Later changes&rdquo; lists what was added after each signature. Form filling (adding
+        further signatures) keeps earlier signatures valid; anything more is flagged.
+      </p>
+    {% else %}
+      {% include "components/empty_state.html" with icon="shield" title="No signatures in this version" message="The original upload, and any version before the first signature, carries no e-SIRA signature." %}
+    {% endif %}
+  </section>
+{% endblock %}

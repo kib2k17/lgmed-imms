@@ -73,6 +73,21 @@ class SystemSetting(SingletonModel):
         choices=[("info", "Information"), ("warning", "Warning"), ("danger", "Urgent")],
         default="info",
     )
+    notice_takeover = models.BooleanField(
+        "Cover the page and sound an alert",
+        default=False,
+        help_text=(
+            "For an announcement no one may miss: the notice covers the whole "
+            "screen of every signed-in user, with a beep, until they "
+            "acknowledge it. Pages already open receive it at once."
+        ),
+    )
+    notice_posted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="When the current notice was last changed; each change is shown afresh.",
+    )
     session_notice_minutes = models.PositiveSmallIntegerField(
         "Session warning",
         default=5,
@@ -97,6 +112,28 @@ class SystemSetting(SingletonModel):
 
     def __str__(self):
         return "System settings"
+
+    @property
+    def notice_key(self):
+        """
+        Identifies the notice as it now reads. A user who acknowledged one
+        full-screen announcement is shown the next one, but not the same one
+        again on every page.
+        """
+        if not self.notice_message or not self.notice_posted_at:
+            return ""
+        return str(int(self.notice_posted_at.timestamp()))
+
+    def notice_payload(self):
+        """The current notice, as the status endpoint hands it to open pages."""
+        if not self.notice_message:
+            return None
+        return {
+            "key": self.notice_key,
+            "message": self.notice_message,
+            "level": self.notice_level,
+            "takeover": self.notice_takeover,
+        }
 
 
 class PublicSiteContent(SingletonModel):

@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% load ui humanize %}
+
+{% block page_actions %}
+  <a href="{% url 'esira:list' %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Documents</span>
+  </a>
+  <a href="{% url 'esira:file' document.pk %}?v={{ current_version.number }}&amp;download=1" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Download{% if document.signature_count %} signed{% endif %} PDF</span>
+  </a>
+  {% if document.signature_count %}
+    <a href="{% url 'esira:verify' document.pk %}" class="btn btn-secondary">
+      {% icon "shield" "size-4" %}<span class="hidden sm:inline">Verify signatures</span>
+    </a>
+  {% endif %}
+  {% if can_sign %}
+    <a href="{% url 'esira:workspace' document.pk %}" class="btn btn-primary">{% icon "signature" "size-4" %}Open to sign</a>
+  {% elif can_edit_boxes %}
+    <a href="{% url 'esira:workspace' document.pk %}" class="btn btn-primary">{% icon "edit" "size-4" %}Prepare signature boxes</a>
+  {% else %}
+    <a href="{% url 'esira:workspace' document.pk %}" class="btn btn-secondary">{% icon "view" "size-4" %}<span class="hidden sm:inline">View document</span></a>
+  {% endif %}
+  {% if can_route %}
+    <a href="{% url 'esira:route' document.pk %}" class="btn btn-primary">{% icon "route" "size-4" %}Route</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+
+  <div class="grid gap-4 xl:grid-cols-3">
+    <div class="space-y-4 xl:col-span-2">
+
+      {# ---- Where it stands ----------------------------------------- #}
+      <section class="card" aria-labelledby="status-heading">
+        <div class="card-header">
+          <h2 id="status-heading" class="card-title">Status</h2>
+          {% status_badge document.status_tone document.get_status_display %}
+        </div>
+        <div class="card-body space-y-3">
+          {% if my_step %}
+            <div class="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900" role="status">
+              {% icon "bell" "size-4 mt-0.5 shrink-0" %}
+              <p>
+                <span class="font-semibold">This document is waiting on you</span> for
+                {{ my_step.get_action_display|lower }}{% if my_step.purpose %}: {{ my_step.purpose }}{% endif %}.
+                Sent by {{ my_step.sender.get_display_name }} {{ my_step.routed_at|naturaltime }}.
+              </p>
+            </div>
+          {% endif %}
+          {% if document.status == "DRAFT" %}
+            <p class="text-sm text-slate-600">
+              A draft. {% if is_owner %}Place signature boxes in the signing workspace, then
+              sign it yourself (when every box is yours) or route it.{% else %}Not yet routed.{% endif %}
+            </p>
+          {% elif document.is_finished %}
+            <p class="text-sm text-slate-600">
+              Every recipient has acted. {% if can_complete %}Mark it completed to close and lock it.{% endif %}
+            </p>
+          {% elif document.status == "COMPLETED" %}
+            <p class="text-sm text-slate-600">
+              Completed by {{ document.completed_by.get_display_name|default:"the owner" }}
+              on {{ document.completed_at|date:"j F Y, g:i A" }}. The document is locked;
+              the final signed file is version {{ current_version.number }}.
+            </p>
+          {% elif document.status == "REJECTED" or document.status == "CANCELLED" %}
+            <p class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+              <span class="font-semibold">{{ document.get_status_display }}:</span> {{ document.closed_reason }}
+            </p>
+          {% endif %}
+
+          <dl class="grid gap-x-8 gap-y-3 border-t border-slate-100 pt-3 sm:grid-cols-3">
+            <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Owner</dt><dd class="mt-0.5 text-sm text-slate-900">{{ document.owner.get_display_name }}</dd></div>
+            <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Signatures</dt><dd class="mt-0.5 text-sm text-slate-900">{{ signatures|length }}</dd></div>
+            <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Current version</dt><dd class="mt-0.5 text-sm text-slate-900">v{{ current_version.number }} &middot; {{ current_version.get_kind_display }}</dd></div>
+          </dl>
+        </div>
+
+        {% if can_act or can_reject %}
+          <div class="border-t border-slate-200 bg-slate-50/60 p-4 sm:px-5 no-print">
+            <form method="post" action="{% url 'esira:act' document.pk %}" class="space-y-3" id="act-form">
+              {% csrf_token %}
+              <input type="hidden" name="decision" value="complete" id="act-decision">
+              {% include "components/bound_field.html" with field=act_form.remarks %}
+              {% if can_act %}
+                <details class="rounded-md border border-slate-200 bg-white px-3 py-2">
+                  <summary class="cursor-pointer text-sm font-medium text-slate-700">Forward to someone else after me</summary>
+                  <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                    <div class="sm:col-span-3">{% include "components/bound_field.html" with field=act_form.forward_to %}</div>
+                    <div>{% include "components/bound_field.html" with field=act_form.forward_action %}</div>
+                    <div class="sm:col-span-2">{% include "components/bound_field.html" with field=act_form.forward_purpose %}</div>
+                  </div>
+                </details>
+              {% endif %}
+              <div class="flex flex-wrap justify-end gap-2">
+                {% if can_reject %}
+                  <button type="submit" class="btn btn-danger" onclick="document.getElementById('act-decision').value='reject'">
+                    {% icon "error" "size-4" %}Reject and return
+                  </button>
+                {% endif %}
+                {% if can_act %}
+                  <button type="submit" class="btn btn-primary" onclick="document.getElementById('act-decision').value='complete'">
+                    {% icon "check" "size-4" %}{% if my_step.action == "APPROVE" %}Approve{% elif my_step.action == "REVIEW" %}Mark reviewed{% else %}Acknowledge{% endif %}
+                  </button>
+                {% elif can_sign %}
+                  <a href="{% url 'esira:workspace' document.pk %}" class="btn btn-primary">{% icon "signature" "size-4" %}Open to sign</a>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+        {% endif %}
+      </section>
+
+      {# ---- Routing slip -------------------------------------------- #}
+      <section class="card" aria-labelledby="route-heading">
+        <div class="card-header">
+          <h2 id="route-heading" class="card-title">Routing History</h2>
+          <span class="text-meta text-slate-500">{{ steps|length }} step{{ steps|length|pluralize }}</span>
+        </div>
+        {% if steps %}
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Every step of the route, in order, with who sent it, when it was received and when it was acted on.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">From &rarr; To</th>
+                  <th scope="col">Action required</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" class="hidden 2xl:table-cell">Routed</th>
+                  <th scope="col" class="hidden 2xl:table-cell">Received</th>
+                  <th scope="col" class="hidden 2xl:table-cell">Acted on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for step in steps %}
+                  <tr{% if step.is_open %} class="bg-amber-50/50"{% endif %}>
+                    <td class="tabular text-slate-500">{{ step.sequence }}</td>
+                    <td>
+                      <span class="text-meta text-slate-500">{{ step.sender.get_display_name }} &rarr;</span>
+                      <span class="block font-medium text-slate-900">{{ step.recipient.get_display_name }}</span>
+                    </td>
+                    <td>
+                      {{ step.get_action_display }}
+                      {% if step.purpose %}<span class="block text-meta text-slate-500">{{ step.purpose }}</span>{% endif %}
+                      {% if step.due_date %}<span class="block text-meta text-slate-500">Due {{ step.due_date|date:"j M Y" }}</span>{% endif %}
+                      {% if step.remarks %}<span class="mt-1 block rounded bg-slate-50 px-2 py-1 text-meta text-slate-700">&ldquo;{{ step.remarks }}&rdquo;</span>{% endif %}
+                    </td>
+                    <td>
+                      {% status_badge step.status_tone step.get_status_display %}
+                      <span class="mt-1 block text-meta whitespace-nowrap text-slate-500 2xl:hidden">
+                        {% if step.routed_at %}Routed {{ step.routed_at|date:"j M, g:i A" }}<br>{% endif %}
+                        {% if step.received_at %}Received {{ step.received_at|date:"j M, g:i A" }}<br>{% endif %}
+                        {% if step.acted_at %}Acted {{ step.acted_at|date:"j M, g:i A" }}{% endif %}
+                      </span>
+                    </td>
+                    <td class="hidden text-meta whitespace-nowrap 2xl:table-cell">{{ step.routed_at|date:"j M Y, g:i A"|default:"—" }}</td>
+                    <td class="hidden text-meta whitespace-nowrap 2xl:table-cell">{{ step.received_at|date:"j M Y, g:i A"|default:"—" }}</td>
+                    <td class="hidden text-meta whitespace-nowrap 2xl:table-cell">{{ step.acted_at|date:"j M Y, g:i A"|default:"—" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with icon="route" title="Not routed yet" message="Once the owner routes the document, each step appears here with its dates." %}
+        {% endif %}
+      </section>
+
+      {# ---- Signatures ------------------------------------------------ #}
+      <section class="card" aria-labelledby="sig-heading">
+        <div class="card-header">
+          <h2 id="sig-heading" class="card-title">Digital Signatures</h2>
+          {% if signatures %}<a href="{% url 'esira:verify' document.pk %}" class="text-meta font-medium text-brand-700 hover:underline">Verify from the file</a>{% endif %}
+        </div>
+        {% if signatures %}
+          <ul class="divide-y divide-slate-100">
+            {% for signature in signatures %}
+              <li class="px-4 py-3 sm:px-5">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <p class="text-sm font-medium text-slate-900">{{ signature.signer.get_display_name }}</p>
+                  {% if signature.chain_trusted %}
+                    {% status_badge "verified" "PNPKI chain verified" %}
+                  {% else %}
+                    {% status_badge "pending" "Not PNPKI-verified (test)" %}
+                  {% endif %}
+                </div>
+                <p class="text-meta text-slate-600">
+                  Signed {{ signature.signed_at|date:"j F Y, g:i:s A" }} &middot;
+                  {{ signature.box_count }} box{{ signature.box_count|pluralize:"es" }} &middot;
+                  produced v{{ signature.result_version.number }}
+                  {% if signature.reason %}&middot; &ldquo;{{ signature.reason }}&rdquo;{% endif %}
+                </p>
+                <p class="mt-1 text-meta break-all text-slate-500">
+                  Certificate: {{ signature.certificate_subject }} &middot; issued by {{ signature.certificate_issuer }} &middot; serial {{ signature.certificate_serial }}
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% include "components/empty_state.html" with icon="signature" title="Not signed yet" message="Signatures appear here once applied with a PNPKI certificate." %}
+        {% endif %}
+      </section>
+
+      {# ---- Audit trail ---------------------------------------------- #}
+      <section class="card" aria-labelledby="trail-heading">
+        <div class="card-header">
+          <h2 id="trail-heading" class="card-title">Audit Trail</h2>
+          {% if not can_view_audit %}<span class="text-meta text-slate-500">Views and downloads are shown to the owner only</span>{% endif %}
+        </div>
+        {% if trail %}
+          <ol class="divide-y divide-slate-100">
+            {% for entry in trail %}
+              <li class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-4 py-2.5 sm:px-5">
+                <div class="min-w-0">
+                  <p class="flex flex-wrap items-center gap-2 text-sm text-slate-800">
+                    {% status_badge entry.status_tone entry.get_action_display %}
+                    <span class="font-medium">{{ entry.actor_label }}</span>
+                    {% if entry.actor_role %}<span class="text-meta text-slate-500">{{ entry.actor_role }}</span>{% endif %}
+                  </p>
+                  {% if entry.detail %}<p class="mt-0.5 text-meta break-words text-slate-600">{{ entry.detail }}</p>{% endif %}
+                </div>
+                <p class="text-right text-meta whitespace-nowrap text-slate-500">
+                  <time datetime="{{ entry.timestamp|date:'c' }}">{{ entry.timestamp|date:"j M Y, g:i:s A" }}</time>
+                  {% if entry.version_number %}<span class="block">v{{ entry.version_number }}</span>{% endif %}
+                </p>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          {% include "components/empty_state.html" with icon="audit" title="No entries" %}
+        {% endif %}
+      </section>
+    </div>
+
+    {# ---- Side column --------------------------------------------------- #}
+    <div class="space-y-4">
+      <section class="card" aria-labelledby="doc-heading">
+        <div class="card-header"><h2 id="doc-heading" class="card-title">Document</h2></div>
+        <dl class="card-body space-y-3 text-sm">
+          <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Reference no.</dt><dd class="font-semibold text-slate-900">{{ document.reference_no }}</dd></div>
+          <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Title</dt><dd class="text-slate-900">{{ document.title }}</dd></div>
+          {% if document.document_type %}<div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Type</dt><dd class="text-slate-900">{{ document.document_type }}</dd></div>{% endif %}
+          {% if document.description %}<div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Description</dt><dd class="whitespace-pre-line text-slate-700">{{ document.description }}</dd></div>{% endif %}
+          <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Source</dt><dd class="text-slate-900">{{ document.get_source_display }} &middot; {{ document.page_count }} page{{ document.page_count|pluralize }}</dd></div>
+          <div><dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Uploaded</dt><dd class="text-slate-900">{{ document.created_at|date:"j F Y, g:i A" }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="card" aria-labelledby="versions-heading">
+        <div class="card-header"><h2 id="versions-heading" class="card-title">Versions</h2></div>
+        <ul class="divide-y divide-slate-100">
+          {% for version in versions %}
+            <li class="px-4 py-2.5 sm:px-5">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-slate-900">v{{ version.number }} &middot; {{ version.get_kind_display }}</p>
+                <a href="{% url 'esira:file' document.pk %}?v={{ version.number }}&amp;download=1" class="btn btn-ghost btn-sm">{% icon "download" "size-3.5" %}<span class="sr-only">Download version {{ version.number }}</span></a>
+              </div>
+              <p class="text-meta text-slate-500">{{ version.note }} &middot; {{ version.created_at|date:"j M Y, g:i A" }} &middot; {{ version.size|filesize }}</p>
+              <p class="mt-0.5 font-mono text-[0.6875rem] break-all text-slate-400" title="SHA-256">SHA-256 {{ version.sha256 }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="border-t border-slate-100 px-4 py-2.5 text-meta text-slate-500 sm:px-5">
+          The original (v1) is kept unchanged. Each file's fingerprint is checked every time it is opened.
+        </p>
+      </section>
+
+      {% if boxes %}
+        <section class="card" aria-labelledby="boxes-heading">
+          <div class="card-header"><h2 id="boxes-heading" class="card-title">Signature Placements</h2></div>
+          <ul class="divide-y divide-slate-100">
+            {% regroup boxes by signer as by_signer %}
+            {% for group in by_signer %}
+              <li class="flex items-center justify-between gap-2 px-4 py-2.5 text-sm sm:px-5">
+                <span>{{ group.grouper.get_display_name }} <span class="text-meta text-slate-500">&middot; {{ group.list|length }} box{{ group.list|length|pluralize:"es" }}</span></span>
+                {% if group.list.0.signature_id %}{% status_badge "completed" "Signed" %}{% else %}{% status_badge "pending" "Placed" %}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+
+      {% if can_complete or can_cancel %}
+        <section class="card no-print" aria-labelledby="close-heading">
+          <div class="card-header"><h2 id="close-heading" class="card-title">Close the Document</h2></div>
+          <div class="card-body space-y-3">
+            {% if can_complete %}
+              <form method="post" action="{% url 'esira:complete' document.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary w-full justify-center">{% icon "check-circle" "size-4" %}Mark as completed</button>
+              </form>
+            {% endif %}
+            {% if can_cancel %}
+              <button type="button" class="btn btn-danger w-full justify-center" data-dialog-open="cancel-document">{% icon "close" "size-4" %}Cancel document</button>
+            {% endif %}
+          </div>
+        </section>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if can_cancel %}
+    <dialog id="cancel-document" aria-labelledby="cancel-document-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <form method="post" action="{% url 'esira:cancel' document.pk %}">
+        {% csrf_token %}
+        <div class="space-y-3 p-5">
+          <h2 id="cancel-document-title" class="text-card-title font-semibold text-slate-900">Cancel {{ document.reference_no }}?</h2>
+          <p class="text-sm text-slate-600">The route stops and anyone it is waiting on is told no action is needed. Signatures already applied stay in the file and the trail.</p>
+          {% include "components/bound_field.html" with field=cancel_form.reason %}
+        </div>
+        <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+          <button type="button" class="btn btn-secondary" data-dialog-close>Keep it</button>
+          <button type="submit" class="btn btn-danger">Cancel document</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
+{% endblock %}

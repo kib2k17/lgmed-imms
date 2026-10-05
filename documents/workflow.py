@@ -280,9 +280,24 @@ def upload_version(document, actor, *, uploaded_file=None, reason, adopt=False,
 # ---------------------------------------------------------------------------
 
 
+def _refuse_if_synced(document):
+    """
+    An entry mirroring an incoming document moves only with that document.
+
+    See `incoming.register`. Archive, retention and disposal are not refused:
+    they are the register's own business once the work is done.
+    """
+    if document.is_synced:
+        raise PermissionDenied(
+            "This document is managed through Incoming and Outgoing Monitoring. "
+            "Take the action there; the register follows."
+        )
+
+
 def _move(document, actor, to_status, *, detail, notes="", request=None,
           extra_fields=()):
     """Change status, stamp the record and write the trail entry, once."""
+    _refuse_if_synced(document)
     from_status = document.status
     document.status = to_status
     document.save(update_fields=["status", "updated_at", *extra_fields])
@@ -467,6 +482,7 @@ def complete(document, actor, *, notes="", request=None):
     """
     if not getattr(actor, "can_approve", False):
         raise PermissionDenied("Your role does not permit you to approve documents.")
+    _refuse_if_synced(document)
 
     now = timezone.now()
     document.approved_by = actor
@@ -722,6 +738,11 @@ def dispose(document, actor, *, authority, notes="", delete_file=True,
                 version.save(update_fields=["file"])
         if document.file:
             document.file.delete(save=False)
+        for supporting in document.supporting_files.all():
+            if supporting.file:
+                removed.append(supporting.file.name)
+                supporting.file.delete(save=False)
+                supporting.save(update_fields=["file"])
 
     document.disposed_by = actor
     document.disposed_at = timezone.now()

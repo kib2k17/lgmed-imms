@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="max-w-2xl">
+    <div role="status" class="mb-5 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
+      <span class="mt-0.5 shrink-0 text-amber-700">{% icon "warning" "size-5" %}</span>
+      <div>
+        <p class="font-semibold">Save these codes now &mdash; this is the only time they are shown</p>
+        <p class="mt-0.5">
+          If your phone is lost, reset or out of battery, each code signs you in once
+          in place of the code from the app. Print them or write them down and keep
+          them somewhere safe, away from your password.
+        </p>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Your recovery codes</h2>
+        <span class="text-meta text-slate-500">{{ user.username }}</span>
+      </div>
+      <div class="card-body">
+        <ul class="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-[0.9375rem] text-slate-900 sm:grid-cols-2" aria-label="Recovery codes">
+          {% for code in codes %}
+            <li class="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-center select-all">{{ code }}</li>
+          {% endfor %}
+        </ul>
+        <p class="mt-4 text-meta text-slate-500">
+          Issued {% now "j F Y, g:i A" %}. Making new codes cancels all of these.
+        </p>
+      </div>
+    </section>
+
+    <div class="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-5">
+      <button type="button" class="btn btn-secondary" onclick="window.print()">
+        {% icon "print" "size-4" %}Print
+      </button>
+      <a href="{{ next_url }}" class="btn btn-primary">
+        {% icon "check" "size-4" %}I have saved my codes
+      </a>
+    </div>
+  </div>
+{% endblock %}

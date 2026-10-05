@@ -580,6 +580,29 @@ class Document(TimeStampedModel):
     )
     disposal_notes = models.TextField(blank=True)
 
+    # Set when the entry mirrors an incoming document. Its lifecycle is then
+    # driven from Incoming and Outgoing Monitoring (see incoming/register.py),
+    # and only the records officer's archive, retention and disposal act on it
+    # here - a register moved from two places at once soon says two things.
+    incoming = models.OneToOneField(
+        "incoming.IncomingDocument",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="register_entry",
+        verbose_name="incoming document",
+    )
+    # Set when the entry mirrors a row of the outgoing register that answers
+    # no incoming document (those are captured under the incoming entry).
+    outgoing = models.OneToOneField(
+        "outgoing.OutgoingDocument",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="register_entry",
+        verbose_name="outgoing communication",
+    )
+
     objects = DocumentQuerySet.as_manager()
 
     class Meta:
@@ -675,6 +698,27 @@ class Document(TimeStampedModel):
     @property
     def is_assigned(self):
         return self.assigned_to_id is not None
+
+    @property
+    def is_synced(self):
+        """Mirrors Incoming or Outgoing Monitoring, which drive its lifecycle."""
+        return self.incoming_id is not None or self.outgoing_id is not None
+
+    @property
+    def source(self):
+        if self.incoming_id:
+            return "incoming"
+        if self.outgoing_id:
+            return "outgoing"
+        return "direct"
+
+    @property
+    def source_label(self):
+        return {
+            "incoming": "Incoming Monitoring",
+            "outgoing": "Outgoing Monitoring",
+            "direct": "Registered here",
+        }[self.source]
 
     @property
     def is_overdue(self):
@@ -803,7 +847,7 @@ class Document(TimeStampedModel):
         """
         if not getattr(user, "can_encode", False):
             return False
-        if self.is_archived or self.is_disposed:
+        if self.is_archived or self.is_disposed or self.is_synced:
             return False
         if getattr(user, "can_archive_documents", False):
             return True
@@ -815,6 +859,8 @@ class Document(TimeStampedModel):
 
     def may_be_assigned_by(self, user):
         if self.is_archived or self.is_disposed or self.is_cancelled:
+            return False
+        if self.is_synced:
             return False
         return bool(getattr(user, "can_assign_documents", False))
 
@@ -1044,6 +1090,86 @@ class DocumentVersion(models.Model):
     @property
     def label(self):
         return f"Version {self.version_number}"
+
+    @property
+    def file_name(self):
+        return os.path.basename(self.file.name) if self.file else ""
+
+    @property
+    def file_type(self):
+        if not self.file:
+            return ""
+        return os.path.splitext(self.file.name)[1].lstrip(".").upper() or "FILE"
+
+    @property
+    def file_size(self):
+        try:
+            return self.file.size
+        except (ValueError, OSError):
+            return 0
+
+    @property
+    def uploader_label(self):
+        return self.uploaded_by.get_display_name() if self.uploaded_by_id else "System"
+
+
+# ---------------------------------------------------------------------------
+# Supporting files captured from Incoming and Outgoing Monitoring
+# ---------------------------------------------------------------------------
+
+
+class FileSource(models.TextChoices):
+    UPDATE = "UPDATE", "Focal person's update"
+    OUTGOING = "OUTGOING", "Outgoing communication"
+
+
+class SupportingFile(models.Model):
+    """
+    A file uploaded in Incoming or Outgoing Monitoring, held with its document.
+
+    The document's own file and its versions are the document itself. These
+    are the papers that came with the work on it - a focal person's supporting
+    attachment, the reply sent - captured here so that every file uploaded to
+    the system is in the register. The row points at the file already stored
+    by the module it came from rather than copying it, and is never edited:
+    a replaced file is captured again as a new row.
+    """
+
+    document = models.ForeignKey(
+        Document, on_delete=models.CASCADE, related_name="supporting_files"
+    )
+    source = models.CharField(max_length=10, choices=FileSource.choices)
+    title = models.CharField(max_length=255)
+    file = models.FileField(max_length=255, blank=True)
+    incoming_update = models.ForeignKey(
+        "incoming.IncomingUpdate",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    outgoing = models.ForeignKey(
+        "outgoing.OutgoingDocument",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    uploaded_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "supporting file"
+        ordering = ("-uploaded_at", "-id")
+
+    def __str__(self):
+        return f"{self.document.reference_number} - {self.title}"
 
     @property
     def file_name(self):

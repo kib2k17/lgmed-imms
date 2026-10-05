@@ -1,6 +1,7 @@
 import django
 from django.conf import settings as django_settings
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import ProtectedError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -9,6 +10,7 @@ from django.utils import timezone
 from django.views.generic import UpdateView
 
 from audit.models import AuditEvent
+from core.consumers import broadcast_notice
 from core.forms_base import GovModelForm
 from core.mixins import CanAdministerMixin, CanApproveMixin, administrator_required
 
@@ -24,12 +26,13 @@ class SystemSettingForm(GovModelForm):
             "session_notice_minutes",
             "notice_message",
             "notice_level",
+            "notice_takeover",
             "public_site_enabled",
         ]
 
     fieldsets = [
         ("Display", ["records_per_page", "session_notice_minutes"]),
-        ("System notice", ["notice_message", "notice_level"]),
+        ("System notice", ["notice_message", "notice_level", "notice_takeover"]),
         ("Public website", ["public_site_enabled"]),
     ]
     wide_fields = ("notice_message",)
@@ -64,7 +67,18 @@ class SettingsView(CanAdministerMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
+        notice_fields = {"notice_message", "notice_level", "notice_takeover"}
+        notice_changed = bool(notice_fields & set(form.changed_data))
+        if notice_changed:
+            # A changed notice is a new notice: everyone who acknowledged the
+            # last one sees this one.
+            form.instance.notice_posted_at = timezone.now()
         response = super().form_valid(form)
+        if notice_changed:
+            # Pushed to every open page once the change is committed, so no
+            # page is told about a notice the database does not yet hold.
+            notice = self.object.notice_payload()
+            transaction.on_commit(lambda: broadcast_notice(notice))
         messages.success(self.request, "System settings were saved.")
         return response
 

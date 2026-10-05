@@ -197,8 +197,10 @@ class AccountAuditTests(TestCase):
     @override_settings(RECAPTCHA_SITE_KEY="", RECAPTCHA_SECRET_KEY="")
     def test_sign_in_and_sign_out_are_recorded(self):
         AuditEvent.objects.all().delete()
+        # Staff, not the administrator: an administrator's password alone no
+        # longer signs in - it waits on two-step verification.
         self.client.post(
-            reverse("accounts:login"), {"username": "admin", "password": "pw"}
+            reverse("accounts:login"), {"username": "staff", "password": "pw"}
         )
         self.client.post(reverse("accounts:logout"))
         self.assertTrue(AuditEvent.objects.filter(action=Action.LOGIN).exists())

@@ -1,0 +1,45 @@
+{% load ui humanize %}
+{# The focal person's updates on a document. Expects `updates`. #}
+      {% if updates %}
+        <ul class="divide-y divide-slate-100">
+          {% for update in updates %}
+            <li class="px-4 py-4 sm:px-5">
+              <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <p class="text-sm font-medium text-slate-900">
+                  {{ update.created_by.get_display_name|default:"An officer" }}
+                </p>
+                <div class="flex items-center gap-2">
+                  {% status_badge update.status update.get_status_display %}
+                  <time class="text-meta text-slate-500" datetime="{{ update.created_at|date:'c' }}">
+                    {{ update.created_at|date:"j M Y, g:i A" }}
+                  </time>
+                </div>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-700">{{ update.action_taken }}</p>
+              {% if update.remarks %}
+                <p class="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta leading-relaxed whitespace-pre-line text-slate-600">
+                  {{ update.remarks }}
+                </p>
+              {% endif %}
+              {% if update.attachment %}
+                <a {% if update.attachment|is_pdf %}href="{% url 'incoming:view_update_file' update.pk %}" data-pdf-view
+                   data-pdf-title="Supporting attachment - {{ update.created_at|date:'j M Y' }}"
+                   data-pdf-download="{{ update.attachment.url }}"{% else %}href="{{ update.attachment.url }}"{% endif %}
+                   target="_blank" rel="noopener"
+                   class="mt-2 inline-flex items-center gap-1.5 text-meta font-medium text-brand-700 hover:underline">
+                  {% icon "file" "size-3.5" %}
+                  Supporting attachment ({{ update.extension }}, {{ update.size|filesize }})
+                </a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="px-4 py-6 text-center text-sm text-slate-500 sm:px-5">
+          No update has been provided yet.
+          {% if document.is_assigned %}
+            The focal person is expected to report progress at least every
+            {{ update_reminder_days }} days.
+          {% endif %}
+        </p>
+      {% endif %}

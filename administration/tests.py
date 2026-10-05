@@ -108,6 +108,55 @@ class SystemSettingTests(TestCase):
         self.assertEqual(settings_row.records_per_page, 25)
         self.assertEqual(settings_row.updated_by, self.admin)
 
+    def _post_notice(self, message, takeover):
+        data = {
+            "records_per_page": 15,
+            "session_notice_minutes": 5,
+            "notice_message": message,
+            "notice_level": "danger",
+            "public_site_enabled": "on",
+        }
+        if takeover:
+            data["notice_takeover"] = "on"
+        self.client.force_login(self.admin)
+        return self.client.post(reverse("administration:settings"), data)
+
+    def test_a_full_screen_announcement_covers_every_page(self):
+        self._post_notice("Office closes at noon for the drill.", takeover=True)
+        settings_row = SystemSetting.load()
+        self.assertTrue(settings_row.notice_key)
+
+        self.client.force_login(self.staff)
+        page = self.client.get(reverse("core:dashboard"))
+        self.assertContains(page, 'id="system-announcement"')
+        self.assertContains(page, f'data-notice-key="{settings_row.notice_key}"')
+        self.assertContains(page, "Office closes at noon for the drill.", count=2)
+
+    def test_a_changed_notice_is_a_new_announcement(self):
+        self._post_notice("First notice.", takeover=True)
+        first = SystemSetting.load().notice_posted_at
+        # Saving other settings leaves the notice - and its acknowledgements - alone.
+        self._post_notice("First notice.", takeover=True)
+        self.assertEqual(SystemSetting.load().notice_posted_at, first)
+        self._post_notice("Second notice.", takeover=True)
+        self.assertGreater(SystemSetting.load().notice_posted_at, first)
+
+    def test_a_banner_only_notice_does_not_cover_the_page(self):
+        self._post_notice("Routine maintenance on Friday.", takeover=False)
+        self.client.force_login(self.staff)
+        page = self.client.get(reverse("core:dashboard"))
+        self.assertContains(page, "Routine maintenance on Friday.")
+        self.assertNotContains(page, "data-notice-key=")
+
+    def test_open_pages_receive_the_notice_through_the_status_check(self):
+        self._post_notice("Evacuate the building.", takeover=True)
+        self.client.force_login(self.staff)
+        notice = self.client.get(reverse("notifications:status")).json()["notice"]
+        self.assertEqual(notice["message"], "Evacuate the building.")
+        self.assertEqual(notice["level"], "danger")
+        self.assertTrue(notice["takeover"])
+        self.assertEqual(notice["key"], SystemSetting.load().notice_key)
+
     def test_an_out_of_range_page_size_is_refused(self):
         self.client.force_login(self.admin)
         response = self.client.post(

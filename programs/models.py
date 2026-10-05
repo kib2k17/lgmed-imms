@@ -441,7 +441,7 @@ class PPARecord(TimeStampedModel):
         db_index=True,
     )
     slug = models.SlugField(
-        max_length=280,
+        max_length=255,
         unique=True,
         blank=True,
         help_text="Used in the public web address. Never a database number.",

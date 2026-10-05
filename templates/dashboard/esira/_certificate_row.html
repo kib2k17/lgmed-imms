@@ -1,0 +1,25 @@
+{% load ui %}
+<div class="flex flex-wrap items-start justify-between gap-2">
+  <div class="min-w-0">
+    <p class="text-sm font-medium text-slate-900">{{ certificate.subject_common_name|default:certificate.subject }}</p>
+    <p class="text-meta break-all text-slate-500">Issued by {{ certificate.issuer }}</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-1.5">
+    {% if certificate.status == "VERIFIED" and certificate.is_expired %}
+      {% status_badge "overdue" "Expired" %}
+    {% else %}
+      {% status_badge certificate.status_tone certificate.get_status_display %}
+    {% endif %}
+    {% if certificate.chain_trusted %}{% status_badge "verified" "PNPKI chain OK" %}{% else %}{% status_badge "pending" "Chain not verified" %}{% endif %}
+  </div>
+</div>
+<dl class="mt-2 grid gap-x-6 gap-y-1 text-meta text-slate-600 sm:grid-cols-2">
+  <div><dt class="inline text-slate-500">Serial:</dt> <dd class="inline break-all">{{ certificate.serial_number }}</dd></div>
+  <div><dt class="inline text-slate-500">Valid:</dt> <dd class="inline">{{ certificate.not_before|date:"j M Y" }} &ndash; {{ certificate.not_after|date:"j M Y" }}</dd></div>
+  {% if certificate.subject_email %}<div><dt class="inline text-slate-500">Email:</dt> <dd class="inline">{{ certificate.subject_email }}</dd></div>{% endif %}
+  <div class="sm:col-span-2"><dt class="inline text-slate-500">SHA-256:</dt> <dd class="inline font-mono break-all">{{ certificate.fingerprint_display }}</dd></div>
+  {% if certificate.chain_note %}<div class="sm:col-span-2"><dt class="inline text-slate-500">Chain check:</dt> <dd class="inline">{{ certificate.chain_note }}</dd></div>{% endif %}
+  {% if certificate.reviewed_at %}
+    <div class="sm:col-span-2"><dt class="inline text-slate-500">Reviewed:</dt> <dd class="inline">{{ certificate.reviewed_by.get_display_name|default:"an administrator" }}, {{ certificate.reviewed_at|date:"j M Y, g:i A" }}{% if certificate.review_remarks %} &mdash; {{ certificate.review_remarks }}{% endif %}</dd></div>
+  {% endif %}
+</dl>

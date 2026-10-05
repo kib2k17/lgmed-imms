@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from .env import env, env_bool, env_float, env_list, load_venv_env, local_ipv4_addresses
+from .version import system_version
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -32,7 +33,7 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 
 ALLOWED_HOSTS = [
     h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,192.168.1.132").split(",")
     if h.strip()
 ]
 
@@ -41,6 +42,20 @@ CSRF_TRUSTED_ORIGINS = [
     for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if o.strip()
 ]
+
+
+# The release the running code belongs to, shown in the footer of every page so
+# "it still does the old thing" can be pinned to a build instead of guessed at.
+# Read from the checkout rather than written down here, because a constant is
+# only correct until the next edit: see config/version.py for the format. An
+# entry in <venv>/lgmed.env still wins, for a deployment that stamps itself.
+SYSTEM_VERSION = env("LGMED_SYSTEM_VERSION") or system_version(
+    BASE_DIR, mark_uncommitted=DEBUG
+)
+
+# The regional identifier every LGMED code opens with, as in
+# "LGMED-13 - RGFJ - 2023-01-03-0001". See outgoing/codes.py.
+LGMED_CODE_PREFIX = env("LGMED_CODE_PREFIX", "LGMED-13")
 
 
 # ---------------------------------------------------------------------------
@@ -88,19 +103,43 @@ elif LAN_ACCESS:
         stacklevel=2,
     )
 
+# Two-step verification at sign-in. LGMED_MFA_OFF=1 in venv/lgmed.env skips
+# the code step for everyone - for a developer locked out because the phone is
+# elsewhere. Enrolments are kept, so removing the line restores them as they
+# were. Development only: with DEBUG off it is ignored, and the code is always
+# asked for.
+MFA_OFF = (
+    DEBUG
+    and env_bool("LGMED_MFA_OFF", False)
+    # The test suite always checks two-step verification as it really works.
+    and "test" not in __import__("sys").argv[1:2]
+)
+if MFA_OFF:
+    import warnings
+
+    warnings.warn(
+        "LGMED_MFA_OFF is set: two-step verification is skipped at sign-in. "
+        "Remove it from venv/lgmed.env as soon as you have your phone.",
+        stacklevel=2,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
 
 INSTALLED_APPS = [
+    # Daphne first: it replaces `runserver` with one that also answers
+    # WebSockets (core/consumers.py), so run-lan.ps1 needs no change.
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.humanize",
-    "django.contrib.staticfiles",
+    # django.contrib.staticfiles, leaving out the Tailwind source (core/apps.py).
+    "core.apps.StaticFilesConfig",
     # LGMED-iMMS
     "accounts",
     "core",
@@ -108,6 +147,8 @@ INSTALLED_APPS = [
     "programs",
     "monitoring",
     "incoming",
+    "outgoing",
+    "datasync",
     "services",
     "documents",
     "announcements",
@@ -117,11 +158,15 @@ INSTALLED_APPS = [
     "administration",
     "audit",
     "notifications",
+    # LGMED Innovation Action
+    "esira",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    # Django's own, except that it leaves the session's expiry alone for the
+    # app's background notification checks. See core/middleware.py.
+    "core.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -130,6 +175,9 @@ MIDDLEWARE = [
     # Publishes the request to the audit signal handlers. Last, so it sees the
     # authenticated user and wraps the view that raises PermissionDenied.
     "audit.middleware.AuditMiddleware",
+    # Refuses the URLs of a module closed from Menu Permissions. After the
+    # audit middleware, so the refusal it records carries the request.
+    "accounts.middleware.ModuleAccessMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -149,6 +197,7 @@ TEMPLATES = [
                 "core.context_processors.system_settings",
                 "core.context_processors.notifications",
                 "core.context_processors.asset_version",
+                "core.context_processors.privacy_notice",
             ],
         },
     },
@@ -156,15 +205,43 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# WebSockets, for what has to reach an open page the moment it happens - a
+# full-screen system announcement (core/consumers.py). Served by Daphne.
+ASGI_APPLICATION = "config.asgi.application"
 
-# ---------------------------------------------------------------------------
-# Database
-# ---------------------------------------------------------------------------
+# The channel layer carries a broadcast from the request that made it to every
+# open socket. In memory is enough for one server process, which is how the
+# system runs. A deployment with several processes must share one layer:
+# install channels-redis and set LGMED_CHANNEL_REDIS_URL.
+_channel_redis = os.environ.get("LGMED_CHANNEL_REDIS_URL", "").strip()
+CHANNEL_LAYERS = {
+    "default": (
+        {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [_channel_redis]},
+        }
+        if _channel_redis
+        else {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    )
+}
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": env("MYSQL_DATABASE", "lgmedimms"),
+        "USER": env("MYSQL_USER", "lgmedimms"),
+        "PASSWORD": env("MYSQL_PASSWORD"),
+        "HOST": env("MYSQL_HOST", "127.0.0.1"),
+        "PORT": env("MYSQL_PORT", "3306"),
+        "CONN_MAX_AGE": 60,
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        "TEST": {
+            "CHARSET": "utf8mb4",
+            "COLLATION": "utf8mb4_unicode_ci",
+        },
     }
 }
 
@@ -186,7 +263,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:dashboard"
-LOGOUT_REDIRECT_URL = "core:home"
+# Signing out returns to the login page, not the public homepage: this is a
+# staff-only system and the public pages carry no way back in.
+LOGOUT_REDIRECT_URL = "accounts:login"
 
 SESSION_COOKIE_AGE = 60 * 60 * 8          # one working day
 SESSION_SAVE_EVERY_REQUEST = True
@@ -213,6 +292,43 @@ RECAPTCHA_SECRET_KEY = env("RECAPTCHA_SECRET_KEY")
 RECAPTCHA_MIN_SCORE = env_float("RECAPTCHA_MIN_SCORE", 0.5)
 RECAPTCHA_TIMEOUT = env_float("RECAPTCHA_TIMEOUT", 5.0)
 RECAPTCHA_ENFORCE = env_bool("RECAPTCHA_ENFORCE", True)
+
+
+# ---------------------------------------------------------------------------
+# Outgoing email (SMTP)
+#
+# Used for the welcome email a new account receives. Like the reCAPTCHA keys,
+# the server and its password come from <venv>/lgmed.env and never from this
+# file. With no EMAIL_HOST configured, messages are printed to the console
+# instead of sent, so a fresh checkout and the tests never try to reach a
+# mail server.
+#
+# For a Gmail sender: EMAIL_HOST=smtp.gmail.com, EMAIL_PORT=587,
+# EMAIL_USE_TLS=1, and EMAIL_HOST_PASSWORD set to a Google *app password*
+# (the account password is refused once 2-Step Verification is on).
+# ---------------------------------------------------------------------------
+
+EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_PORT = int(env("EMAIL_PORT", "587") or 587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
+EMAIL_TIMEOUT = int(env_float("EMAIL_TIMEOUT", 15))
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend"
+)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL") or (
+    f"LGMED-iMMS <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "LGMED-iMMS <noreply@localhost>"
+)
+
+# Who is told when an account is created: comma-separated addresses, e.g. the
+# system administrator. They receive the new account's name, username, email
+# and role - never its temporary password, which goes to the account holder
+# alone. Empty sends no notice.
+ACCOUNT_NOTIFY_EMAILS = env_list("ACCOUNT_NOTIFY_EMAILS")
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +384,53 @@ STORAGES = {
         else "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# e-SIRA - Electronic Signature, Identification, Routing and Approval
+# ---------------------------------------------------------------------------
+#
+# e-SIRA keeps two things apart that are easy to confuse. Placing a signature
+# box on a page is an interface act and proves nothing. Signing is a PAdES
+# digital signature made with the signer's own DICT PNPKI private key, which
+# is the only thing the signed PDF carries as proof. See docs/esira.md for the
+# whole integration, and esira/signing/ for the backends.
+#
+# ESIRA_SIGNING_BACKEND
+#   "pkcs12"   The signer presents their PNPKI certificate file (.p12/.pfx) and
+#              its passphrase at the moment of signing. The key is held in
+#              memory for that one request and never written to disk or the
+#              database. This is how PNPKI individual certificates are issued.
+#   "external" A signing agent on the signer's own computer (PKCS#11 token or
+#              DICT middleware). Declared, not yet connected - the backend
+#              refuses to sign and says what is missing. See docs/esira.md.
+#
+# ESIRA_PNPKI_TRUST_ROOTS
+#   Comma-separated paths to the DICT PNPKI root and intermediate CA
+#   certificates (PEM or DER), as published by DICT. A signing certificate is
+#   only accepted as "PNPKI" when it chains to one of these. With none set, no
+#   certificate can be trusted and signing is refused - unless the development
+#   override below is on.
+#
+# ESIRA_ALLOW_UNTRUSTED_CERTIFICATES
+#   Development and training only, and ignored unless DEBUG is on. Lets a test
+#   certificate sign so the workflow can be exercised before the PNPKI chain is
+#   installed. Every such signature is recorded and displayed as NOT PNPKI-
+#   verified; it is never presented as one.
+ESIRA_SIGNING_BACKEND = env("ESIRA_SIGNING_BACKEND", "pkcs12")
+ESIRA_PNPKI_TRUST_ROOTS = env_list("ESIRA_PNPKI_TRUST_ROOTS")
+ESIRA_ALLOW_UNTRUSTED_CERTIFICATES = DEBUG and env_bool(
+    "ESIRA_ALLOW_UNTRUSTED_CERTIFICATES", False
+)
+# Fetch OCSP/CRL revocation data while validating a certificate. Needs the
+# server to reach the PNPKI responders; off by default for an isolated network.
+ESIRA_CHECK_REVOCATION = env_bool("ESIRA_CHECK_REVOCATION", False)
+# RFC 3161 time-stamping authority. Empty signs with the server's clock only.
+ESIRA_TSA_URL = env("ESIRA_TSA_URL")
+ESIRA_SIGNATURE_LOCATION = env(
+    "ESIRA_SIGNATURE_LOCATION", "DILG Regional Office XIII - Caraga"
+)
+ESIRA_MAX_UPLOAD_MB = int(env_float("ESIRA_MAX_UPLOAD_MB", 25))
 
 
 # ---------------------------------------------------------------------------

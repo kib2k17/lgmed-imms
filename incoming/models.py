@@ -19,6 +19,7 @@ import os
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import Max, Q
 from django.urls import reverse
@@ -40,12 +41,22 @@ class IncomingStatus(models.TextChoices):
     PENDING = "PENDING", "Pending"
     RETURNED = "RETURNED", "Returned / for revision"
     COMPLETED = "COMPLETED", "Completed"
+    # Brought in from the office's spreadsheet register by `datasync`. The
+    # register records what arrived and the Chief's routing note, but not who
+    # in the system handles it, so an imported row stands outside the workflow
+    # until the Chief assigns it - and is kept out of the review queue, the
+    # overdue counts and the standing notices, which would otherwise raise a
+    # notice for every historical row.
+    IMPORTED = "IMPORTED", "Imported from spreadsheet"
 
 
-# Everything that is not finished. Used for "open", "overdue" and the counts on
-# the Chief's dashboard, so the definition lives in exactly one place.
+# Everything that is not finished and is in the workflow. Used for "open",
+# "overdue" and the counts on the Chief's dashboard, so the definition lives in
+# exactly one place.
 OPEN_STATUSES = tuple(
-    value for value in IncomingStatus.values if value != IncomingStatus.COMPLETED
+    value
+    for value in IncomingStatus.values
+    if value not in (IncomingStatus.COMPLETED, IncomingStatus.IMPORTED)
 )
 
 # The statuses a focal person may report on an update. Assignment,
@@ -76,6 +87,7 @@ class EventType(models.TextChoices):
     UPDATED = "UPDATED", "Update provided"
     RETURNED = "RETURNED", "Returned for revision"
     COMPLETED = "COMPLETED", "Completed"
+    OUTGOING = "OUTGOING", "Outgoing communication recorded"
 
 
 def incoming_path(instance, filename):
@@ -138,12 +150,26 @@ class IncomingDocument(TimeStampedModel):
     """One document received by the Division, and its progress through the office."""
 
     docket_number = models.CharField(
+        "DNS number",
         max_length=60,
         unique=True,
         db_index=True,
         help_text="The office's own reference for this document, e.g. 2026-0417.",
     )
-    subject = models.CharField(max_length=255)
+    # Empty until the Division Chief assigns a focal person; issued once, then
+    # the document's primary tracking number. See outgoing/codes.py. Not
+    # editable: no form may carry it, so it cannot be typed in or changed.
+    lgmed_code = models.CharField(
+        "LGMED code",
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    # 500 rather than 255: the register's subjects run to well over 300
+    # characters, and a subject cut short is a different subject.
+    subject = models.CharField(max_length=500)
     document_type = models.ForeignKey(
         "documents.DocumentType",
         on_delete=models.PROTECT,
@@ -225,10 +251,43 @@ class IncomingDocument(TimeStampedModel):
         ]
 
     def __str__(self):
-        return f"{self.docket_number} - {self.subject}"
+        return f"{self.tracking_number} - {self.subject}"
 
     def get_absolute_url(self):
         return reverse("incoming:detail", args=[self.pk])
+
+    # -- tracking -------------------------------------------------------------
+
+    @property
+    def tracking_number(self):
+        """The LGMED code once one is issued; the DMS number until then."""
+        return self.lgmed_code or self.docket_number
+
+    @property
+    def outgoing_document(self):
+        """
+        The Outgoing Monitoring record the action continues in.
+
+        Opened when the focal person acknowledges the assignment; None before.
+        """
+        try:
+            return self.outgoing_record
+        except ObjectDoesNotExist:
+            return None
+
+    @property
+    def action_url(self):
+        """Where the work on this document is done: Outgoing, once it is there."""
+        outgoing = self.outgoing_document
+        return outgoing.get_absolute_url() if outgoing else self.get_absolute_url()
+
+    def may_record_transmittal(self, user):
+        """The focal person, or the Chief, records the communication sent."""
+        if self.outgoing_document is None:
+            return False
+        return self.assigned_to_id == getattr(user, "pk", None) or bool(
+            getattr(user, "can_review_incoming", False)
+        )
 
     # -- state --------------------------------------------------------------
 
@@ -285,8 +344,13 @@ class IncomingDocument(TimeStampedModel):
         )
 
     def may_be_updated_by(self, user):
-        """The focal person reports progress; the Chief may also close a record."""
-        if self.is_completed or not self.is_assigned:
+        """
+        The focal person reports progress; the Chief may also close a record.
+
+        Only once the assignment is acknowledged: that is when the document
+        moves to Outgoing Monitoring, where all action on it is taken.
+        """
+        if self.is_completed or not self.is_assigned or not self.is_acknowledged:
             return False
         return self.assigned_to_id == getattr(user, "pk", None) or bool(
             getattr(user, "can_review_incoming", False)
@@ -376,6 +440,7 @@ class IncomingDocument(TimeStampedModel):
             IncomingStatus.FOR_ACTION: 3,
             IncomingStatus.PENDING: 3,
             IncomingStatus.COMPLETED: 4,
+            IncomingStatus.IMPORTED: 0,
         }
         current = reached.get(self.status, 0)
         # "Completed" is the end of the road, not a stage still being worked
@@ -498,6 +563,7 @@ class IncomingEvent(models.Model):
             EventType.UPDATED: "monitoring",
             EventType.RETURNED: "warning",
             EventType.COMPLETED: "check-circle",
+            EventType.OUTGOING: "mail",
         }.get(self.event_type, "info")
 
     @property
@@ -513,4 +579,5 @@ class IncomingEvent(models.Model):
             EventType.UPDATED: "in_progress",
             EventType.RETURNED: "returned",
             EventType.COMPLETED: "completed",
+            EventType.OUTGOING: "in_progress",
         }.get(self.event_type, "information")

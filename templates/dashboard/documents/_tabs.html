@@ -4,7 +4,7 @@
  dashboard, and the retention and archive register. One sidebar entry rather
  than three, because they are one job.
 
- Pass `tab` as "list", "dashboard" or "retention".
+ Pass `tab` as "list", "dashboard", "files" or "retention".
 {% endcomment %}
 <nav aria-label="Document Management sections" class="mb-4 no-print">
   <ul class="flex flex-wrap gap-1 border-b border-slate-200">
@@ -22,6 +22,14 @@
                 {% if tab == 'dashboard' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
          {% if tab == "dashboard" %}aria-current="page"{% endif %}>
         {% icon "dashboard" "size-4" %}Monitoring
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'documents:files' %}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                {% if tab == 'files' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if tab == "files" %}aria-current="page"{% endif %}>
+        {% icon "file" "size-4" %}Files
       </a>
     </li>
     {% if user.can_archive_documents %}

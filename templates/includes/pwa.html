@@ -1,0 +1,138 @@
+{% load static ui %}
+{% comment %}
+ Connection and app-update notices, and the iPhone/iPad install instructions.
+ All of it starts hidden; static/js/pwa.js shows what applies. Without
+ scripting none of it is needed - there is no service worker to report on.
+{% endcomment %}
+<div class="pwa-toast-region no-print" aria-live="polite">
+
+  <div id="pwa-offline" hidden role="status"
+       class="pwa-toast border-amber-300 bg-amber-50 text-amber-900">
+    {% icon "warning" "size-5 shrink-0 text-amber-600" %}
+    <p class="min-w-0 flex-1">
+      <span class="block font-semibold">Offline mode</span>
+      <span class="block text-meta text-amber-800">No connection. Pages cannot be opened and nothing can be saved until it returns.</span>
+    </p>
+  </div>
+
+  <div id="pwa-blocked" hidden role="alert"
+       class="pwa-toast border-red-300 bg-red-50 text-red-900">
+    {% icon "error" "size-5 shrink-0 text-red-600" %}
+    <p class="min-w-0 flex-1">
+      <span class="block font-semibold">Not sent &mdash; you are offline</span>
+      <span class="block text-meta text-red-800">What you entered is still on this page. Send it again once you are back online.</span>
+    </p>
+    <button type="button" class="btn btn-ghost btn-sm -mr-1 px-1.5" data-pwa-dismiss>
+      {% icon "close" "size-4" %}<span class="sr-only">Dismiss</span>
+    </button>
+  </div>
+
+  <div id="pwa-online" hidden role="status"
+       class="pwa-toast border-green-300 bg-green-50 text-green-900">
+    {% icon "check-circle" "size-5 shrink-0 text-green-700" %}
+    <p class="min-w-0 flex-1 font-semibold">Back online</p>
+  </div>
+
+  {% comment %}
+   Install suggestion. Shown by pwa.js only where the browser can install the
+   app and it is not installed yet; the X hides it on this device for 30 days.
+   "Install app" in the account menu stays available either way.
+  {% endcomment %}
+  <div id="pwa-install-banner" hidden role="region" aria-label="Install the app"
+       class="pwa-toast border-brand-200 bg-white text-slate-800">
+    {% include "includes/agency_logo.html" with size="size-10" %}
+    <p class="min-w-0 flex-1">
+      <span class="block font-semibold" data-pwa-install-title>Install the {{ agency.system_name }} app</span>
+      <span class="block text-meta text-slate-500" data-pwa-install-note>Open the system from its own icon, in its own window.</span>
+    </p>
+    <button type="button" class="btn btn-primary btn-sm" data-pwa-install>
+      {% icon "download" "size-4" %}Install
+    </button>
+    <button type="button" class="btn btn-ghost btn-sm -mr-1 px-1.5" data-pwa-install-dismiss>
+      {% icon "close" "size-4" %}<span class="sr-only">Close install suggestion</span>
+    </button>
+  </div>
+
+  <div id="pwa-installed" hidden role="status"
+       class="pwa-toast border-green-300 bg-green-50 text-green-900">
+    {% icon "check-circle" "size-5 shrink-0 text-green-700" %}
+    <p class="min-w-0 flex-1">
+      <span class="block font-semibold">{{ agency.system_name }} is installed</span>
+      <span class="block text-meta text-green-800">Open it from its icon on your desktop, Start menu or home screen.</span>
+    </p>
+  </div>
+
+  <div id="pwa-update" hidden role="status"
+       class="pwa-toast border-brand-200 bg-white text-slate-800">
+    {% icon "info" "size-5 shrink-0 text-brand-600" %}
+    <p class="min-w-0 flex-1">
+      <span class="block font-semibold">An update is ready</span>
+      <span class="block text-meta text-slate-500">Save any work in progress, then reload.</span>
+    </p>
+    <button type="button" class="btn btn-primary btn-sm" data-pwa-reload>Reload</button>
+    <button type="button" class="btn btn-ghost btn-sm -mr-1 px-1.5" data-pwa-dismiss>
+      {% icon "close" "size-4" %}<span class="sr-only">Later</span>
+    </button>
+  </div>
+</div>
+
+{% comment %}
+ On a plain-HTTP address (the office network, run-lan.ps1) browsers refuse a
+ real install - that needs HTTPS - but each still has its own way to put the
+ system on the home screen or open it in its own window. pwa.js shows the
+ steps for the browser in use.
+{% endcomment %}
+<dialog id="pwa-http-install" aria-labelledby="pwa-http-install-title"
+        class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+  <div class="p-5">
+    <h2 id="pwa-http-install-title" class="text-card-title font-semibold text-slate-900">Install {{ agency.system_name }}</h2>
+
+    <ol data-pwa-steps="android" hidden class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+      <li>Tap the browser menu <strong>&#8942;</strong> at the top right.</li>
+      <li>Tap <strong>Add to Home screen</strong>, then <strong>Add</strong>.</li>
+      <li>Open the system from the new icon on your home screen.</li>
+    </ol>
+
+    <ol data-pwa-steps="chrome" hidden class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+      <li>Click the browser menu <strong>&#8942;</strong> at the top right.</li>
+      <li>Choose <strong>Cast, save and share</strong> &rarr; <strong>Create shortcut&hellip;</strong></li>
+      <li>Tick <strong>Open as window</strong>, then click <strong>Create</strong>.</li>
+    </ol>
+
+    <ol data-pwa-steps="edge" hidden class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+      <li>Click the browser menu <strong>&hellip;</strong> at the top right.</li>
+      <li>Choose <strong>More tools</strong> &rarr; <strong>Pin to taskbar</strong> (or <strong>Pin to Start</strong>).</li>
+      <li>Open the system from the new icon on your taskbar.</li>
+    </ol>
+
+    <p data-pwa-steps="other" hidden class="mt-3 text-sm text-slate-700">
+      Use this browser&rsquo;s menu to add the page to your home screen or desktop,
+      or open it in Google Chrome or Microsoft Edge for an app window.
+    </p>
+
+    <p class="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta text-slate-600">
+      This address is not secure (HTTP), so the browser offers a shortcut rather than
+      a full install. Ask the system administrator for the HTTPS address for the full app.
+    </p>
+  </div>
+  <div class="flex justify-end border-t border-slate-200 bg-slate-50/70 px-5 py-3">
+    <button type="button" class="btn btn-secondary" data-dialog-close>Close</button>
+  </div>
+</dialog>
+
+{# Safari on iPhone and iPad has no install prompt; this says where to find it. #}
+<dialog id="pwa-ios-install" aria-labelledby="pwa-ios-install-title"
+        class="m-auto w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+  <div class="p-5">
+    <h2 id="pwa-ios-install-title" class="text-card-title font-semibold text-slate-900">Install {{ agency.system_name }}</h2>
+    <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+      <li>Tap the <strong>Share</strong> button in Safari&rsquo;s toolbar (the square with an arrow pointing up).</li>
+      <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+      <li>Tap <strong>Add</strong>. The system then opens from its own icon, full screen.</li>
+    </ol>
+    <p class="mt-3 text-meta text-slate-500">On iPhone and iPad this works in Safari only.</p>
+  </div>
+  <div class="flex justify-end border-t border-slate-200 bg-slate-50/70 px-5 py-3">
+    <button type="button" class="btn btn-secondary" data-dialog-close>Close</button>
+  </div>
+</dialog>

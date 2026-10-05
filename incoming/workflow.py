@@ -18,6 +18,7 @@ from django.utils import timezone
 from notifications.models import Category, Level
 from notifications.service import notify, resolve
 
+from . import register
 from .models import EventType, IncomingDocument, IncomingStatus
 
 
@@ -133,14 +134,15 @@ def record_received(document, actor):
     )
     notify(
         division_chiefs(),
-        title=f"Incoming document for review: {document.docket_number}",
+        title=f"Incoming document for review: {document.tracking_number}",
         message=f"{document.subject} - from {document.source_office}",
-        url=document.get_absolute_url(),
+        url=document.action_url,
         category=Category.REVIEW,
         level=Level.ACTION,
         dedupe_key=review_key(document),
         exclude=actor,
     )
+    register.sync(document, actor)
     return document
 
 
@@ -154,6 +156,8 @@ def record_amended(document, actor, changes=""):
         detail=changes or "Record details amended",
         to_status=document.status,
     )
+    register.sync(document, actor, event_type="EDITED",
+                  detail=changes or "Record details amended in Incoming Monitoring")
     return document
 
 
@@ -186,14 +190,16 @@ def review(document, actor, notes):
     if document.assigned_to_id:
         notify(
             [document.assigned_to],
-            title=f"Instruction updated: {document.docket_number}",
+            title=f"Instruction updated: {document.tracking_number}",
             message=(notes or document.subject)[:400],
-            url=document.get_absolute_url(),
+            url=document.action_url,
             category=Category.ASSIGNMENT,
             level=Level.ACTION,
             dedupe_key=f"incoming:note:{document.pk}:{document.reviewed_at:%Y%m%d%H%M}",
             exclude=actor,
         )
+    register.sync(document, actor, event_type="STATUS_CHANGED",
+                  detail="Reviewed by the Division Chief", notes=notes)
     return document
 
 
@@ -206,6 +212,10 @@ def assign(document, actor, *, assignee, remarks="", priority=None, due_date=Non
     Reviewing is implied: a Chief who assigns has, by definition, read the
     document, so a record that was assigned without a separate review step is
     still stamped as reviewed rather than left looking unread.
+
+    The first assignment is also what issues the document's LGMED code, which
+    from then on is its primary tracking number. A reassignment keeps the code
+    already issued: the code follows the document, not the person.
     """
     if not getattr(actor, "can_review_incoming", False):
         raise PermissionDenied("Only the Division Chief may assign incoming documents.")
@@ -228,19 +238,27 @@ def assign(document, actor, *, assignee, remarks="", priority=None, due_date=Non
     document.due_date = due_date
     document.status = IncomingStatus.ASSIGNED
     document.acknowledged_at = None
+    code_issued = not document.lgmed_code
+    if code_issued:
+        from outgoing.codes import issue_code
+
+        document.lgmed_code = issue_code(assignee)
     document.save()
 
     reassigned = previous is not None and previous != assignee
+    detail = (
+        f"Reassigned from {previous.get_display_name()} to "
+        f"{assignee.get_display_name()}"
+        if reassigned
+        else f"Assigned to {assignee.get_display_name()}"
+    )
+    if code_issued:
+        detail += f"; LGMED code {document.lgmed_code} issued"
     log(
         document,
         actor,
         EventType.REASSIGNED if reassigned else EventType.ASSIGNED,
-        detail=(
-            f"Reassigned from {previous.get_display_name()} to "
-            f"{assignee.get_display_name()}"
-            if reassigned
-            else f"Assigned to {assignee.get_display_name()}"
-        ),
+        detail=detail,
         notes=remarks,
         from_status=from_status,
         to_status=document.status,
@@ -254,20 +272,59 @@ def assign(document, actor, *, assignee, remarks="", priority=None, due_date=Non
 
     notify(
         [assignee],
-        title=f"Document assigned to you: {document.docket_number}",
+        title=f"Document assigned to you: {document.tracking_number}",
         message=(remarks or document.subject)[:400],
-        url=document.get_absolute_url(),
+        url=document.action_url,
         category=Category.ASSIGNMENT,
         level=Level.URGENT if document.priority == "URGENT" else Level.ACTION,
         dedupe_key=assignment_key(document),
         exclude=actor,
     )
+    register.sync(document, actor,
+                  event_type="REASSIGNED" if reassigned else "ASSIGNED",
+                  detail=detail, notes=remarks)
     return document
+
+
+def open_outgoing(document, actor):
+    """
+    The document's record in Outgoing Monitoring, opened if it is not yet there.
+
+    Filed under the LGMED code the assignment issued - no new code - with the
+    DMS number carried as the incoming reference. A row already in the
+    register under the same code (entered in the spreadsheet) is taken over
+    rather than duplicated.
+    """
+    from outgoing.models import OutgoingDocument
+
+    outgoing = document.outgoing_document
+    if outgoing is not None:
+        return outgoing
+    outgoing = OutgoingDocument.objects.filter(
+        control_code=document.lgmed_code, incoming__isnull=True
+    ).first() or OutgoingDocument(
+        control_code=document.lgmed_code,
+        subject=document.subject,
+        created_by=actor,
+    )
+    outgoing.incoming = document
+    outgoing.incoming_reference = outgoing.incoming_reference or document.docket_number
+    outgoing.updated_by = actor
+    outgoing.save()
+    document.outgoing_record = outgoing
+    return outgoing
 
 
 @transaction.atomic
 def acknowledge(document, actor):
-    """The focal person confirms they have received the assignment."""
+    """
+    The focal person confirms they have received the assignment.
+
+    This is where the document leaves Incoming Monitoring: it moves to
+    Outgoing Monitoring under its LGMED code, and every action from here on -
+    updates, return for revision, completion, the communication sent - is
+    taken there.
+    """
     if not document.may_be_acknowledged_by(actor):
         raise PermissionDenied(
             "Only the focal person this document is assigned to may acknowledge it."
@@ -277,12 +334,16 @@ def acknowledge(document, actor):
     document.acknowledged_at = timezone.now()
     document.status = IncomingStatus.ACKNOWLEDGED
     document.save(update_fields=["acknowledged_at", "status", "updated_at"])
+    open_outgoing(document, actor)
 
     log(
         document,
         actor,
         EventType.ACKNOWLEDGED,
-        detail="Assignment acknowledged",
+        detail=(
+            "Assignment acknowledged; moved to Outgoing Monitoring for action "
+            f"under {document.lgmed_code}"
+        ),
         from_status=from_status,
         to_status=document.status,
     )
@@ -293,13 +354,17 @@ def acknowledge(document, actor):
         recipients.append(document.assigned_by)
     notify(
         recipients,
-        title=f"Assignment acknowledged: {document.docket_number}",
+        title=f"Assignment acknowledged: {document.tracking_number}",
         message=f"{actor.get_display_name()} acknowledged {document.subject}",
-        url=document.get_absolute_url(),
+        url=document.action_url,
         category=Category.ASSIGNMENT,
         level=Level.INFO,
         dedupe_key=f"incoming:acknowledged:{document.pk}",
         exclude=actor,
+    )
+    register.sync(
+        document, actor, event_type="STATUS_CHANGED",
+        detail="Acknowledged; action continues in Outgoing Monitoring",
     )
     return document
 
@@ -348,16 +413,21 @@ def add_update(document, actor, update):
     notify(
         division_chiefs(),
         title=(
-            f"Document completed: {document.docket_number}"
+            f"Document completed: {document.tracking_number}"
             if completed
-            else f"Update on {document.docket_number}"
+            else f"Update on {document.tracking_number}"
         ),
         message=f"{actor.get_display_name()}: {update.action_taken}"[:400],
-        url=document.get_absolute_url(),
+        url=document.action_url,
         category=Category.ASSIGNMENT,
         level=Level.INFO,
         dedupe_key=f"incoming:update:{update.pk}",
         exclude=actor,
+    )
+    register.sync(
+        document, actor, event_type="APPROVED" if completed else "STATUS_CHANGED",
+        detail=("Completed: " if completed else "Update: ") + update.action_taken,
+        notes=update.remarks,
     )
     return document
 
@@ -386,15 +456,67 @@ def return_for_revision(document, actor, remarks):
     )
     notify(
         [document.assigned_to],
-        title=f"Returned for revision: {document.docket_number}",
+        title=f"Returned for revision: {document.tracking_number}",
         message=(remarks or document.subject)[:400],
-        url=document.get_absolute_url(),
+        url=document.action_url,
         category=Category.ASSIGNMENT,
         level=Level.ACTION,
         dedupe_key=f"incoming:returned:{document.pk}:{timezone.now():%Y%m%d%H%M}",
         exclude=actor,
     )
+    register.sync(document, actor, event_type="STATUS_CHANGED",
+                  detail="Returned for revision", notes=remarks)
     return document
+
+
+@transaction.atomic
+def record_transmittal(document, actor, outgoing):
+    """
+    Record the communication sent in answer: when, what, to whom and how.
+
+    Saved on the document's own Outgoing Monitoring record, so the reply keeps
+    the LGMED code the assignment issued. Recording it does not close the
+    document - the focal person still reports it completed.
+    """
+    if not document.may_record_transmittal(actor):
+        raise PermissionDenied(
+            "Only the focal person or the Division Chief may record the "
+            "communication sent, once the document is in Outgoing Monitoring."
+        )
+    if outgoing.pk != document.outgoing_document.pk:
+        raise PermissionDenied("This record does not belong to that document.")
+
+    outgoing.updated_by = actor
+    outgoing.save()
+
+    log(
+        document,
+        actor,
+        EventType.OUTGOING,
+        detail=(
+            f"{outgoing.communication_type or 'Communication'} sent"
+            + (f" to {outgoing.sent_to}" if outgoing.sent_to else "")
+            + (f" on {outgoing.date_sent:%d %b %Y}" if outgoing.date_sent else "")
+        )[:255],
+        notes=outgoing.subject,
+        to_status=document.status,
+    )
+    notify(
+        division_chiefs(),
+        title=f"Outgoing communication recorded: {document.tracking_number}",
+        message=(outgoing.subject or document.subject)[:400],
+        url=document.action_url,
+        category=Category.ASSIGNMENT,
+        level=Level.INFO,
+        dedupe_key=f"incoming:outgoing:{document.pk}:{timezone.now():%Y%m%d%H%M}",
+        exclude=actor,
+    )
+    register.sync(
+        document, actor, event_type="EDITED",
+        detail=f"Outgoing communication recorded under {document.lgmed_code}",
+        notes=outgoing.subject,
+    )
+    return outgoing
 
 
 # ---------------------------------------------------------------------------
@@ -424,13 +546,13 @@ def refresh_standing_notices():
         raised += len(
             notify(
                 chiefs,
-                title=f"Incoming document awaiting review: {document.docket_number}",
+                title=f"Incoming document awaiting review: {document.tracking_number}",
                 message=(
                     f"{document.subject} - received "
                     f"{document.date_received:%d %b %Y}"
                     + (f", {waiting} days ago" if waiting > 0 else "")
                 ),
-                url=document.get_absolute_url(),
+                url=document.action_url,
                 category=Category.REVIEW,
                 level=Level.URGENT if waiting > 3 else Level.ACTION,
                 dedupe_key=key,
@@ -448,9 +570,9 @@ def refresh_standing_notices():
         raised += len(
             notify(
                 [document.assigned_to],
-                title=f"Acknowledge your assignment: {document.docket_number}",
+                title=f"Acknowledge your assignment: {document.tracking_number}",
                 message=f"{document.subject} - assigned {document.assigned_at:%d %b %Y}",
-                url=document.get_absolute_url(),
+                url=document.action_url,
                 category=Category.ASSIGNMENT,
                 level=Level.ACTION,
                 dedupe_key=key,
@@ -468,12 +590,12 @@ def refresh_standing_notices():
         raised += len(
             notify(
                 audience,
-                title=f"Incoming document overdue: {document.docket_number}",
+                title=f"Incoming document overdue: {document.tracking_number}",
                 message=(
                     f"{document.subject} - was due {document.due_date:%d %b %Y}, "
                     f"{days} day{'s' if days != 1 else ''} ago"
                 ),
-                url=document.get_absolute_url(),
+                url=document.action_url,
                 category=Category.OVERDUE,
                 level=Level.URGENT if days > 7 else Level.ACTION,
                 dedupe_key=key,
@@ -495,12 +617,12 @@ def refresh_standing_notices():
         raised += len(
             notify(
                 audience,
-                title=f"Update awaited: {document.docket_number}",
+                title=f"Update awaited: {document.tracking_number}",
                 message=(
                     f"{document.subject} - no update for "
                     f"{days} day{'s' if days != 1 else ''}"
                 ),
-                url=document.get_absolute_url(),
+                url=document.action_url,
                 category=Category.REVIEW,
                 level=Level.ACTION,
                 dedupe_key=key,
@@ -519,6 +641,7 @@ def refresh_standing_notices():
         .exclude(dedupe_key__startswith="incoming:returned:")
         .exclude(dedupe_key__startswith="incoming:update:")
         .exclude(dedupe_key__startswith="incoming:note:")
+        .exclude(dedupe_key__startswith="incoming:outgoing:")
     )
     withdrawn = stale.update(dismissed_at=timezone.now(), read_at=timezone.now())
     return {"raised": raised, "withdrawn": withdrawn}

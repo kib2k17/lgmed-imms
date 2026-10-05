@@ -7,7 +7,7 @@
 #
 # Nothing has to be edited when the address changes: DJANGO_LAN_ACCESS=1 in
 # venv\lgmed.env tells settings.py to work it out at start-up. Unlike
-# run-ngrok.ps1 nothing leaves the building either - the server binds to
+# run-cloudflare.ps1 nothing leaves the building either - the server binds to
 # 0.0.0.0 and only this network can reach it.
 #
 # It is still a DEBUG=True server holding demonstration accounts whose password
@@ -149,7 +149,7 @@ if (-not $rule -or $needsFix) {
 # --- the server ------------------------------------------------------------
 Write-Host ""
 Write-Host "Colleagues on this network open:  http://${primary}:${Port}/" -ForegroundColor Green
-Write-Host "Staff sign in at                  http://${primary}:${Port}/accounts/login/"
+Write-Host "Staff sign in at                  http://${primary}:${Port}/staff"
 Write-Host "On this machine                   http://127.0.0.1:${Port}/"
 if ($addresses.Count -gt 1) {
     $others = $addresses -join ", "

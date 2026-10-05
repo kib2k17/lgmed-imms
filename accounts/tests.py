@@ -1,11 +1,19 @@
 """Tests for account administration and the role matrix."""
 
+import io
+import re
+import shutil
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from accounts import recaptcha
+from PIL import Image
+
+from accounts import photos, recaptcha
 from accounts.capabilities import CAPABILITIES, role_matrix
 from accounts.models import Role, User
 from audit.models import Action, AuditEvent
@@ -58,56 +66,103 @@ class UserAdministrationTests(TestCase):
 
     # -- creating -------------------------------------------------------
 
-    def test_administrator_creates_an_account_with_a_usable_password(self):
+    def _create(self, **overrides):
+        data = {
+            "username": "new.officer",
+            "first_name": "Maria", "last_name": "Reyes",
+            "email": "maria.reyes@caraga.dilg.gov.ph",
+            "position": "Project Evaluation Officer",
+            "office": "LGMED", "contact_number": "",
+            "role": Role.ENCODER, "is_active": "on",
+        }
+        data.update(overrides)
         self.client.force_login(self.admin)
-        response = self.client.post(
-            reverse("accounts:user_create"),
-            {
-                "username": "new.officer",
-                "first_name": "Maria", "last_name": "Reyes",
-                "email": "maria.reyes@caraga.dilg.gov.ph",
-                "position": "Project Evaluation Officer",
-                "office": "LGMED", "contact_number": "",
-                "role": Role.ENCODER, "is_active": "on",
-                "password1": "Str0ng-Passw0rd!", "password2": "Str0ng-Passw0rd!",
-            },
-        )
+        return self.client.post(reverse("accounts:user_create"), data)
+
+    @override_settings(ACCOUNT_NOTIFY_EMAILS=[])
+    def test_administrator_creates_an_account_and_it_is_emailed_its_details(self):
+        from django.core import mail
+
+        response = self._create()
         self.assertEqual(response.status_code, 302)
 
         created = User.objects.get(username="new.officer")
         self.assertEqual(created.role, Role.ENCODER)
-        self.assertTrue(created.check_password("Str0ng-Passw0rd!"))
         self.assertTrue(
             AuditEvent.objects.filter(
                 action=Action.CREATE, target_label="Maria Reyes"
             ).exists()
         )
 
-    def test_a_weak_password_is_refused(self):
-        self.client.force_login(self.admin)
-        response = self.client.post(
-            reverse("accounts:user_create"),
-            {
-                "username": "weak.one", "first_name": "W", "last_name": "O",
-                "role": Role.VIEWER, "is_active": "on",
-                "password1": "password", "password2": "password",
-            },
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(username="weak.one").exists())
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertEqual(sent.to, ["maria.reyes@caraga.dilg.gov.ph"])
+        self.assertIn("Welcome", sent.subject)
+        for body in (sent.body, sent.alternatives[0][0]):
+            self.assertIn("Maria Reyes", body)
+            self.assertIn(Role.ENCODER.label, body)
+            self.assertIn("new.officer", body)
+            self.assertIn("/accounts/login/", body)
 
-    def test_mismatched_passwords_are_refused(self):
+        # The emailed password is the one that actually signs in.
+        password = re.search(r"Temporary password:\s+(\S+)", sent.body).group(1)
+        self.assertTrue(created.check_password(password))
+
+    @override_settings(ACCOUNT_NOTIFY_EMAILS=["records@example.com"])
+    def test_the_notify_address_is_told_without_the_password(self):
+        from django.core import mail
+
+        self._create()
+        self.assertEqual(len(mail.outbox), 2)
+        welcome, notice = mail.outbox
+        self.assertEqual(welcome.to, ["maria.reyes@caraga.dilg.gov.ph"])
+        self.assertEqual(notice.to, ["records@example.com"])
+
+        password = re.search(r"Temporary password:\s+(\S+)", welcome.body).group(1)
+        for body in (notice.body, notice.alternatives[0][0]):
+            self.assertIn("Maria Reyes", body)
+            self.assertIn("new.officer", body)
+            self.assertIn("maria.reyes@caraga.dilg.gov.ph", body)
+            self.assertIn(Role.ENCODER.label, body)
+            self.assertIn("Antonio Villanueva", body)
+            self.assertNotIn(password, body)
+
+    @override_settings(ACCOUNT_NOTIFY_EMAILS=["maria.reyes@caraga.dilg.gov.ph"])
+    def test_no_notice_when_the_new_account_is_the_notify_address(self):
+        from django.core import mail
+
+        self._create()
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_form_no_longer_asks_for_a_password(self):
         self.client.force_login(self.admin)
-        response = self.client.post(
-            reverse("accounts:user_create"),
-            {
-                "username": "mismatch", "first_name": "M", "last_name": "M",
-                "role": Role.VIEWER, "is_active": "on",
-                "password1": "Str0ng-Passw0rd!", "password2": "Different-P4ss!",
-            },
-        )
-        self.assertContains(response, "do not match")
-        self.assertFalse(User.objects.filter(username="mismatch").exists())
+        response = self.client.get(reverse("accounts:user_create"))
+        self.assertNotContains(response, 'name="password1"')
+        self.assertNotContains(response, 'name="password2"')
+
+    def test_an_email_address_is_required(self):
+        response = self._create(email="")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="new.officer").exists())
+
+    def test_a_mail_failure_still_creates_the_account(self):
+        with patch(
+            "django.core.mail.EmailMultiAlternatives.send",
+            side_effect=OSError("mail server down"),
+        ), self.assertLogs("accounts.emails", "ERROR"):
+            response = self._create()
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(User.objects.filter(username="new.officer").exists())
+
+    def test_generated_passwords_pass_the_password_validators(self):
+        from django.contrib.auth.password_validation import validate_password
+
+        from accounts.emails import generate_temporary_password
+
+        passwords = {generate_temporary_password() for _ in range(50)}
+        self.assertEqual(len(passwords), 50)
+        for password in passwords:
+            validate_password(password)
 
     def test_a_duplicate_email_is_refused(self):
         self.staff.email = "taken@caraga.dilg.gov.ph"
@@ -381,3 +436,172 @@ class SignInProtectionTests(TestCase):
         page = self.client.get(reverse("accounts:login")).content.decode()
         self.assertNotIn("recaptcha/api.js", page)
         self.assertIn('data-recaptcha-site-key=""', page)
+
+
+class PrivacyNoticeTests(TestCase):
+    """The Data Privacy Act notice shown after every sign-in."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username="staff", password="pw", role=Role.LGMED_STAFF,
+        )
+
+    def test_the_notice_is_shown_after_signing_in(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'id="privacy-notice"')
+        self.assertContains(response, "Republic Act No. 10173")
+
+    def test_agreeing_hides_the_notice_and_is_audited(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("accounts:privacy_notice_accept"),
+            {"agree": "1", "next": reverse("core:dashboard")},
+        )
+        self.assertRedirects(response, reverse("core:dashboard"))
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertNotContains(response, 'id="privacy-notice"')
+        self.assertTrue(AuditEvent.objects.filter(
+            action=Action.PRIVACY_ACKNOWLEDGED, actor=self.user,
+        ).exists())
+
+    def test_without_the_checkbox_the_notice_stays(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse("accounts:privacy_notice_accept"), {})
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'id="privacy-notice"')
+        self.assertFalse(AuditEvent.objects.filter(
+            action=Action.PRIVACY_ACKNOWLEDGED).exists())
+
+    def test_the_notice_returns_on_the_next_sign_in(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse("accounts:privacy_notice_accept"), {"agree": "1"})
+        self.client.logout()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'id="privacy-notice"')
+
+    def test_an_outside_next_address_is_ignored(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("accounts:privacy_notice_accept"),
+            {"agree": "1", "next": "https://example.com/"},
+        )
+        self.assertRedirects(
+            response, reverse("core:dashboard"), fetch_redirect_response=False,
+        )
+
+
+class ProfilePhotoTests(TestCase):
+    """Uploading, replacing, serving and removing a profile photo."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username="photo.owner", password="pw", first_name="Pia",
+            last_name="Santos",
+        )
+        cls.colleague = User.objects.create_user(
+            username="colleague", password="pw",
+        )
+
+    def setUp(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        settings_override = override_settings(
+            MEDIA_ROOT=root / "media", PROTECTED_MEDIA_ROOT=root / "protected",
+        )
+        settings_override.enable()
+        self.addCleanup(settings_override.disable)
+        self.protected = root / "protected"
+        self.client.force_login(self.user)
+
+    @staticmethod
+    def image_file(name="me.png", size=(600, 400), fmt="PNG", exif=None):
+        buffer = io.BytesIO()
+        Image.new("RGBA", size, (200, 30, 30, 128)).convert(
+            "RGB" if fmt == "JPEG" else "RGBA"
+        ).save(buffer, format=fmt, **({"exif": exif} if exif else {}))
+        return SimpleUploadedFile(name, buffer.getvalue())
+
+    def upload(self, upload):
+        return self.client.post(reverse("accounts:profile_photo"), {"photo": upload})
+
+    def test_upload_is_cropped_to_a_square_jpeg_in_protected_storage(self):
+        response = self.upload(self.image_file())
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.photo.name.startswith("profile_photos/"))
+        stored = self.protected / self.user.photo.name
+        self.assertTrue(stored.exists())
+        with Image.open(stored) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(image.size, (photos.PHOTO_SIZE, photos.PHOTO_SIZE))
+
+    def test_camera_metadata_is_not_kept(self):
+        exif = Image.Exif()
+        exif[0x010F] = "PhoneMaker"  # Make
+        self.upload(self.image_file("cam.jpg", fmt="JPEG", exif=exif.tobytes()))
+        self.user.refresh_from_db()
+        with Image.open(self.protected / self.user.photo.name) as image:
+            self.assertEqual(dict(image.getexif()), {})
+
+    def test_a_file_that_is_not_an_image_is_refused(self):
+        response = self.upload(SimpleUploadedFile("me.png", b"not an image"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "not an image")
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.photo)
+
+    def test_an_unsupported_format_is_refused(self):
+        response = self.upload(self.image_file("me.gif", fmt="GIF"))
+        self.assertContains(response, "JPEG, PNG or WebP")
+
+    def test_replacing_deletes_the_previous_file(self):
+        self.upload(self.image_file())
+        self.user.refresh_from_db()
+        first = self.protected / self.user.photo.name
+        self.upload(self.image_file())
+        self.user.refresh_from_db()
+        self.assertFalse(first.exists())
+        self.assertTrue((self.protected / self.user.photo.name).exists())
+
+    def test_remove_deletes_the_file(self):
+        self.upload(self.image_file())
+        self.user.refresh_from_db()
+        stored = self.protected / self.user.photo.name
+        self.client.post(reverse("accounts:profile_photo_remove"))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.photo)
+        self.assertFalse(stored.exists())
+
+    def test_colleagues_may_see_it_but_the_public_may_not(self):
+        self.upload(self.image_file())
+        self.user.refresh_from_db()
+        url = self.user.get_photo_url()
+
+        self.client.force_login(self.colleague)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/jpeg")
+        self.assertIn("private", response["Cache-Control"])
+        self.assertTrue(b"".join(response.streaming_content))
+
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+
+    def test_no_photo_is_not_found(self):
+        response = self.client.get(
+            reverse("accounts:user_photo", args=[self.colleague.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_the_change_is_audited(self):
+        self.upload(self.image_file())
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action=Action.UPDATE, target_id=str(self.user.pk),
+            ).exists()
+        )

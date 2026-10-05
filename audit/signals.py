@@ -39,6 +39,7 @@ AUDITED_MODELS = [
     "monitoring.MonitoringAttachment",
     "incoming.IncomingDocument",
     "incoming.IncomingUpdate",
+    "outgoing.OutgoingDocument",
     "services.FrontlineService",
     "documents.Document",
     "documents.DocumentType",

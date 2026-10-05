@@ -1,0 +1,21 @@
+{% autoescape off %}Good day, {{ user.get_display_name }}!
+
+Welcome to {{ agency.system_name }} - the {{ agency.system_full_name }} of {{ agency.department }}, {{ agency.office }}.
+
+An account has been created for you. Your details are below:
+
+  Role:               {{ role }}
+  Username:           {{ user.username }}
+  Temporary password: {{ password }}
+
+Sign in here: {{ login_url }}
+
+For your security, please change this temporary password after your first sign-in, and do not share it with anyone.
+
+If you were not expecting this account, please contact the {{ agency.division_short }} system administrator.
+
+{{ agency.division }}
+{{ agency.office_short }}
+
+This is an automated message. Please do not reply.
+{% endautoescape %}

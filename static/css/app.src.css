@@ -333,6 +333,177 @@
   .prose-gov p + p { @apply mt-4; }
   .prose-gov h2 { @apply mt-8 mb-3 text-section-title; }
   .prose-gov ul { @apply mt-3 space-y-2 pl-5 [&>li]:list-disc [&>li]:marker:text-slate-400; }
+
+  /* -- PDF viewer (templates/includes/pdf_viewer.html) -------------------- */
+  /* Nearly the whole window: a document is read at page size, not in a card. */
+  .pdf-viewer {
+    width: min(72rem, calc(100vw - 2rem));
+    height: calc(100dvh - 2rem);
+    max-width: none;
+    max-height: none;
+  }
+  .pdf-viewer::backdrop { @apply bg-slate-900/60; }
+
+  /* -- Please-wait screen (templates/includes/page_loading.html) ---------- */
+  .page-loading::backdrop { @apply bg-slate-900/50; }
+
+  /* -- Installable app (templates/includes/pwa.html, bottom_nav.html) ------ */
+
+  /* Connection and update notices: bottom centre, above the phone's bottom
+     bar and clear of the iPhone home indicator. */
+  .pwa-toast-region {
+    @apply pointer-events-none fixed inset-x-0 z-60 flex flex-col items-center gap-2 px-3;
+    bottom: calc(var(--bottom-nav-h, 0px) + env(safe-area-inset-bottom) + 0.75rem);
+  }
+  .pwa-toast {
+    @apply pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-lg border
+           px-3.5 py-2.5 text-sm shadow-overlay;
+  }
+
+  /* Phone and tablet quick navigation. */
+  .bottom-nav {
+    @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur;
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .bottom-nav-link {
+    @apply relative flex h-[3.75rem] flex-col items-center justify-center gap-1 text-[0.6875rem]
+           font-medium text-slate-500 transition-colors hover:text-brand-700
+           focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600;
+  }
+  .bottom-nav-link-active {
+    @apply font-semibold text-brand-700;
+  }
+  .bottom-nav-link-active::before {
+    content: "";
+    @apply absolute inset-x-5 top-0 h-[3px] rounded-b bg-accent-400;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3b. Installed app: launch screen and page-loading bar
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* templates/pwa/launch.html - continues Android's navy launch screen. */
+  .launch-screen {
+    @apply flex min-h-dvh flex-col bg-brand-950 font-sans text-brand-100;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .launch-body {
+    @apply flex flex-1 flex-col items-center justify-center px-6 text-center;
+  }
+  .launch-mark {
+    @apply relative grid size-36 place-items-center;
+    animation: launch-in 400ms ease-out both;
+  }
+  .launch-seal {
+    @apply relative size-28 rounded-full;
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
+  }
+  /* A ring turning round the seal: the loading indicator itself. */
+  .launch-ring {
+    @apply absolute inset-0 rounded-full border-[3px] border-white/10 border-t-accent-400;
+    animation: launch-spin 0.9s linear infinite;
+  }
+  .launch-title {
+    @apply mt-7 text-2xl font-bold tracking-tight text-white;
+    animation: launch-in 400ms 80ms ease-out both;
+  }
+  .launch-subtitle {
+    @apply mt-1.5 max-w-xs text-sm text-brand-300;
+    animation: launch-in 400ms 120ms ease-out both;
+  }
+  .launch-progress {
+    @apply mt-8 h-1 w-44 overflow-hidden rounded-full bg-white/10;
+  }
+  .launch-progress span {
+    @apply block h-full w-2/5 rounded-full bg-accent-400;
+    animation: launch-slide 1.2s ease-in-out infinite;
+  }
+  .launch-status {
+    @apply mt-3 min-h-5 text-meta text-brand-300;
+  }
+  .launch-retry {
+    @apply mt-4 rounded-md border border-white/25 px-4 py-2 text-sm font-semibold text-white
+           hover:bg-white/10;
+  }
+  .launch-footer {
+    @apply px-6 pb-6 text-center text-[0.6875rem] leading-snug text-brand-400;
+  }
+
+  /* Installed app only: a thin bar along the top while the next page loads.
+     A browser tab shows its own; the app window has none, so without this a
+     tap on a slow connection looks like nothing happened. Shown by pwa.js. */
+  .page-progress {
+    @apply pointer-events-none fixed inset-x-0 top-0 z-100 h-[3px] overflow-hidden;
+  }
+  .page-progress span {
+    @apply block h-full bg-accent-400;
+    width: 0;
+    animation: page-progress 8s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+  }
+}
+
+@keyframes launch-spin { to { transform: rotate(360deg); } }
+@keyframes launch-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+@keyframes launch-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes page-progress {
+  0% { width: 0; }
+  20% { width: 45%; }
+  100% { width: 92%; }
+}
+
+/* --------------------------------------------------------------------------
+   3a. Touch screens and installed-app windows
+   -------------------------------------------------------------------------- */
+
+/* Fingers, not cursors: 44px targets (Apple HIG / WCAG 2.5.5) wherever the
+   primary pointer is coarse. Desktop density is left exactly as it was. */
+@media (pointer: coarse) {
+  .btn { min-height: 2.75rem; }
+  .btn-sm { min-height: 2.25rem; }
+  .form-input, .form-select { min-height: 2.75rem; }
+  .nav-link { @apply py-2.5; }
+  .table-sort { @apply py-1.5; }
+
+  /* iOS zooms the whole page into any field whose text is under 16px, and
+     does not zoom back out. 16px on touch screens stops it. */
+  .form-input, .form-select, .form-textarea,
+  input[type="search"], input[type="text"], select, textarea {
+    font-size: 1rem;
+  }
+}
+
+@layer base {
+  /* A table, a code or a long word that overflows scrolls inside its own
+     .table-wrap; it never drags the whole page sideways on a phone. `clip`
+     rather than `hidden`, so the sticky header and sidebar still stick. */
+  body { overflow-x: clip; }
+
+  /* With viewport-fit=cover (base.html) the page runs under an iPhone's
+     rounded corners and notch in landscape; keep the content out of them. */
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  #sidebar { padding-left: env(safe-area-inset-left); }
+}
+
+/* Inside an installed app window there is no browser address bar, so the
+   sticky header sits under the status bar on a notched phone. */
+@media (display-mode: standalone) {
+  .pwa-safe-top, body > header.sticky { padding-top: env(safe-area-inset-top); }
+  /* Tapping a link should not flash grey, as it never does in a native app. */
+  a, button { -webkit-tap-highlight-color: transparent; }
 }
 
 /* --------------------------------------------------------------------------

@@ -12,7 +12,7 @@
 {% endcomment %}
 
 {% block content %}
-  <form method="post" enctype="multipart/form-data" novalidate class="max-w-4xl">
+  <form method="post" enctype="multipart/form-data" novalidate class="max-w-4xl" data-once{% if loading_title %} data-loading-title="{{ loading_title }}"{% endif %}{% if loading_note %} data-loading-note="{{ loading_note }}"{% endif %}>
     {% csrf_token %}
 
     {% if form.non_field_errors %}

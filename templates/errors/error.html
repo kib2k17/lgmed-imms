@@ -11,7 +11,7 @@
    icon declared.
   {% endcomment %}
   <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
-  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  {% include "includes/pwa_head.html" %}
   <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
 </head>
 <body class="flex h-full flex-col bg-slate-100 font-sans">

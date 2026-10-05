@@ -24,6 +24,8 @@ from pathlib import Path
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+
+from core.testing import close_response
 from django.urls import reverse
 
 from accounts.models import Role, Section, User
@@ -661,14 +663,14 @@ class PublicDocumentTests(PPATestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(b"".join(response.streaming_content),
                          b"A clean regional summary.")
-        response.close()
+        close_response(response)
 
     def test_withdrawing_the_parent_stops_the_download(self):
         self.clear_for_release(self.document)
         self.publish_chain(self.program)
         served = self.client.get(self.url())
         self.assertEqual(served.status_code, 200)
-        served.close()
+        close_response(served)
 
         self.program.unpublish(self.publisher)
         self.assertEqual(self.client.get(self.url()).status_code, 404)
@@ -685,7 +687,7 @@ class PublicDocumentTests(PPATestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Cache-Control"], "private, no-store, max-age=0")
-        response.close()
+        close_response(response)
 
 
 # ---------------------------------------------------------------------------
@@ -1567,7 +1569,7 @@ class LateAttachmentTests(PPATestCase):
         self.client.logout()
         response = self.client.get(self.photo.public_url)
         self.assertEqual(response.status_code, 200)
-        response.close()
+        close_response(response)
 
     def test_the_review_screen_offers_the_publisher_the_button(self):
         self.clear_for_release(self.photo)

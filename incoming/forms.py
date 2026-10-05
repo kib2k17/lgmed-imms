@@ -35,7 +35,7 @@ class IncomingDocumentForm(GovModelForm):
         error_messages = {
             "docket_number": {
                 "unique": (
-                    "A document with this docket number has already been "
+                    "A document with this DNS number has already been "
                     "recorded. Search the register for it before recording it "
                     "again."
                 ),

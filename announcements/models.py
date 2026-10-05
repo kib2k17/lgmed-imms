@@ -48,7 +48,7 @@ class Announcement(TimeStampedModel):
 
     title = models.CharField("headline", max_length=255)
     slug = models.SlugField(
-        max_length=280,
+        max_length=255,
         unique=True,
         blank=True,
         help_text="Left blank, this is generated from the headline.",
@@ -132,7 +132,7 @@ class Announcement(TimeStampedModel):
         constraint - a communications officer should not have to invent a
         different title just to get a record saved.
         """
-        base = slugify(self.title)[:250] or "announcement"
+        base = slugify(self.title)[:240] or "announcement"
         candidate = base
         others = Announcement.objects.exclude(pk=self.pk)
         suffix = 2

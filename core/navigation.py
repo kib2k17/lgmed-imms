@@ -2,8 +2,11 @@
 The LGMED-iMMS sidebar is defined once, here.
 
 Each entry declares the permission attribute (on the user model) that gates it.
-Hiding a link is a usability courtesy only - the view itself re-checks access,
-so a user cannot reach a module by typing its URL.
+On top of that, the System Administrator may close a module to a role or to one
+account from Menu Permissions (accounts/menu_access.py). A closed module is left
+out here and its URLs are refused by `accounts.middleware.ModuleAccessMiddleware`,
+and the views still re-check their own capability, so a user cannot reach a
+module by typing its URL.
 
 The active item is resolved from the matched URL's namespace, not from the
 path. Matching on the path meant that wherever a module happened to sit in the
@@ -20,12 +23,17 @@ NAV_SECTIONS = [
         "items": [
             {"key": "dashboard", "label": "Dashboard", "icon": "dashboard",
              "url_name": "core:dashboard", "url_names": {"core:dashboard"}},
-            {"key": "programs", "label": "Programs, Projects & Activities",
+            # `title` carries the full name for the tooltip where `label` is
+            # the abbreviation the 256px column can actually show. A label
+            # that has to be truncated to fit is not a label.
+            {"key": "programs", "label": "Programs & Projects",
+             "title": "Programs, Projects & Activities (PPAs)",
              "icon": "programs", "url_name": "programs:list",
              "namespace": "programs"},
             {"key": "ppa_queue", "label": "PPA Review Queue",
              "icon": "shield", "url_name": "programs:queue",
-             "requires": "can_review_ppa", "url_names": {"programs:queue"}},
+             "requires": "can_review_ppa",
+             "url_names": {"programs:queue", "programs:document_review"}},
             {"key": "ppa_authorities", "label": "Publication Authorities",
              "icon": "lock", "url_name": "programs:authority_list",
              "requires": "can_review_ppa",
@@ -37,6 +45,12 @@ NAV_SECTIONS = [
              "url_name": "monitoring:list", "namespace": "monitoring"},
             {"key": "incoming", "label": "Incoming Monitoring", "icon": "inbox",
              "url_name": "incoming:list", "namespace": "incoming"},
+            {"key": "outgoing", "label": "Outgoing Monitoring", "icon": "mail",
+             "url_name": "outgoing:list", "namespace": "outgoing"},
+            {"key": "datasync", "label": "Data Sync", "icon": "upload",
+             "title": "Sync the Incoming and Outgoing registers from Excel",
+             "url_name": "datasync:home", "namespace": "datasync",
+             "requires": "can_encode"},
             {"key": "lgus", "label": "LGU Management", "icon": "lgu",
              "url_name": "lgus:list", "namespace": "lgus"},
             {"key": "services", "label": "Frontline Services", "icon": "services",
@@ -46,7 +60,8 @@ NAV_SECTIONS = [
     {
         "label": "Information",
         "items": [
-            {"key": "updates", "label": "Updates & Accomplishments",
+            {"key": "updates", "label": "Accomplishments",
+             "title": "Updates & Accomplishments",
              "icon": "check-circle", "url_name": "updates:dashboard",
              "namespace": "updates"},
             {"key": "announcements", "label": "Announcements", "icon": "announcements",
@@ -81,12 +96,37 @@ NAV_SECTIONS = [
                  "accounts:user_password", "accounts:user_activation",
                  "accounts:role_list",
              }},
+            # Which of the modules above each role and account is offered.
+            # The System Administrator's alone: an Administrator who could
+            # close modules to other Administrators could close them to the
+            # System Administrator's deputies too.
+            {"key": "menu_permissions", "label": "Menu Permissions",
+             "title": "Sidebar and module access by role and by account",
+             "icon": "key", "url_name": "accounts:menu_permissions",
+             "requires": "is_superadmin",
+             "url_names": {
+                 "accounts:menu_permissions", "accounts:user_menu_permissions",
+             }},
             {"key": "settings", "label": "System Settings", "icon": "settings",
              "url_name": "administration:settings", "requires": "can_administer",
              "namespace": "administration"},
             {"key": "audit", "label": "Audit Logs", "icon": "audit",
              "url_name": "audit:list", "requires": "can_administer",
              "namespace": "audit"},
+        ],
+    },
+    # Pinned below the scrolling list, at the foot of the sidebar, so the
+    # Division's own innovations are one reach away from every page rather
+    # than scrolled past under Administration.
+    {
+        "label": "LGMED Innovation Action",
+        "pinned": True,
+        "items": [
+            {"key": "esira", "label": "e-SIRA",
+             "title": "e-SIRA - Electronic Signature, Identification, Routing and Approval",
+             "subtitle": "e-Signature & Routing",
+             "icon": "signature", "url_name": "esira:dashboard",
+             "namespace": "esira", "requires": "can_use_esira"},
         ],
     },
 ]
@@ -114,14 +154,28 @@ def _allowed(user, requires):
     return bool(getattr(user, requires, False))
 
 
-def _matches(item, namespace, view_name):
-    if namespace and namespace == item.get("namespace"):
-        return True
-    return view_name in item.get("url_names", ())
+def _resolve_match(items, namespace, view_name):
+    """Pick the item a resolved URL belongs to, most specific claim first.
+
+    An item that names the exact view wins over one that claims the whole
+    namespace. Both PPA Review Queue and Publication Authorities live under
+    the programs namespace, so a namespace-first match lit up Programs,
+    Projects & Activities on every one of their pages.
+    """
+    exact = next(
+        (i for i in items if view_name in i.get("url_names", ())), None
+    )
+    if exact is not None:
+        return exact
+    if not namespace:
+        return None
+    return next((i for i in items if namespace == i.get("namespace")), None)
 
 
 def build_sidebar(user, active_key=None, resolver_match=None, current_path=""):
     """Return the sidebar sections this user may see, with the active item flagged."""
+    from accounts.menu_access import can_access_module
+
     visible = []
     for section in NAV_SECTIONS:
         if not _allowed(user, section.get("requires")):
@@ -130,13 +184,19 @@ def build_sidebar(user, active_key=None, resolver_match=None, current_path=""):
         for item in section["items"]:
             if not _allowed(user, item.get("requires")):
                 continue
+            if not can_access_module(user, item["key"]):
+                continue
             try:
                 url = reverse(item["url_name"])
             except NoReverseMatch:
                 continue
             items.append({**item, "url": url, "is_active": False})
         if items:
-            visible.append({"label": section["label"], "items": items})
+            visible.append({
+                "label": section["label"],
+                "items": items,
+                "pinned": section.get("pinned", False),
+            })
 
     all_items = [item for section in visible for item in section["items"]]
     match = None
@@ -145,13 +205,8 @@ def build_sidebar(user, active_key=None, resolver_match=None, current_path=""):
         match = next((i for i in all_items if i["key"] == active_key), None)
 
     if match is None and resolver_match is not None:
-        match = next(
-            (
-                item
-                for item in all_items
-                if _matches(item, resolver_match.namespace, resolver_match.view_name)
-            ),
-            None,
+        match = _resolve_match(
+            all_items, resolver_match.namespace, resolver_match.view_name
         )
 
     if match is None and resolver_match is None and current_path:

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <form method="post" novalidate class="max-w-2xl">
+    {% csrf_token %}
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Connect your authenticator app</h2>
+          <p class="mt-0.5 text-meta text-slate-500">
+            Once this is on, signing in needs your password and a code from your phone.
+          </p>
+        </div>
+      </div>
+      <div class="card-body space-y-6">
+        {% include "accounts/includes/mfa_enrol.html" %}
+        <div class="max-w-xs">
+          {% include "accounts/includes/mfa_code_field.html" with field=form.code %}
+        </div>
+      </div>
+    </section>
+
+    <div class="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-5">
+      <a href="{% url 'accounts:profile' %}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% icon "shield" "size-4" %}Turn on two-step verification
+      </button>
+    </div>
+  </form>
+{% endblock %}

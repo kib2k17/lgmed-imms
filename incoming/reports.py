@@ -52,7 +52,7 @@ def _average(values):
 # ---------------------------------------------------------------------------
 
 DOCUMENT_HEADERS = [
-    "Docket number", "Subject", "Document type", "Source / office",
+    "LGMED code", "DNS number", "Subject", "Document type", "Source / office",
     "Date received", "Status", "Priority", "Focal person", "Date assigned",
     "Due date", "Date completed",
 ]
@@ -60,6 +60,7 @@ DOCUMENT_HEADERS = [
 
 def _document_row(document):
     return [
+        document.lgmed_code or "",
         document.docket_number,
         document.subject,
         document.document_type.name,
@@ -86,7 +87,7 @@ def _for_review(queryset):
     today = timezone.localdate()
     return {
         "headers": [
-            "Docket number", "Subject", "Document type", "Source / office",
+            "DNS number", "Subject", "Document type", "Source / office",
             "Date received", "Days waiting", "Recorded by",
         ],
         "rows": [
@@ -108,11 +109,12 @@ def _pending(queryset):
     rows = queryset.open().exclude(status=IncomingStatus.FOR_REVIEW)
     return {
         "headers": [
-            "Docket number", "Subject", "Status", "Focal person",
+            "LGMED code", "DNS number", "Subject", "Status", "Focal person",
             "Date received", "Date assigned", "Due date", "Days open",
         ],
         "rows": [
             [
+                document.lgmed_code or "",
                 document.docket_number,
                 document.subject,
                 document.display_status_label,
@@ -131,7 +133,7 @@ def _overdue(queryset):
     rows = queryset.overdue()
     return {
         "headers": [
-            "Docket number", "Subject", "Focal person", "Status", "Due date",
+            "DNS number", "Subject", "Focal person", "Status", "Due date",
             "Days overdue", "Last update", "Priority",
         ],
         "rows": [
@@ -156,7 +158,7 @@ def _completed(queryset):
     rows = queryset.completed()
     return {
         "headers": [
-            "Docket number", "Subject", "Focal person", "Date received",
+            "DNS number", "Subject", "Focal person", "Date received",
             "Date assigned", "Date completed", "Days to complete", "Updates",
         ],
         "rows": [
@@ -180,7 +182,7 @@ def _response(queryset):
     rows = queryset.open().filter(assigned_to__isnull=False)
     return {
         "headers": [
-            "Docket number", "Subject", "Focal person", "Status",
+            "DNS number", "Subject", "Focal person", "Status",
             "Acknowledged", "Updates", "Latest action", "Last update",
             "Days since update",
         ],
@@ -205,7 +207,9 @@ def _response(queryset):
 
 
 def _processing_time(queryset):
-    rows = list(queryset.exclude(status=IncomingStatus.FOR_REVIEW))
+    rows = list(
+        queryset.exclude(status__in=(IncomingStatus.FOR_REVIEW, IncomingStatus.IMPORTED))
+    )
     body = [
         [
             document.docket_number,
@@ -226,7 +230,7 @@ def _processing_time(queryset):
     ]
     return {
         "headers": [
-            "Docket number", "Subject", "Focal person", "Date received",
+            "DNS number", "Subject", "Focal person", "Date received",
             "Days to assign", "Days to acknowledge", "Days to complete", "Status",
         ],
         "rows": body,
@@ -244,7 +248,7 @@ def _assignment(queryset):
     rows = queryset.filter(assigned_to__isnull=False)
     return {
         "headers": [
-            "Docket number", "Subject", "Assigned to", "Assigned by",
+            "DNS number", "Subject", "Assigned to", "Assigned by",
             "Date assigned", "Acknowledged", "Instructions", "Status",
         ],
         "rows": [
@@ -433,7 +437,7 @@ def catalogue():
 SORTS = {
     "date_received": "Date received (oldest first)",
     "-date_received": "Date received (newest first)",
-    "docket_number": "Docket number",
+    "docket_number": "DNS number",
     "subject": "Subject",
     "status": "Status",
     "assigned_to__last_name": "Focal person",
@@ -459,6 +463,7 @@ def filtered_queryset(params):
     if term:
         queryset = queryset.filter(
             Q(docket_number__icontains=term)
+            | Q(lgmed_code__icontains=term)
             | Q(subject__icontains=term)
             | Q(source_office__icontains=term)
         )

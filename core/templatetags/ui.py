@@ -140,6 +140,14 @@ def filesize(num_bytes):
 
 
 @register.filter
+def is_pdf(fieldfile):
+    """Whether a stored file can open in the in-system PDF viewer."""
+    from core.files import is_pdf as _is_pdf
+
+    return _is_pdf(fieldfile)
+
+
+@register.filter
 def field_class(bound_field, extra=""):
     """Attach design-system classes to a Django form widget from the template."""
     base = (

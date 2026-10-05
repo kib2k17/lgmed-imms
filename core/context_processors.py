@@ -83,10 +83,25 @@ def site_identity(request):
             "office_hours": content.office_hours,
             "facebook_url": content.facebook_url,
             "has_logo": _LOGO_AVAILABLE,
+            # The running release, for the footer. It belongs to the deployment
+            # rather than to the identity, so it is read from settings and is
+            # not editable from inside the system.
+            "system_version": settings.SYSTEM_VERSION,
         },
         "public_content": content,
         "debug": settings.DEBUG,
     }
+
+
+def privacy_notice(request):
+    """Whether the Data Privacy Act notice is still owed this sign-in."""
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return {"privacy_notice_pending": False}
+
+    from accounts.privacy import is_pending
+
+    return {"privacy_notice_pending": is_pending(request)}
 
 
 def navigation(request):

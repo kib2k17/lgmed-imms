@@ -1,30 +1,3 @@
-"""
-Where this deployment's secrets come from.
-
-No key is ever written into ``settings.py``: that file is committed, so a value
-placed in it lives in the repository history for good and shows up in every
-traceback and screen share of the file. Secrets are read from the process
-environment instead.
-
-The environment alone is awkward on a development machine, though. A Django
-server is very often started by running ``venv/Scripts/python.exe manage.py
-runserver`` directly - from VS Code, a shortcut, a task runner - which never
-executes the activation script that would have set those variables. So the
-environment is topped up from a plain ``key=value`` file kept inside the
-virtualenv itself:
-
-    <venv>/lgmed.env
-
-``sys.prefix`` points at the virtualenv whenever its interpreter is the one
-running, activated or not, so the file is found either way. ``venv/`` is
-excluded by ``.gitignore``, so the file never reaches the repository - and it
-is deleted along with the virtualenv, so a rebuilt environment needs it written
-again (see the README).
-
-Real environment variables always win over the file. That is what lets a
-production host set them the ordinary way and ignore all of this.
-"""
-
 import os
 import socket
 import sys
@@ -39,12 +12,7 @@ def venv_env_path() -> Path:
 
 
 def load_venv_env(path: Path | None = None) -> list[str]:
-    """
-    Copy ``<venv>/lgmed.env`` into ``os.environ`` and return the names read.
 
-    Never raises: a missing or unreadable file simply means the process runs on
-    whatever the real environment provides.
-    """
     path = path or venv_env_path()
     try:
         text = path.read_text(encoding="utf-8")
@@ -99,27 +67,7 @@ def env_list(name: str, default: str = "") -> list[str]:
 
 
 def local_ipv4_addresses() -> list[str]:
-    """
-    Every IPv4 address this machine currently answers on.
 
-    The address a colleague types into their browser is handed out by DHCP, so
-    it changes when the lease expires, when the laptop rejoins, and whenever it
-    moves between office networks. Writing it into a settings file means that
-    file is wrong by the following morning - and the symptom, a bare 400
-    "Invalid HTTP_HOST header", says nothing about which of the two addresses
-    is stale. Asking the machine is the only answer that stays true.
-
-    Two sources, because neither is sufficient alone. The host lookup finds
-    every adapter, including one that is up but not carrying the default route;
-    the UDP socket finds the address the default route actually uses, which is
-    the one the host lookup misses on a machine whose name does not resolve.
-    No packet is ever sent - a datagram socket only has to pick a local
-    interface for the route to answer.
-
-    Loopback and APIPA (169.254.x, the address Windows invents when DHCP fails)
-    are dropped: neither is reachable from another machine, and listing them
-    would only make a broken network look configured.
-    """
     found: list[str] = []
 
     try:

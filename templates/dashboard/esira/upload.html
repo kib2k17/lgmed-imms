@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{% url 'esira:list' %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Back to documents</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+
+  <div class="grid gap-4 xl:grid-cols-3">
+    <form method="post" enctype="multipart/form-data" class="card xl:col-span-2" novalidate>
+      {% csrf_token %}
+      <div class="card-header">
+        <h2 class="card-title">Document</h2>
+      </div>
+      <div class="card-body space-y-5">
+        {% if form.non_field_errors %}
+          <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
+            {% for error in form.non_field_errors %}<p class="flex items-start gap-2">{% icon "error" "size-4 mt-0.5 shrink-0" %}{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">{% include "components/bound_field.html" with field=form.title %}</div>
+          <div>{% include "components/bound_field.html" with field=form.document_type %}</div>
+          <div class="sm:col-span-2">{% include "components/bound_field.html" with field=form.description %}</div>
+        </div>
+
+        <fieldset class="border-t border-slate-200 pt-4">
+          <legend class="form-label">{{ form.mode.label }}</legend>
+          <div class="mt-1 grid gap-2 sm:grid-cols-2">
+            {% for choice in form.mode %}
+              <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+                {{ choice.tag }}
+                <span class="flex items-center gap-2 font-medium text-slate-800">
+                  {% if forloop.first %}{% icon "upload" "size-4 text-brand-700" %}{% else %}{% icon "print" "size-4 text-brand-700" %}{% endif %}
+                  {{ choice.choice_label }}
+                </span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <div data-upload-mode="upload">{% include "components/bound_field.html" with field=form.pdf_file %}</div>
+        <div data-upload-mode="scan">{% include "components/bound_field.html" with field=form.scan_images %}</div>
+      </div>
+      <div class="card-footer flex justify-end gap-2">
+        <a href="{% url 'esira:list' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">{% icon "upload" "size-4" %}Upload and prepare</button>
+      </div>
+    </form>
+
+    <aside class="card h-fit" aria-labelledby="how-heading">
+      <div class="card-header"><h2 id="how-heading" class="card-title">What happens next</h2></div>
+      <ol class="card-body space-y-3 text-sm text-slate-700">
+        <li class="flex gap-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">1</span>The file is stored as <strong>version 1</strong>, with its SHA-256 fingerprint. It is never overwritten.</li>
+        <li class="flex gap-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">2</span>In the signing workspace, drag a signature box to where each person signs, on any page.</li>
+        <li class="flex gap-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">3</span>Sign it yourself, or route it to the signers and approvers in order.</li>
+        <li class="flex gap-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">4</span>Each person signs with their own PNPKI certificate. Every signature is added as a new version; earlier signatures stay valid.</li>
+      </ol>
+      <p class="border-t border-slate-100 px-4 py-3 text-meta text-slate-500 sm:px-5">
+        A signature box only marks <em>where</em> a signature goes. The document is
+        signed only when its signer applies their PNPKI digital signature.
+      </p>
+    </aside>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var radios = document.querySelectorAll('input[name="mode"]');
+    var panels = document.querySelectorAll("[data-upload-mode]");
+    function sync() {
+      var mode = (document.querySelector('input[name="mode"]:checked') || {}).value || "upload";
+      panels.forEach(function (panel) { panel.hidden = panel.getAttribute("data-upload-mode") !== mode; });
+    }
+    radios.forEach(function (radio) { radio.addEventListener("change", sync); });
+    sync();
+  })();
+</script>
+{% endblock %}

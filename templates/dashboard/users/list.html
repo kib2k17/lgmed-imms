@@ -32,9 +32,7 @@
     <tr>
       <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
         <span class="flex items-center gap-2.5">
-          <span aria-hidden="true" class="grid size-8 shrink-0 place-items-center rounded-md bg-brand-100 text-[0.6875rem] font-bold text-brand-800">
-            {{ record.get_initials }}
-          </span>
+          {% include "accounts/includes/avatar.html" with person=record size="size-8 text-[0.6875rem]" %}
           <span class="min-w-0">
             <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.get_display_name }}</a>
             {% if record.pk == user.pk %}

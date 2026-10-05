@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% comment %}
+ Every file the register holds: each document's file and earlier versions, and
+ every file captured from Incoming and Outgoing Monitoring. Built by
+ documents.views.FileLibraryView, under the documents' own access rules.
+{% endcomment %}
+
+{% block content %}
+  {% include "dashboard/documents/_tabs.html" with tab="files" %}
+
+  <form method="get" class="card mb-4 no-print" role="search" aria-label="Search the files">
+    <div class="card-body grid gap-3 sm:grid-cols-[1fr_16rem_auto] sm:items-end">
+      <div>
+        <label for="files-q" class="mb-1 block text-meta font-semibold text-slate-700">Search</label>
+        <input id="files-q" type="search" name="q" value="{{ selected.q }}"
+               placeholder="File name, LGMED code, control number, title..."
+               class="form-input">
+      </div>
+      <div>
+        <label for="files-source" class="mb-1 block text-meta font-semibold text-slate-700">Source</label>
+        <select id="files-source" name="source" class="form-select">
+          <option value="">All sources</option>
+          {% for value, label in file_sources %}
+            <option value="{{ value }}" {% if selected.source == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">{% icon "search" "size-4" %}Search</button>
+        {% if selected.q or selected.source %}
+          <a href="{% url 'documents:files' %}" class="btn btn-secondary">Clear</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  <section class="card" aria-labelledby="files-heading">
+    <div class="card-header">
+      <h2 id="files-heading" class="card-title">Files</h2>
+      <p class="text-meta text-slate-500">
+        {{ page_obj.paginator.count }} file{{ page_obj.paginator.count|pluralize }}
+      </p>
+    </div>
+
+    {% if page_obj.object_list %}
+      <ul class="divide-y divide-slate-100">
+        {% for row in page_obj.object_list %}
+          <li class="flex flex-wrap items-start gap-3 px-4 py-3 sm:px-5">
+            <span aria-hidden="true"
+                  class="grid size-10 shrink-0 place-items-center rounded-md text-meta font-bold
+                         {% if row.file_type == 'PDF' %}bg-red-50 text-red-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ row.file_type|default:"FILE"|truncatechars:5 }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium break-all text-slate-900">{{ row.file_name }}</p>
+              <p class="text-meta text-slate-600">
+                {{ row.label }} &middot; <span class="font-medium">{{ row.source }}</span>
+              </p>
+              <p class="text-meta text-slate-500">
+                <a href="{{ row.document.get_absolute_url }}" class="font-medium text-brand-700 hover:underline">{{ row.document.reference_number }}</a>
+                &mdash; {{ row.document.title|truncatechars:80 }}
+              </p>
+              <p class="text-meta text-slate-400">
+                {{ row.uploader }} &middot; {{ row.when|date:"j M Y, g:i A" }}
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              {% if row.file|is_pdf %}
+                {% include "components/pdf_view_button.html" with url=row.view_url title=row.document.reference_number|add:" - "|add:row.file_name download_url=row.download_url btn_class="btn-ghost btn-sm" sr_label=row.file_name %}
+              {% endif %}
+              <a href="{{ row.download_url }}" class="btn btn-ghost btn-sm">
+                {% icon "download" "size-3.5" %}<span class="hidden sm:inline">Download</span>
+                <span class="sr-only">{{ row.file_name }}</span>
+              </a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      {% include "includes/pagination.html" with page_obj=page_obj label="files" %}
+    {% else %}
+      {% if selected.q or selected.source %}
+        {% include "components/empty_state.html" with icon="search" title="No matching files" message="No files match the search. Clear it to see every file." %}
+      {% else %}
+        {% include "components/empty_state.html" with icon="file" title="No files yet" message="Files uploaded to the register, and in Incoming and Outgoing Monitoring, appear here." %}
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

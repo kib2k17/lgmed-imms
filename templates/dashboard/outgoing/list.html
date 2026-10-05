@@ -1,0 +1,70 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block extra_actions %}
+  {% if user.can_encode %}
+    <a href="{% url 'datasync:home' %}?module=outgoing" class="btn btn-secondary">
+      {% icon "upload" "size-4" %}<span class="hidden sm:inline">Sync from Excel</span>
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+    {% include "components/mini_stat.html" with label="Total records" value=summary.total %}
+    {% include "components/mini_stat.html" with label="For action" value=summary.action tone="warning" %}
+    {% include "components/mini_stat.html" with label="Assigned to me" value=summary.mine tone="info" %}
+    {% include "components/mini_stat.html" with label="Not yet sent" value=summary.unsent tone="warning" %}
+    {% include "components/mini_stat.html" with label="Action completed" value=summary.completed tone="success" %}
+  </div>
+
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="control_code" label="LGMED code" %}
+  <th scope="col">Subject</th>
+  {% include "components/th_sort.html" with field="date_sent" label="Date" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="hidden lg:table-cell">Sent to</th>
+  <th scope="col" class="hidden xl:table-cell">Focal person</th>
+  <th scope="col">Status</th>
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.control_code }}</a>
+      </th>
+      <td>
+        {{ record.subject|default:"(No subject)"|truncatechars:70 }}
+        {% if record.communication_type %}
+          <span class="block text-meta text-slate-500">{{ record.communication_type }}</span>
+        {% endif %}
+      </td>
+      <td class="hidden whitespace-nowrap sm:table-cell">
+        {% if record.date_sent %}
+          <time datetime="{{ record.date_sent|date:'Y-m-d' }}">{{ record.date_sent|date:"j M Y" }}</time>
+        {% else %}
+          <span class="text-slate-400">Not yet sent</span>
+        {% endif %}
+      </td>
+      <td class="hidden lg:table-cell">{{ record.sent_to|default:"-"|truncatechars:50 }}</td>
+      <td class="hidden xl:table-cell">
+        {% if record.incoming %}
+          {{ record.incoming.assigned_to.get_display_name|default:"-" }}
+        {% else %}
+          <span class="text-slate-400">Register</span>
+        {% endif %}
+      </td>
+      <td>{% status_badge record.display_status record.display_status_label %}</td>
+      <td class="text-right whitespace-nowrap">
+        <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+          {% icon "view" "size-3.5" %}<span class="hidden sm:inline">Open</span>
+          <span class="sr-only">{{ record.control_code }}</span>
+        </a>
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

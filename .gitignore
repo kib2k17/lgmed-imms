@@ -12,6 +12,10 @@ acounts.txt
 
 # Django
 db.sqlite3
+# The SQLite export made when the system moved to MySQL. Same contents as the
+# database above - user records, the audit trail - so it is ignored for the
+# same reason, and in plain text rather than a binary file.
+db-export.json
 media/
 staticfiles/
 

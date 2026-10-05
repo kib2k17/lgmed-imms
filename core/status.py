@@ -103,6 +103,8 @@ STATUS_MAP = {
     "not_started": "neutral",
     "not_assessed": "neutral",
     "permanent": "neutral",
+    # Incoming: brought in from the spreadsheet register, not yet in the workflow.
+    "imported": "neutral",
 }
 
 

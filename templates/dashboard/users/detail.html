@@ -8,6 +8,11 @@
   <a href="{% url 'accounts:user_password' record.pk %}" class="btn btn-secondary">
     {% icon "lock" "size-4" %}<span class="hidden sm:inline">Reset password</span>
   </a>
+  {% if request.user.is_superadmin %}
+    <a href="{% url 'accounts:user_menu_permissions' record.pk %}" class="btn btn-secondary">
+      {% icon "key" "size-4" %}<span class="hidden sm:inline">Menu permissions</span>
+    </a>
+  {% endif %}
   <a href="{% url 'accounts:user_update' record.pk %}" class="btn btn-primary">
     {% icon "edit" "size-4" %}Edit
   </a>
@@ -74,6 +79,13 @@
             <div>
               <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Contact number</dt>
               <dd class="mt-1 text-sm text-slate-900">{{ record.contact_number|default:"Not recorded" }}</dd>
+            </div>
+            <div>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Initials for LGMED codes</dt>
+              <dd class="mt-1 text-sm text-slate-900">
+                {{ record.get_code_initials }}
+                {% if not record.code_initials %}<span class="text-meta text-slate-500">(from the name)</span>{% endif %}
+              </dd>
             </div>
             <div>
               <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Account created</dt>
@@ -144,9 +156,7 @@
         </div>
         <div class="card-body">
           <div class="flex items-center gap-3">
-            <span aria-hidden="true" class="grid size-12 shrink-0 place-items-center rounded-md bg-brand-100 text-sm font-bold text-brand-800">
-              {{ record.get_initials }}
-            </span>
+            {% include "accounts/includes/avatar.html" with person=record size="size-12 text-sm" %}
             <div class="min-w-0">
               <p class="text-sm font-semibold text-slate-900">{{ record.get_role_display }}</p>
               <p class="text-meta text-slate-500">Assigned role</p>
@@ -178,6 +188,40 @@
               Change them by changing the account's role.
             </span>
           </p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="mfa-heading">
+        <div class="card-header">
+          <h2 id="mfa-heading" class="card-title">Two-Step Verification</h2>
+          {% if record.mfa_enabled %}
+            {% status_badge "active" "On" %}
+          {% elif record.mfa_required %}
+            {% status_badge "pending" "Not set up" %}
+          {% else %}
+            {% status_badge "inactive" "Off" %}
+          {% endif %}
+        </div>
+        <div class="card-body text-sm text-slate-700">
+          {% if record.mfa_enabled %}
+            <p>
+              Authenticator app set up {{ record.mfa_device.confirmed_at|date:"j F Y" }}.
+              {{ mfa_recovery_left }} of 10 recovery codes left.
+            </p>
+            {% if not is_self %}
+              <p class="mt-2 text-meta text-slate-500">
+                If {{ record.get_display_name }} has lost their phone and their
+                recovery codes, reset it so they can set it up again.
+              </p>
+              <button type="button" class="btn btn-secondary btn-sm mt-3" data-dialog-open="mfa-reset">
+                {% icon "phone" "size-3.5" %}Reset two-step verification
+              </button>
+            {% endif %}
+          {% elif record.mfa_required %}
+            <p>Required for this role. They will be asked to set it up at their next sign-in.</p>
+          {% else %}
+            <p>Not turned on. The account holder can turn it on from My Profile.</p>
+          {% endif %}
         </div>
       </section>
     </div>
@@ -219,6 +263,43 @@
           <button type="submit" class="btn {% if record.is_active %}btn-danger{% else %}btn-primary{% endif %}">
             {% if record.is_active %}Deactivate account{% else %}Reactivate account{% endif %}
           </button>
+        </form>
+      </div>
+    </dialog>
+  {% endif %}
+
+  {% if record.mfa_enabled and not is_self %}
+    <dialog id="mfa-reset" aria-labelledby="mfa-reset-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <div class="p-5">
+        <div class="flex items-start gap-3.5">
+          <span aria-hidden="true" class="grid size-10 shrink-0 place-items-center rounded-md bg-red-50 text-red-700">
+            {% icon "warning" "size-5" %}
+          </span>
+          <div class="min-w-0">
+            <h2 id="mfa-reset-title" class="text-card-title font-semibold text-slate-900">
+              Reset two-step verification?
+            </h2>
+            <p class="mt-1.5 text-sm text-slate-600">
+              {{ record.get_display_name }}'s authenticator app and recovery codes
+              will stop working, and they will sign in with their password alone
+              {% if record.mfa_required %}until they set it up again at their next sign-in{% else %}until they turn it on again{% endif %}.
+            </p>
+            <p class="mt-2 text-sm text-slate-600">
+              Only do this after confirming, in person or by phone, that the
+              request really comes from them.
+            </p>
+            <p class="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta text-slate-600">
+              This change is written to the audit log against your account.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+        <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+        <form method="post" action="{% url 'accounts:user_mfa_reset' record.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Reset two-step verification</button>
         </form>
       </div>
     </dialog>

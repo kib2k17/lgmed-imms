@@ -2,10 +2,30 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
+
+from core import pwa
 
 urlpatterns = [
+    # The Django admin has a sign-in form of its own, which knows nothing of
+    # two-step verification. Sending it to the system's sign-in page (with its
+    # ?next=) keeps a single way in, so there is no password-only side door.
+    path(
+        "django-admin/login/",
+        RedirectView.as_view(pattern_name="accounts:login", query_string=True),
+    ),
     path("django-admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
+
+    # Short alias for the login page.
+    #
+    # Nothing on the public site links to the login any more, so staff reach
+    # the system by typing the address. "/staff" is what gets dictated over the
+    # phone and bookmarked; "/accounts/login/" remains the canonical URL that
+    # LOGIN_URL, the form action and every `?next=` redirect use. Both spellings
+    # are registered so a missing trailing slash does not 404.
+    path("staff", RedirectView.as_view(pattern_name="accounts:login")),
+    path("staff/", RedirectView.as_view(pattern_name="accounts:login")),
 
     # Phase 2 modules.
     #
@@ -15,6 +35,8 @@ urlpatterns = [
     path("app/programs/", include("programs.urls")),
     path("app/monitoring/", include("monitoring.urls")),
     path("app/incoming/", include("incoming.urls")),
+    path("app/outgoing/", include("outgoing.urls")),
+    path("app/sync/", include("datasync.urls")),
     path("app/lgus/", include("lgus.urls")),
     path("app/services/", include("services.urls")),
     path("app/documents/", include("documents.urls")),
@@ -30,6 +52,17 @@ urlpatterns = [
     # Phase 4
     path("app/notifications/", include("notifications.urls")),
     path("app/analytics/", include("analytics.urls")),
+
+    # LGMED Innovation Action
+    path("app/esira/", include("esira.urls")),
+
+    # Installable app (core/pwa.py). At the root, not under /static/ or /app/:
+    # a service worker only controls the URLs below the one it was served
+    # from, and the manifest and offline page are fetched without a sign-in.
+    path("manifest.webmanifest", pwa.manifest, name="pwa_manifest"),
+    path("sw.js", pwa.service_worker, name="pwa_service_worker"),
+    path("offline/", pwa.offline, name="pwa_offline"),
+    path("launch/", pwa.launch, name="pwa_launch"),
 
     path("", include("core.urls")),
 ]

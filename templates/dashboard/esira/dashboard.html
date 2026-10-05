@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% load static ui humanize %}
+
+{% block page_actions %}
+  <a href="{% url 'esira:list' %}" class="btn btn-secondary">
+    {% icon "file" "size-4" %}<span class="hidden sm:inline">All documents</span>
+  </a>
+  {% if user.can_upload_esira %}
+    <a href="{% url 'esira:upload' %}" class="btn btn-primary">
+      {% icon "upload" "size-4" %}Upload / Scan Document
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+  {% include "dashboard/esira/_setup_notice.html" %}
+
+  {% if setup.available and not has_usable_certificate %}
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-sm text-brand-900">
+      <p class="flex items-start gap-2.5">
+        {% icon "key" "size-4 mt-0.5 shrink-0" %}
+        <span>
+          You have no verified PNPKI certificate yet. You can still approve,
+          review and acknowledge documents; to <strong>sign</strong>, register
+          your certificate and have an administrator verify it.
+        </span>
+      </p>
+      <a href="{% url 'esira:certificates' %}" class="btn btn-secondary btn-sm">{% icon "key" "size-3.5" %}My certificates</a>
+    </div>
+  {% endif %}
+
+  {# ---- Workflow at a glance ---------------------------------------- #}
+  <ol class="mb-5 hidden grid-cols-6 overflow-hidden rounded-lg border border-slate-200 bg-white text-meta md:grid" aria-label="The e-SIRA workflow">
+    <li class="flex items-center gap-2 border-r border-slate-100 px-3 py-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">1</span><span class="font-medium text-slate-700">Upload or scan</span></li>
+    <li class="flex items-center gap-2 border-r border-slate-100 px-3 py-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">2</span><span class="font-medium text-slate-700">Place signature boxes</span></li>
+    <li class="flex items-center gap-2 border-r border-slate-100 px-3 py-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">3</span><span class="font-medium text-slate-700">Route to signers</span></li>
+    <li class="flex items-center gap-2 border-r border-slate-100 px-3 py-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">4</span><span class="font-medium text-slate-700">Sign with PNPKI</span></li>
+    <li class="flex items-center gap-2 border-r border-slate-100 px-3 py-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">5</span><span class="font-medium text-slate-700">Approve &amp; track</span></li>
+    <li class="flex items-center gap-2 px-3 py-2.5"><span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.625rem] font-bold text-white">6</span><span class="font-medium text-slate-700">Complete &amp; download</span></li>
+  </ol>
+
+  {# ---- Figures ------------------------------------------------------ #}
+  <section aria-labelledby="figures-heading" class="mb-5" data-esira-stats="{% url 'esira:stats' %}?scope={{ scope }}">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h2 id="figures-heading" class="text-section-title font-semibold text-slate-900">
+        {% if scope == "office" %}Office-wide figures{% else %}My figures{% endif %}
+      </h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <p class="text-meta text-slate-500" role="status" aria-live="polite">
+          As of <span data-esira-asof>{{ as_of|date:"j F Y, g:i A" }}</span> &middot; refreshes every minute
+        </p>
+        {% if user.can_oversee_esira %}
+          <div class="inline-flex rounded-md border border-slate-300 bg-white p-0.5 text-meta font-medium" role="group" aria-label="Figures scope">
+            <a href="?scope=mine" class="rounded px-2.5 py-1 {% if scope == 'mine' %}bg-brand-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}" {% if scope == "mine" %}aria-current="true"{% endif %}>Mine</a>
+            <a href="?scope=office" class="rounded px-2.5 py-1 {% if scope == 'office' %}bg-brand-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}" {% if scope == "office" %}aria-current="true"{% endif %}>Whole office</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      {% for card in cards %}
+        {% if forloop.counter0|divisibleby:3 %}
+          {% if not forloop.first %}</ul>{% endif %}
+          <p class="text-meta font-semibold tracking-wide text-slate-500 uppercase">
+            {% if forloop.counter0 == 0 %}Right now{% elif forloop.counter0 == 3 %}All time{% else %}This week (last 7 days){% endif %}
+          </p>
+          <ul class="grid gap-3 sm:grid-cols-3">
+        {% endif %}
+        <li>
+          <a href="{{ card.url }}"
+             class="flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-brand-300 hover:bg-brand-50/40">
+            <span class="flex items-start justify-between gap-2">
+              <span class="text-meta font-semibold tracking-wide text-slate-500 uppercase">{{ card.label }}</span>
+              <span aria-hidden="true"
+                    class="grid size-8 shrink-0 place-items-center rounded-md {% if card.tone == 'success' %}bg-green-50 text-green-700{% elif card.tone == 'warning' %}bg-amber-50 text-amber-700{% elif card.tone == 'info' %}bg-blue-50 text-blue-700{% else %}bg-brand-50 text-brand-700{% endif %}">
+                {% icon card.icon "size-4" %}
+              </span>
+            </span>
+            <span class="mt-1 text-3xl leading-none font-bold tracking-tight tabular {% if card.tone == 'warning' and card.value %}text-amber-700{% else %}text-slate-900{% endif %}"
+                  data-esira-stat="{{ card.key }}">{{ card.value|intcomma }}</span>
+            <span class="mt-2 text-meta text-slate-500">{{ card.meta }}</span>
+          </a>
+        </li>
+        {% if forloop.last %}</ul>{% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="grid gap-4 xl:grid-cols-2">
+
+    {# ---- Waiting on me ------------------------------------------------ #}
+    <section class="card" aria-labelledby="mine-heading">
+      <div class="card-header">
+        <h2 id="mine-heading" class="card-title">Waiting on Me</h2>
+        <a href="{% url 'esira:list' %}?view=needs_me" class="text-meta font-medium text-brand-700 hover:underline">View all {{ my_steps_count }}</a>
+      </div>
+      {% if my_steps %}
+        <ul class="divide-y divide-slate-100">
+          {% for step in my_steps %}
+            <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <div class="min-w-0">
+                <a href="{{ step.document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">{{ step.document.reference_no }}</a>
+                <p class="text-sm text-slate-700">{{ step.document.title|truncatechars:80 }}</p>
+                <p class="text-meta text-slate-500">
+                  {{ step.get_action_display }} &middot; from {{ step.sender.get_display_name }}
+                  &middot; routed {{ step.routed_at|naturaltime }}
+                  {% if step.due_date %}&middot; due {{ step.due_date|date:"j M Y" }}{% endif %}
+                </p>
+              </div>
+              {% if step.action == "SIGN" %}
+                <a href="{% url 'esira:workspace' step.document.pk %}" class="btn btn-primary btn-sm">{% icon "signature" "size-3.5" %}Sign</a>
+              {% else %}
+                <a href="{{ step.document.get_absolute_url }}" class="btn btn-secondary btn-sm">{% icon "check" "size-3.5" %}Act</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing waiting on you" message="Documents routed to you for signature or approval appear here." %}
+      {% endif %}
+    </section>
+
+    {# ---- My documents out ------------------------------------------- #}
+    <section class="card" aria-labelledby="out-heading">
+      <div class="card-header">
+        <h2 id="out-heading" class="card-title">My Documents in Progress</h2>
+        <a href="{% url 'esira:list' %}?view=mine" class="text-meta font-medium text-brand-700 hover:underline">All my documents</a>
+      </div>
+      {% if my_out or ready_to_close or drafts %}
+        <ul class="divide-y divide-slate-100">
+          {% for document in ready_to_close %}
+            <li class="flex flex-wrap items-center justify-between gap-3 bg-green-50/40 px-4 py-3 sm:px-5">
+              <div class="min-w-0">
+                <a href="{{ document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">{{ document.reference_no }}</a>
+                <p class="text-sm text-slate-700">{{ document.title|truncatechars:80 }}</p>
+              </div>
+              <span class="flex items-center gap-2">{% status_badge document.status_tone document.get_status_display %}<span class="text-meta font-medium text-green-800">Ready to close</span></span>
+            </li>
+          {% endfor %}
+          {% for document in my_out %}
+            <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <div class="min-w-0">
+                <a href="{{ document.get_absolute_url }}" class="text-sm font-medium text-brand-700 hover:underline">{{ document.reference_no }}</a>
+                <p class="text-sm text-slate-700">{{ document.title|truncatechars:80 }}</p>
+                {% with step=document.current_step %}
+                  {% if step %}<p class="text-meta text-slate-500">With {{ step.recipient.get_display_name }} for {{ step.get_action_display|lower }}</p>{% endif %}
+                {% endwith %}
+              </div>
+              {% status_badge document.status_tone document.get_status_display %}
+            </li>
+          {% endfor %}
+          {% for document in drafts %}
+            <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <div class="min-w-0">
+                <a href="{% url 'esira:workspace' document.pk %}" class="text-sm font-medium text-brand-700 hover:underline">{{ document.reference_no }}</a>
+                <p class="text-sm text-slate-700">{{ document.title|truncatechars:80 }}</p>
+              </div>
+              {% status_badge document.status_tone document.get_status_display %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% if user.can_upload_esira %}
+          {% url 'esira:upload' as upload_url %}
+          {% include "components/empty_state.html" with icon="file" title="No documents in progress" message="Upload or scan a document to prepare it for signature." action_url=upload_url action_label="Upload / Scan Document" %}
+        {% else %}
+          {% include "components/empty_state.html" with icon="file" title="No documents in progress" message="Documents you upload appear here while they are on their route." %}
+        {% endif %}
+      {% endif %}
+    </section>
+  </div>
+
+  {# ---- Recent activity ------------------------------------------------- #}
+  <section class="card mt-4" aria-labelledby="recent-heading">
+    <div class="card-header">
+      <h2 id="recent-heading" class="card-title">Recent Activity</h2>
+      {% if user.can_oversee_esira %}
+        <a href="{% url 'esira:audit' %}" class="text-meta font-medium text-brand-700 hover:underline">Full audit trail</a>
+      {% endif %}
+    </div>
+    {% if recent %}
+      <ul class="divide-y divide-slate-100">
+        {% for entry in recent %}
+          <li class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-4 py-2.5 sm:px-5">
+            <div class="min-w-0">
+              <p class="text-sm text-slate-800">
+                <span class="font-medium">{{ entry.actor_label }}</span>
+                &middot; {{ entry.get_action_display }}
+                {% if entry.document %}&middot; <a href="{{ entry.document.get_absolute_url }}" class="text-brand-700 hover:underline">{{ entry.document_reference }}</a>{% endif %}
+              </p>
+              {% if entry.detail %}<p class="text-meta text-slate-500">{{ entry.detail|truncatechars:140 }}</p>{% endif %}
+            </div>
+            <time class="text-meta whitespace-nowrap text-slate-500" datetime="{{ entry.timestamp|date:'c' }}">{{ entry.timestamp|date:"j M Y, g:i A" }}</time>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with icon="audit" title="No activity yet" message="Uploads, signatures and routing will be listed here as they happen." %}
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/esira-dashboard.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

@@ -52,11 +52,17 @@ of who accomplished it.
 
 ## Running the system
 
+The system stores its records in **MySQL 8.4 or later** - Django 6.1 refuses
+to start on anything older, 8.0 included. A server has to be reachable and
+the four connection settings written before step 2 will do anything - see
+*The database* below, which also covers installing MySQL if this machine has
+none.
+
 ```powershell
 # 1. Dependencies (the virtualenv already exists in this working copy)
 venv\Scripts\pip install -r requirements.txt
 
-# 2. Database
+# 2. Database - creates the tables in the MySQL schema named in lgmed.env
 venv\Scripts\python manage.py migrate
 
 # 3. Reference data: the 78 LGUs of Region XIII
@@ -77,7 +83,8 @@ venv\Scripts\python manage.py runserver
 
 To let a colleague on this network open the system in their own browser, run
 `.\run-lan.ps1` instead of step 7 — see *Sharing on the office network*
-below. For someone outside the building, see *Sharing a demo over ngrok*.
+below. For someone outside the building, see *Sharing a demo over a Cloudflare
+tunnel*.
 
 | URL | Purpose |
 |---|---|
@@ -85,7 +92,7 @@ below. For someone outside the building, see *Sharing a demo over ngrok*.
 | `/announcements/` | LGMED Latest News: the public news feed |
 | `/statistics/` | Regional figures, published as they stand in the records |
 | `/documents/` | Public document library: search, filter by type and by year |
-| `/accounts/login/` | Staff sign-in |
+| `/staff` | Staff sign-in. Nothing on the public site links to it; staff type the address. Redirects to the canonical `/accounts/login/`. |
 | `/app/` | Dashboard |
 | `/app/programs/` `/app/monitoring/` `/app/lgus/` `/app/services/` `/app/documents/` `/app/announcements/` `/app/reports/` `/app/calendar/` | The eight modules |
 | `/app/documents/monitoring/` `/app/documents/retention/` | Document monitoring, and the retention and archive register |
@@ -121,6 +128,150 @@ returns 403 rather than the form.
 
 ---
 
+## The database
+
+**MySQL 8.4+**, named in `config/settings.py` and configured entirely from the
+environment. The system ran on SQLite until this change; nothing in the
+application code was written for either one, because every query goes through
+the Django ORM.
+
+### Why not SQLite
+
+SQLite keeps the whole database in a single file and allows **one writer at a
+time**. That is exactly right for one developer and wrong for a division: when
+two officers save a record in the same moment, one of them is simply told
+`database is locked`. MySQL takes concurrent writers, which is the entire
+reason for the move. It also means the database is a *service* the office runs
+and backs up, rather than a file that travels with the working copy and can be
+lost by deleting a folder.
+
+### What to set
+
+Four lines in `venv\lgmed.env`, alongside the reCAPTCHA keys - the same file,
+found the same way, and just as untracked (see *Secrets* below):
+
+```
+MYSQL_DATABASE=lgmedimms      # the schema name
+MYSQL_USER=lgmedimms          # not root; see below
+MYSQL_PASSWORD=...            # the only secret of the four
+MYSQL_HOST=127.0.0.1          # the office's server, where there is one
+MYSQL_PORT=3306
+```
+
+Everything but the password has a working default in `settings.py`, so a
+standard local install needs `MYSQL_PASSWORD` and nothing else.
+
+**Use an account that is not `root`.** `root` may drop any schema on the
+server, and the web application never needs to. An account owning one schema
+turns a mistake - or an injection that gets past the ORM - into a problem
+confined to this system's own data:
+
+```sql
+CREATE DATABASE lgmedimms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'lgmedimms'@'localhost' IDENTIFIED BY '<the password>';
+GRANT ALL PRIVILEGES ON lgmedimms.* TO 'lgmedimms'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+`CHARACTER SET utf8mb4` is not optional. MySQL's confusingly named `utf8` is
+three bytes per character and silently truncates anything above the basic
+plane; the first emoji pasted into a remark would take the rest of the field
+with it.
+
+Running the tests needs one more grant, because Django builds and drops its own
+database for each run:
+
+```sql
+GRANT ALL PRIVILEGES ON `test_lgmedimms`.* TO 'lgmedimms'@'localhost';
+```
+
+### The time zone tables, which are not optional
+
+MySQL ships without the IANA time zone tables on Windows, and Django needs them
+the moment it compares a `DateTimeField` against a date - the audit log's date
+filter, the document register's "Date registered". Without them MySQL's
+`CONVERT_TZ` returns `NULL`, and the query does not fail: **it returns nothing,
+and the page renders an empty list as though the records did not exist.** A
+silent wrong answer is far worse than an error, which is why this is written
+down rather than left to be discovered.
+
+Load them once per server, as root:
+
+```powershell
+curl.exe -L -o tz.zip https://downloads.mysql.com/general/timezone_2026a_posix_sql.zip
+Expand-Archive tz.zip -DestinationPath tz
+& "C:\Program Files\MySQL\MySQL Server 8.4in\mysql.exe" -u root -p mysql -e "source tz	imezone_2026a_posix_sql	imezone_posix.sql"
+```
+
+Check it took - the answer must be a time, not `NULL`:
+
+```sql
+SELECT CONVERT_TZ('2026-09-21 12:00:00','UTC','Asia/Manila');   -- 2026-09-21 20:00:00
+```
+
+`__year` lookups and every plain `DateField` work without this, which is what
+makes the gap easy to miss: most of the system looks fine.
+
+### If this machine has no MySQL
+
+```powershell
+winget install Oracle.MySQL          # 8.4.x - check, 8.0 will not run
+```
+
+This package is the server MSI alone: it lays down the files but registers no
+service and creates no data directory. Those are separate steps - initialise
+with `mysqld --initialize-insecure`, register with `mysqld --install MySQL84
+--defaults-file=...`, then start the service and set a root password. The
+MySQL Installer bundle does the same work through a wizard if that is
+preferred.
+
+Confirm the version before going further, because the failure otherwise comes
+much later and reads as a Django problem:
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.4in\mysqld.exe" --version
+```
+
+### Moving the SQLite data across
+
+The old `db.sqlite3` was exported before the switch, to `db-export.json` in the
+project root: 2,580 records - the LGU roster, programs, monitoring activities,
+documents, the division updates and the full audit trail. Content types,
+permissions and sessions are deliberately **not** in it. The first two are
+rebuilt by `migrate` and loading them again only collides with what is already
+there; sessions are disposable, and their only effect would be to sign
+everyone back in.
+
+Load it once the schema exists:
+
+```powershell
+venv\Scripts\python manage.py migrate
+$env:PYTHONUTF8 = "1"
+venv\Scripts\python manage.py loaddata db-export.json
+```
+
+`PYTHONUTF8=1` is not decoration. Windows still defaults Python's file
+encoding to cp1252, which cannot represent the dashes and the `n~` in the
+municipality names, and the load fails partway through on a `UnicodeDecodeError`
+with no indication that the encoding is what is wrong. The export itself had to
+be written the same way.
+
+Skip the load entirely for a fresh start, and run `seed_lgus` and
+`bootstrap_demo` instead. `db-export.json` holds real user records and the
+audit trail, so it is in `.gitignore` for the same reason `db.sqlite3` was -
+and it should be deleted once it has been loaded and checked.
+
+### One behaviour that changes
+
+MySQL's default collation compares text **case-insensitively**; SQLite's `=`
+did not. `Juan` and `juan` are now the same username, and a search for `barangay`
+matches `Barangay`. For this system that is the better behaviour on both
+counts - but it means two accounts differing only in capitalisation can no
+longer both exist, which is worth knowing if the load above ever reports a
+duplicate key.
+
+---
+
 ## Secrets, and the sign-in check
 
 No key is written into `config/settings.py`. That file is committed, so a value
@@ -144,6 +295,11 @@ production host sets these the ordinary way and ignores all of this.
 If `venv/` is ever deleted, write it again:
 
 ```
+MYSQL_PASSWORD=...            # without this the system cannot start at all
+MYSQL_DATABASE=lgmedimms      # these three have defaults; set them only
+MYSQL_USER=lgmedimms          #   when the server is not the standard local
+MYSQL_HOST=127.0.0.1          #   install - see The database above
+
 RECAPTCHA_SITE_KEY=...        # public half; it appears in the page's HTML
 RECAPTCHA_SECRET_KEY=...      # never leaves the server
 RECAPTCHA_MIN_SCORE=0.5       # refuse anything Google scores below this
@@ -151,10 +307,9 @@ RECAPTCHA_TIMEOUT=5           # seconds to wait for Google
 RECAPTCHA_ENFORCE=1           # 0 = log the verdicts, refuse nobody
 
 DJANGO_SECRET_KEY=...         # any long random string in development
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.ngrok-free.app,.ngrok.app
-DJANGO_CSRF_TRUSTED_ORIGINS=https://*.ngrok-free.app,https://*.ngrok.app
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com
 DJANGO_LAN_ACCESS=1           # serve to the office network - see below
-NGROK_DOMAIN=...              # the reserved tunnel hostname, if one is claimed
 ```
 
 Only `DJANGO_LAN_ACCESS` is likely to be touched again once written: it is the
@@ -222,8 +377,8 @@ tunnel, no third party, nothing leaving the building:
 ```
 
 The script prints the URL to pass round. Colleagues open
-`http://<this machine>:8000/` for the public site, `/accounts/login/` to sign
-in; on this machine `http://127.0.0.1:8000/` still works as before.
+`http://<this machine>:8000/` for the public site, `/staff` to sign in; on this
+machine `http://127.0.0.1:8000/` still works as before.
 
 ### The one thing to set
 
@@ -301,92 +456,117 @@ Two further notes:
 
 ---
 
-## Sharing a demo over ngrok
+## Sharing a demo over a Cloudflare tunnel
+
+> **Just need the steps?** [`docs/demo-tunnel.md`](docs/demo-tunnel.md) is the
+> short operational guide — start, stop, and what to do when the link dies.
+> The rest of this section is the reasoning behind it.
+
 
 The development server answers on `localhost` only, which is awkward when a
-colleague in another office — or on their phone — needs to see the system.
-**ngrok** opens an outbound tunnel from this machine and publishes it on an
-HTTPS URL, so nothing has to be deployed and no firewall rule has to be asked
-for.
+colleague in another office — or on their phone — needs to see the system. A
+**Cloudflare quick tunnel** opens an outbound connection from this machine and
+publishes it on an HTTPS URL, so nothing has to be deployed and no firewall rule
+has to be asked for.
 
 ```powershell
 # Once per machine
-winget install ngrok.ngrok
-ngrok update                           # see the version note below
-ngrok config add-authtoken <token>     # from dashboard.ngrok.com
+winget install Cloudflare.cloudflared
 
 # Every demo
-.\run-ngrok.ps1 -Serve                 # starts runserver, then the tunnel
-.\run-ngrok.ps1                        # tunnel only, server already running
+.\run-cloudflare.ps1 -Serve            # starts runserver, then the tunnel
+.\run-cloudflare.ps1                   # tunnel only, server already running
 ```
 
-`run-ngrok.ps1` finds `ngrok.exe` even when `winget`'s PATH edit has not reached
-the open terminal, refuses to start without an authtoken rather than failing
-later with an opaque service error, and warns when nothing is listening on the
-port — a tunnel to a dead server returns 502 on every request and looks like an
-ngrok fault.
+There is no account, no authtoken and no login step. The script prints a line
+like `https://<name>.trycloudflare.com` — that is the link to send.
 
-### The agent winget installs is too old
+`run-cloudflare.ps1` finds `cloudflared.exe` even when `winget`'s PATH edit has
+not reached the open terminal, and warns when nothing is listening on the port —
+a tunnel to a dead server returns 502 on every request and looks like a fault in
+the tunnel.
 
-`winget` ships ngrok **3.3.1**, and ngrok's service refuses any agent below
-the minimum it currently enforces — 3.20.0 at the time of writing. The refusal
-arrives as:
+### Stopping the tunnel
 
-```
-ERROR: authentication failed: Your ngrok-agent version "3.3.1" is too old.
-ERR_NGROK_121
-```
+**Ctrl+C in the window running the script.** `run-cloudflare.ps1` runs
+`cloudflared` in the foreground, so the window it was started from is the handle
+on it — closing that window stops the tunnel too. The link stops answering
+within a second or two.
 
-**"authentication failed" reads like a bad authtoken**, which sends you back to
-the dashboard to re-copy a token that was never wrong. It is the agent version.
-`ngrok update` upgrades the binary in place and is all that is needed; expect to
-run it again after any `winget upgrade` that reinstalls the stale package.
-`run-ngrok.ps1` checks the version up front and says this, so the misleading
-message is not met twice.
+If the tunnel was started detached — from a script, another tool, or a window
+that has since been closed — there is no Ctrl+C to press, and it has to be
+stopped by process instead:
 
-### The reserved domain
-
-A free ngrok account includes **one reserved domain**, claimed at
-[dashboard.ngrok.com/domains](https://dashboard.ngrok.com/domains). Put it in
-`venv\lgmed.env`, without a scheme:
-
-```
-NGROK_DOMAIN=lgmed-caraga.ngrok-free.app
+```powershell
+Get-Process cloudflared -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-Worth the two minutes it takes: without it every start produces a different
-hostname, so the link mailed to ten people stops working the moment the tunnel
-is restarted. `-Domain` overrides it for a single run.
+That ends every running tunnel on this machine. To check whether one is up at
+all, and what it is pointing at:
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='cloudflared.exe'" |
+    Select-Object ProcessId, CommandLine
+```
+
+Stopping the tunnel leaves `runserver` running. If it was started with `-Serve`,
+or on a second port for the tunnel's benefit, that server is still listening and
+is stopped separately — Ctrl+C in its own window, or by port:
+
+```powershell
+(Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue).OwningProcess |
+    Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+**The URL does not come back.** Stopping a quick tunnel retires its hostname for
+good; the next start gets a different one, so anyone holding the old link has to
+be sent the new one. That is the trade-off in *The hostname changes on every
+run* just below, and it is the one reason to leave a tunnel up a few minutes
+longer when someone may still be looking at it. It is not a reason to leave it
+up overnight — see *Before opening a tunnel* below.
+
+### The hostname changes on every run
+
+This is the one real cost of the account-less tunnel, and it is worth knowing
+before a link is circulated: **each start produces a different hostname**, so a
+link mailed to ten people stops working the moment the tunnel is restarted.
+Send the link from the run that is currently up, and re-send it after a restart.
+
+Attaching a **free Cloudflare account** and creating a *named* tunnel is what
+buys a hostname that stays put, and is worth the setup if the same link has to
+keep working for weeks. See Cloudflare's
+[named tunnel guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps).
 
 ### Why two settings have to change
 
-A tunnelled request arrives carrying the ngrok hostname, not `localhost`, and
+A tunnelled request arrives carrying the tunnel hostname, not `localhost`, and
 Django rejects a `Host` it does not recognise — so the first attempt answers
 `DisallowedHost` instead of the homepage. Signing in then fails a second check:
-the form post arrives with an `https://…ngrok-free.app` `Origin`, which CSRF
+the form post arrives with an `https://….trycloudflare.com` `Origin`, which CSRF
 protection does not trust by default. Both are set in `venv\lgmed.env`:
 
 ```
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.ngrok-free.app,.ngrok.app
-DJANGO_CSRF_TRUSTED_ORIGINS=https://*.ngrok-free.app,https://*.ngrok.app
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com
 ```
 
-The leading dot is Django's subdomain wildcard, so an ephemeral hostname works
-as well as the reserved one. It widens `ALLOWED_HOSTS` no further than ngrok:
+The leading dot is Django's subdomain wildcard, and it is doing real work here:
+the hostname is different on every run, so no single name could have been
+listed. It widens `ALLOWED_HOSTS` no further than the tunnel provider:
 `evil.example.com` is still answered with 400. Note that setting
 `DJANGO_ALLOWED_HOSTS` **replaces** the default list, which is why `localhost`
 and `127.0.0.1` are repeated in it.
 
 These two lines live in `venv\lgmed.env` and must stay there. That file is never
-committed, and a production host must not trust an ngrok hostname — see
+committed, and a production host must not trust a tunnel hostname — see
 *Secrets, and the sign-in check* above for why this project keeps such values
 out of `config/settings.py`.
 
-`DJANGO_BEHIND_TLS_PROXY` is deliberately **not** set. ngrok terminates TLS and
-forwards plain HTTP, so Django sees an insecure request — harmless here, because
-`DEBUG=True` leaves `SECURE_SSL_REDIRECT` off, and the system builds no absolute
-URLs that could turn into blocked mixed content. Setting it would mean trusting
-a header a client can forge.
+`DJANGO_BEHIND_TLS_PROXY` is deliberately **not** set. The tunnel terminates TLS
+and forwards plain HTTP, so Django sees an insecure request — harmless here,
+because `DEBUG=True` leaves `SECURE_SSL_REDIRECT` off, and the system builds no
+absolute URLs that could turn into blocked mixed content. Setting it would mean
+trusting a header a client can forge.
 
 ### What a visitor sees
 
@@ -394,24 +574,21 @@ a header a client can forge.
   open, exactly as it is on localhost.
 - Everything under `/app/` still requires a sign-in, and role permissions apply
   unchanged — a viewer account remains read-only over the tunnel.
-- ngrok's free tier shows a **browser warning page first**. Visitors click
-  *Visit Site* once per browser; it is not a fault in the system.
-- The **sign-in reCAPTCHA is registered per domain**, so a new hostname fails
-  the check until it is added to the key's domain list at
-  [google.com/recaptcha/admin](https://www.google.com/recaptcha/admin). The
-  reserved domain has been added alongside `127.0.0.1` and `localhost`, so the
-  real check runs over the tunnel — an ephemeral hostname will not, which is a
-  second reason to reserve one. Two traps when adding it: the field wants a
-  **bare host**, no scheme, path or port (`….ngrok-free.app`, not
-  `https://…/accounts/login/`), and an entry only counts once **+** has turned
-  it into a listed row and the page has been saved. Never register the bare
-  `ngrok-free.app`: reCAPTCHA matches subdomains, so that would let any ngrok
-  site on the internet use this key.
-- Should it ever fail anyway, **sign-in still succeeds**: the page detects the
-  failure, posts an empty token, and `RECAPTCHA_ENFORCE=0` lets it through
-  while recording the miss in the audit log.
-- `http://127.0.0.1:4040` is ngrok's inspector — every request, with headers and
-  response, which is the fastest way to see what a remote browser actually sent.
+- **No warning or interstitial page.** The site is served on the first request,
+  which is the reason this tunnel replaced the previous one.
+- The **sign-in reCAPTCHA is registered per domain**, and a quick tunnel's
+  hostname is new every run, so it can never be pre-registered and the check
+  will not verify over the tunnel. This is expected and does not block anyone:
+  the page detects the failure, posts an empty token, and `RECAPTCHA_ENFORCE=0`
+  lets the sign-in through while recording the miss in the audit log. Raising
+  `RECAPTCHA_ENFORCE` to `1` **would** lock staff out over a quick tunnel — a
+  named tunnel with a fixed hostname, added to the key's domain list at
+  [google.com/recaptcha/admin](https://www.google.com/recaptcha/admin), is the
+  way to have both. When adding it there, the field wants a **bare host**, no
+  scheme, path or port, and an entry only counts once **+** has turned it into a
+  listed row and the page has been saved. Never register a bare provider domain
+  such as `trycloudflare.com`: reCAPTCHA matches subdomains, so that would let
+  any tunnel on the internet use this key.
 
 ### Before opening a tunnel
 
@@ -422,9 +599,8 @@ holding the URL can reach the sign-in page.
 
 So: tunnel the **demonstration** database, not live LGU records; stop the tunnel
 (Ctrl+C) when the demo ends rather than leaving it up overnight; and treat the
-URL as semi-public — a reserved ngrok domain is guessable by design. Once the
-system carries real data, it belongs behind the deployment in *Before
-deployment* below, not behind a tunnel.
+URL as semi-public. Once the system carries real data, it belongs behind the
+deployment in *Before deployment* below, not behind a tunnel.
 
 ---
 
@@ -447,6 +623,17 @@ and save it as `tools/tailwindcss.exe`.
 **Rebuild the stylesheet after adding new utility classes to a template** —
 Tailwind only emits classes it finds in the files listed by the `@source`
 directives in `static/css/app.src.css`.
+
+---
+
+## Installable app (PWA)
+
+The system can be installed as an app on Windows, Android, iPhone/iPad and
+desktop Chrome/Edge (account menu → **Install app**). It needs HTTPS (or
+`localhost`). Only static files and an anonymous offline page are kept on the
+device, never pages or records. When deploying, the reverse proxy must pass
+`/sw.js`, `/manifest.webmanifest` and `/offline/` to Django. See
+[docs/pwa.md](docs/pwa.md) for caching, notifications and deployment.
 
 ---
 
@@ -1414,8 +1601,40 @@ page carries the site key and never the secret.
 - Schedule `refresh_notifications` (see above), or overdue follow-ups will
   never be raised.
 - Verify the LGU roster against the office's official records.
+- Serve the system with an ASGI server (`daphne config.asgi:application`), not
+  WSGI: full-screen system announcements reach open pages over a WebSocket at
+  `/ws/live/` (`core/consumers.py`). A reverse proxy in front must pass the
+  WebSocket upgrade for that path. One server process is assumed; with
+  several, install `channels-redis` and set `LGMED_CHANNEL_REDIS_URL`. Pages
+  whose socket cannot connect still receive the notice within a minute.
 - Configure `MEDIA_ROOT` on persistent storage — documents, report files and
   monitoring attachments are uploaded there.
 - The official DILG seal is in place at `static/img/dilg-logo.png`. If it is
   ever replaced, drop the new file at that path - every placement reads from
   `templates/includes/agency_logo.html`.
+
+### LGMED Innovation Action: e-SIRA
+
+**e-SIRA — Electronic Signature, Identification, Routing and Approval** is at
+`/app/esira/`, from the **LGMED Innovation Action** button pinned at the foot
+of the sidebar. The full setup and integration guide is
+[docs/esira.md](docs/esira.md).
+
+```
+UPLOAD/SCAN → PREVIEW → PLACE SIGNATURE BOXES → ROUTE → SIGN (PNPKI)
+            → APPROVE → TRACK → COMPLETE → DOWNLOAD SIGNED PDF
+```
+
+- **A box is a placement; a signature is cryptography.** Boxes are dragged onto
+  the page in a pdf.js workspace and prove nothing. Signing is a real PAdES
+  signature made with the signer's own DICT PNPKI certificate (pyHanko), drawn
+  inside the box. There is no simulated signing path.
+- **No signing until the PNPKI roots are installed.** Set
+  `ESIRA_PNPKI_TRUST_ROOTS` in `lgmed.env` to the DICT PNPKI CA certificates.
+  A certificate must also be registered by its holder and verified by an
+  administrator before it can sign.
+- **The original is kept.** Version 1 is never touched; each signature adds a
+  version as an incremental update, so earlier signatures stay valid. Every
+  version's SHA-256 is checked whenever the file is read.
+- **Token / DICT signing-agent signing is declared, not connected** - what it
+  needs is set out in docs/esira.md, section 4.

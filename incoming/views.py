@@ -19,9 +19,12 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.text import slugify
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import TemplateView, View
 
+from core.files import serve_inline
 from core.mixins import CanReviewIncomingMixin, CapabilityRequiredMixin
 from core.views_base import (
     ModuleCreateView,
@@ -34,13 +37,7 @@ from documents.models import DocumentType
 
 from . import reports as report_catalogue
 from . import workflow
-from .forms import (
-    AssignmentForm,
-    IncomingDocumentForm,
-    IncomingUpdateForm,
-    ReturnForm,
-    ReviewForm,
-)
+from .forms import AssignmentForm, IncomingDocumentForm, ReviewForm
 from .models import (
     UPDATE_REMINDER_DAYS,
     IncomingDocument,
@@ -161,13 +158,13 @@ class IncomingListView(IncomingModuleMixin, ModuleListView):
     )
     module_label = "Incoming Documents"
     template_name = "dashboard/incoming/list.html"
-    search_placeholder = "Search docket number, subject, source..."
+    search_placeholder = "Search LGMED code, DNS number, subject, source..."
     search_fields = (
-        "docket_number", "subject", "source_office", "initial_remarks",
+        "lgmed_code", "docket_number", "subject", "source_office", "initial_remarks",
         "review_notes", "assignment_remarks",
     )
     sort_fields = (
-        "docket_number", "subject", "date_received", "status", "priority",
+        "lgmed_code", "docket_number", "subject", "date_received", "status", "priority",
         "assigned_to__last_name", "due_date", "completed_at", "assigned_at",
     )
     default_sort = "-date_received"
@@ -176,7 +173,8 @@ class IncomingListView(IncomingModuleMixin, ModuleListView):
     empty_icon = "inbox"
     virtual_filters = ("view", "basis")
     export_columns = (
-        ("Docket number", "docket_number"),
+        ("LGMED code", "lgmed_code"),
+        ("DNS number", "docket_number"),
         ("Subject", "subject"),
         ("Document type", "document_type.name"),
         ("Source / office", "source_office"),
@@ -273,11 +271,11 @@ class IncomingDetailView(IncomingModuleMixin, ModuleDetailView):
         document = self.object
         user = self.request.user
 
-        context["page_title"] = document.docket_number
+        context["page_title"] = document.tracking_number
         context["page_subtitle"] = document.subject
+        context["outgoing"] = document.outgoing_document
         context["can_review"] = user.can_review_incoming
         context["can_acknowledge"] = document.may_be_acknowledged_by(user)
-        context["can_update"] = document.may_be_updated_by(user)
         context["is_focal_person"] = document.assigned_to_id == user.pk
         context["review_form"] = ReviewForm(
             initial={"review_notes": document.review_notes}
@@ -290,8 +288,6 @@ class IncomingDetailView(IncomingModuleMixin, ModuleDetailView):
                 "due_date": document.due_date,
             }
         )
-        context["update_form"] = IncomingUpdateForm()
-        context["return_form"] = ReturnForm()
         context["update_reminder_days"] = UPDATE_REMINDER_DAYS
         return context
 
@@ -367,6 +363,35 @@ class IncomingDeleteView(IncomingModuleMixin, ModuleDeleteView):
 
 
 # ---------------------------------------------------------------------------
+# Attachments, for the PDF viewer
+# ---------------------------------------------------------------------------
+
+
+@method_decorator(xframe_options_sameorigin, name="dispatch")
+class AttachmentView(CapabilityRequiredMixin, View):
+    """The document's attachment, for the viewer. Readable by whoever may open the record."""
+
+    capability = "can_view"
+
+    def get(self, request, pk):
+        document = get_object_or_404(IncomingDocument, pk=pk)
+        return serve_inline(document.attachment)
+
+
+@method_decorator(xframe_options_sameorigin, name="dispatch")
+class UpdateAttachmentView(CapabilityRequiredMixin, View):
+    """A focal person's supporting attachment, for the viewer."""
+
+    capability = "can_view"
+
+    def get(self, request, update_pk):
+        from .models import IncomingUpdate
+
+        update = get_object_or_404(IncomingUpdate, pk=update_pk)
+        return serve_inline(update.attachment)
+
+
+# ---------------------------------------------------------------------------
 # Workflow actions
 # ---------------------------------------------------------------------------
 
@@ -421,7 +446,8 @@ class AssignView(WorkflowActionView):
         messages.success(
             request,
             f"{document.docket_number} was assigned to "
-            f"{document.assigned_to.get_display_name()}, who has been notified.",
+            f"{document.assigned_to.get_display_name()}, who has been notified. "
+            f"It is now tracked as {document.lgmed_code}.",
         )
         return redirect(document.get_absolute_url())
 
@@ -432,40 +458,15 @@ class AcknowledgeView(WorkflowActionView):
         workflow.acknowledge(document, request.user)
         messages.success(
             request,
-            f"You acknowledged {document.docket_number}. Provide updates here "
-            "until it is completed.",
+            f"You acknowledged {document.tracking_number}. It is now in Outgoing "
+            "Monitoring: record your updates and the communication sent there.",
         )
-        return redirect(document.get_absolute_url())
+        return redirect(document.action_url)
 
 
-class AddUpdateView(WorkflowActionView):
-    def post(self, request, pk):
-        document = self.get_document()
-        form = IncomingUpdateForm(request.POST, request.FILES)
-        if not form.is_valid():
-            return self.failure(request, document, form)
-        workflow.add_update(document, request.user, form.save(commit=False))
-        messages.success(
-            request,
-            f"Your update on {document.docket_number} was recorded as "
-            f"'{document.get_status_display()}'.",
-        )
-        return redirect(document.get_absolute_url())
-
-
-class ReturnView(WorkflowActionView):
-    def post(self, request, pk):
-        document = self.get_document()
-        form = ReturnForm(request.POST)
-        if not form.is_valid():
-            return self.failure(request, document, form)
-        workflow.return_for_revision(document, request.user, form.cleaned_data["remarks"])
-        messages.success(
-            request,
-            f"{document.docket_number} was returned to "
-            f"{document.assigned_to.get_display_name()} for revision.",
-        )
-        return redirect(document.get_absolute_url())
+# Updates, returns for revision and completion are not here: once the focal
+# person acknowledges, the document moves to Outgoing Monitoring and they are
+# taken there. See outgoing/views.py.
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{% url 'accounts:menu_permissions' %}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}<span class="hidden sm:inline">Menu Permissions</span>
+  </a>
+  <a href="{{ account.get_absolute_url }}" class="btn btn-secondary">
+    {% icon "user" "size-4" %}<span class="hidden sm:inline">View account</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% if exempt %}
+    <p class="flex max-w-3xl items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
+      <span class="mt-0.5 shrink-0 text-slate-400">{% icon "lock" "size-4" %}</span>
+      <span>
+        This is a System Administrator account. It always has every module,
+        so there is nothing to set here.
+      </span>
+    </p>
+  {% else %}
+    <p class="mb-5 flex max-w-3xl items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
+      <span class="mt-0.5 shrink-0 text-slate-400">{% icon "info" "size-4" %}</span>
+      <span>
+        <strong class="font-semibold text-slate-800">Follow role</strong> uses what
+        Modules by Role sets for {{ account.get_role_label }}.
+        <strong class="font-semibold text-slate-800">Open</strong> and
+        <strong class="font-semibold text-slate-800">Close</strong> apply to this
+        account only, whatever the role says. A module the role's permissions
+        do not cover stays closed even when opened here.
+      </span>
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+      <section class="card" aria-labelledby="modules-heading">
+        <div class="card-header">
+          <div>
+            <h2 id="modules-heading" class="card-title">Modules</h2>
+            <p class="mt-0.5 text-meta text-slate-500">{{ account.get_display_name }} &middot; {{ account.get_role_label }}</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Sidebar modules for this account.</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="min-w-56">Module</th>
+                <th scope="col">Role says</th>
+                <th scope="col">This account</th>
+                <th scope="col" class="text-center">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                <tr>
+                  <th scope="row" class="border-b border-slate-100 px-4 py-3 text-left font-medium text-slate-900">
+                    <span class="flex items-center gap-2">
+                      <span class="text-slate-400" aria-hidden="true">{% icon row.item.icon "size-4" %}</span>
+                      {{ row.item.label }}
+                    </span>
+                  </th>
+                  <td class="text-meta text-slate-600">
+                    {% if not row.grantable %}Not covered by role
+                    {% elif row.role_allowed %}Open{% else %}Closed{% endif %}
+                  </td>
+                  <td>
+                    {% if row.grantable %}
+                      <fieldset class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                        <legend class="sr-only">{{ row.item.label }}</legend>
+                        <label class="inline-flex cursor-pointer items-center gap-1.5">
+                          <input type="radio" name="module_{{ row.item.key }}" value="inherit"
+                                 {% if row.choice == "inherit" %}checked{% endif %}
+                                 class="size-4 border-slate-300 text-brand-600 focus:ring-2 focus:ring-brand-600/25">
+                          Follow role
+                        </label>
+                        <label class="inline-flex cursor-pointer items-center gap-1.5">
+                          <input type="radio" name="module_{{ row.item.key }}" value="allow"
+                                 {% if row.choice == "allow" %}checked{% endif %}
+                                 class="size-4 border-slate-300 text-brand-600 focus:ring-2 focus:ring-brand-600/25">
+                          Open
+                        </label>
+                        <label class="inline-flex cursor-pointer items-center gap-1.5">
+                          <input type="radio" name="module_{{ row.item.key }}" value="deny"
+                                 {% if row.choice == "deny" %}checked{% endif %}
+                                 class="size-4 border-slate-300 text-brand-600 focus:ring-2 focus:ring-brand-600/25">
+                          Close
+                        </label>
+                      </fieldset>
+                    {% else %}
+                      <input type="hidden" name="module_{{ row.item.key }}" value="{{ row.choice }}">
+                      <span class="text-meta text-slate-400">&mdash;</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if row.effective %}
+                      <span class="inline-flex items-center gap-1 text-meta font-medium text-green-700">
+                        {% icon "check" "size-4" %}In sidebar
+                      </span>
+                    {% else %}
+                      <span class="inline-flex items-center gap-1 text-meta text-slate-400">
+                        {% icon "close" "size-4" %}Hidden
+                      </span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-footer">
+          <p class="text-meta text-slate-500">Takes effect on the account's next page.</p>
+          <button type="submit" class="btn btn-primary">
+            {% icon "check" "size-4" %}Save account permissions
+          </button>
+        </div>
+      </section>
+    </form>
+  {% endif %}
+{% endblock %}

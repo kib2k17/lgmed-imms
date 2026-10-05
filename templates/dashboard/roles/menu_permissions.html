@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block page_actions %}
+  <a href="{% url 'accounts:role_list' %}" class="btn btn-secondary">
+    {% icon "shield" "size-4" %}<span class="hidden sm:inline">Roles &amp; Permissions</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+
+  <p class="mb-5 flex max-w-3xl items-start gap-2.5 rounded-md border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
+    <span class="mt-0.5 shrink-0 text-slate-400">{% icon "info" "size-4" %}</span>
+    <span>
+      Clearing a tick removes the module from the sidebar of every account
+      holding that role, and refuses its pages if the address is typed. An
+      account can be set apart from its role below. The System Administrator
+      always has every module. A dash means the role's permissions do not
+      cover the module, so it cannot be opened to that role here.
+    </span>
+  </p>
+
+  {# ---- By role --------------------------------------------------------- #}
+  <form method="post">
+    {% csrf_token %}
+    <section class="card" aria-labelledby="by-role-heading">
+      <div class="card-header">
+        <div>
+          <h2 id="by-role-heading" class="card-title">Modules by Role</h2>
+          <p class="mt-0.5 text-meta text-slate-500">A tick means the module appears in the role's sidebar</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">Sidebar modules offered to each role.</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="min-w-56">Module</th>
+              <th scope="col" class="text-center">System Administrator</th>
+              {% for value, label in roles %}
+                <th scope="col" class="text-center">{{ label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <th scope="row" class="border-b border-slate-100 px-4 py-3 text-left font-medium text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <span class="text-slate-400" aria-hidden="true">{% icon row.item.icon "size-4" %}</span>
+                    {{ row.item.label }}
+                  </span>
+                </th>
+                <td class="text-center">
+                  <span class="inline-flex items-center text-green-700" title="Always available">
+                    {% icon "lock" "size-4" %}
+                    <span class="sr-only">System Administrator: always available</span>
+                  </span>
+                </td>
+                {% for cell in row.cells %}
+                  <td class="text-center">
+                    {% if cell.grantable %}
+                      <label class="inline-flex cursor-pointer items-center justify-center p-1">
+                        <input type="checkbox" name="access" value="{{ row.item.key }}:{{ cell.role }}"
+                               {% if cell.allowed %}checked{% endif %}
+                               class="size-4 rounded border-slate-300 text-brand-600 focus:ring-2 focus:ring-brand-600/25">
+                        <span class="sr-only">{{ row.item.label }} for {{ cell.role_label }}</span>
+                      </label>
+                    {% else %}
+                      <span class="text-slate-300" aria-hidden="true">&mdash;</span>
+                      <span class="sr-only">{{ cell.role_label }}: not covered by the role's permissions</span>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer">
+        <p class="text-meta text-slate-500">Takes effect on each account's next page.</p>
+        <button type="submit" class="btn btn-primary">
+          {% icon "check" "size-4" %}Save role permissions
+        </button>
+      </div>
+    </section>
+  </form>
+
+  {# ---- By account ------------------------------------------------------ #}
+  <section class="card mt-6" aria-labelledby="by-account-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="by-account-heading" class="card-title">Modules by Account</h2>
+        <p class="mt-0.5 text-meta text-slate-500">Open or close a module for one person, whatever their role</p>
+      </div>
+    </div>
+    <div class="card-body space-y-5">
+      <form method="get" action="" id="account-picker" class="flex flex-wrap items-end gap-3">
+        <div class="min-w-64 flex-1 sm:max-w-md">
+          <label for="account-select" class="form-label">Account</label>
+          <select id="account-select" class="form-select" required>
+            <option value="">Choose an account&hellip;</option>
+            {% for person in accounts %}
+              <option value="{% url 'accounts:user_menu_permissions' person.pk %}">
+                {{ person.get_display_name }} ({{ person.username }}) &middot; {{ person.get_role_label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">
+          {% icon "edit" "size-4" %}Set modules
+        </button>
+      </form>
+
+      {% if overridden %}
+        <div>
+          <h3 class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Accounts set apart from their role</h3>
+          <ul class="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+            {% for person in overridden %}
+              <li class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <span class="min-w-0">
+                  <span class="font-medium text-slate-900">{{ person.get_display_name }}</span>
+                  <span class="text-meta text-slate-500">&middot; {{ person.get_role_label }}</span>
+                </span>
+                <a href="{% url 'accounts:user_menu_permissions' person.pk %}"
+                   class="shrink-0 text-meta font-medium text-brand-700 hover:underline">
+                  {{ person.rules }} module{{ person.rules|pluralize }} set
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <p class="text-sm text-slate-500">Every account currently follows its role.</p>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    document.getElementById("account-picker").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var target = document.getElementById("account-select").value;
+      if (target) { window.location.href = target; }
+    });
+  </script>
+{% endblock %}

@@ -97,7 +97,13 @@
     </div>
 
     <div class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-meta">
-      <p>&copy; {% now "Y" %} {{ agency.office_short }}. All rights reserved.</p>
+      <p class="flex flex-wrap items-center gap-x-2">
+        <span>&copy; {% now "Y" %} {{ agency.office_short }}. All rights reserved.</span>
+        {% if agency.system_version %}
+          <span aria-hidden="true" class="text-brand-500">&middot;</span>
+          <span>Version {{ agency.system_version }}</span>
+        {% endif %}
+      </p>
       <p class="flex items-center gap-1.5">
         {% icon "shield" "size-3.5" %}
         <span>{{ agency.system_name }} &mdash; official government information system</span>

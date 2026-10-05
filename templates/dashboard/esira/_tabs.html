@@ -1,0 +1,54 @@
+{% load ui %}
+{% comment %}
+ The faces of e-SIRA. One sidebar entry, several pages - the same pattern as
+ Incoming Monitoring. Pass nothing: the active tab comes from `esira_tab`,
+ which each view sets.
+{% endcomment %}
+<nav aria-label="e-SIRA sections" class="mb-4 no-print">
+  <ul class="flex flex-wrap gap-1 border-b border-slate-200">
+    {% url 'esira:dashboard' as tab_url %}
+    <li>
+      <a href="{{ tab_url }}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'dashboard' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if esira_tab == "dashboard" %}aria-current="page"{% endif %}>
+        {% icon "dashboard" "size-4" %}Dashboard
+      </a>
+    </li>
+    {% url 'esira:list' as tab_url %}
+    <li>
+      <a href="{{ tab_url }}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'documents' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if esira_tab == "documents" %}aria-current="page"{% endif %}>
+        {% icon "file" "size-4" %}Documents
+      </a>
+    </li>
+    {% url 'esira:certificates' as tab_url %}
+    <li>
+      <a href="{{ tab_url }}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'certificates' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if esira_tab == "certificates" %}aria-current="page"{% endif %}>
+        {% icon "key" "size-4" %}My Certificates
+      </a>
+    </li>
+    {% if user.can_verify_signing_certificates %}
+      {% url 'esira:certificate_review' as tab_url %}
+      <li>
+        <a href="{{ tab_url }}"
+           class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'verification' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+           {% if esira_tab == "verification" %}aria-current="page"{% endif %}>
+          {% icon "shield" "size-4" %}Certificate Verification
+        </a>
+      </li>
+    {% endif %}
+    {% if user.can_oversee_esira %}
+      {% url 'esira:audit' as tab_url %}
+      <li>
+        <a href="{{ tab_url }}"
+           class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'audit' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+           {% if esira_tab == "audit" %}aria-current="page"{% endif %}>
+          {% icon "audit" "size-4" %}Audit Trail
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>

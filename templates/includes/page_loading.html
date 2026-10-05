@@ -1,0 +1,17 @@
+{# The "please wait" screen, one per page. Shown by static/js/app.js while  #}
+{# any POST form is being sent - every Save, Submit, Approve and Delete -   #}
+{# and replaced by the page the server sends back. A <dialog> so that it    #}
+{# sits above a confirmation dialog the form was submitted from.            #}
+{# A form can word it with data-loading-title / data-loading-note, or opt  #}
+{# out with data-no-loading.                                                #}
+<dialog id="page-loading" aria-labelledby="page-loading-title"
+        class="page-loading m-auto w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-center shadow-overlay">
+  <div role="status" aria-live="polite">
+    <svg class="mx-auto size-10 animate-spin text-brand-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-20"></circle>
+      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+    </svg>
+    <p id="page-loading-title" class="mt-4 text-base font-semibold text-slate-900" data-loading-title>Saving&hellip;</p>
+    <p class="mt-2 text-meta text-slate-500" data-loading-note>Please wait and keep this page open.</p>
+  </div>
+</dialog>

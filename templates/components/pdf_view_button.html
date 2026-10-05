@@ -1,0 +1,12 @@
+{% load ui %}
+{# A "View" button that opens a PDF in the in-system viewer.                  #}
+{#   url           the inline-view URL (a view that allows same-origin framing) #}
+{#   title         shown in the viewer's header                                 #}
+{#   download_url  optional; offered as Download inside the viewer              #}
+{#   btn_class     optional; defaults to btn-secondary                          #}
+{# Without scripting, or on a phone, the link opens the PDF in a new tab.      #}
+<a href="{{ url }}" target="_blank" rel="noopener"
+   class="btn {{ btn_class|default:'btn-secondary' }}"
+   data-pdf-view data-pdf-title="{{ title }}"{% if download_url %} data-pdf-download="{{ download_url }}"{% endif %}>
+  {% icon "view" "size-4" %}View{% if sr_label %}<span class="sr-only"> {{ sr_label }}</span>{% endif %}
+</a>

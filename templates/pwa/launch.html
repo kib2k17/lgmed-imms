@@ -1,0 +1,74 @@
+{% load static %}<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b1c30">
+  <title>{{ agency.system_name|default:"LGMED-iMMS" }}</title>
+  {% comment %}
+   What the installed app opens on (manifest start_url, core/pwa.py). The
+   service worker keeps a copy fetched without cookies and serves it at once,
+   so it must stay anonymous: the office's name and the seal, nothing else.
+
+   It is the same navy as Android's launch screen (manifest background_color
+   and the maskable icon), so the launch screen hands over to it without a
+   flash. It then asks for the dashboard and stays on screen, spinning, until
+   the dashboard - or the sign-in page, for a signed-out user - arrives.
+  {% endcomment %}
+  <noscript><meta http-equiv="refresh" content="0; url={{ next_url }}"></noscript>
+  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
+</head>
+<body class="launch-screen">
+  <main class="launch-body" aria-busy="true">
+    <div class="launch-mark">
+      <span class="launch-ring" aria-hidden="true"></span>
+      <img src="{% static 'img/dilg-logo.png' %}" alt="" width="112" height="112" class="launch-seal">
+    </div>
+
+    <h1 class="launch-title">{{ agency.system_name|default:"LGMED-iMMS" }}</h1>
+    <p class="launch-subtitle">{{ agency.division|default:"Local Government Monitoring and Evaluation Division" }}</p>
+
+    <div class="launch-progress" aria-hidden="true"><span></span></div>
+    <p class="launch-status" role="status" aria-live="polite" data-launch-status>Loading&hellip;</p>
+
+    <a href="{{ next_url }}" class="launch-retry" data-launch-retry hidden>Try again</a>
+  </main>
+
+  <footer class="launch-footer">
+    {{ agency.department|default:"Department of the Interior and Local Government" }}<br>
+    {{ agency.office|default:"Regional Office XIII - Caraga" }}
+  </footer>
+
+  <script>
+    (function () {
+      var next = {{ next_url_json|safe }};
+      var status = document.querySelector("[data-launch-status]");
+      var retry = document.querySelector("[data-launch-retry]");
+
+      function go() {
+        status.textContent = "Loading…";
+        retry.hidden = true;
+        // After the first paint, so the spinner is on screen while the
+        // dashboard is requested; this page stays up until it arrives.
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { window.location.replace(next); });
+        });
+        // A slow network is not a frozen app: say so.
+        window.setTimeout(function () {
+          status.textContent = "Still loading — the connection is slow…";
+        }, 8000);
+      }
+
+      if (navigator.onLine === false) {
+        status.textContent = "No connection. The system will open once you are back online.";
+        retry.hidden = false;
+        window.addEventListener("online", go, { once: true });
+      } else {
+        go();
+      }
+    })();
+  </script>
+</body>
+</html>

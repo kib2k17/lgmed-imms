@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  {# ---- Select migration type ----------------------------------------- #}
+  <section aria-labelledby="type-heading" class="mb-4">
+    <h2 id="type-heading" class="mb-2 text-sm font-semibold text-slate-900">Select migration type</h2>
+    <div class="grid gap-3 sm:grid-cols-2" role="list">
+      {% for tab in module_tabs %}
+        {% with profile=tab.profile %}
+          <div role="listitem">
+            {% if tab.allowed %}
+              <a href="?module={{ profile.key }}"
+                 class="flex h-full items-start gap-3 rounded-lg border px-4 py-3 transition-colors
+                        {% if profile.key == selected.key %}border-brand-600 bg-brand-50 ring-1 ring-brand-600{% else %}border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50{% endif %}"
+                 {% if profile.key == selected.key %}aria-current="page"{% endif %}>
+                <span class="grid size-9 shrink-0 place-items-center rounded-md {% if profile.key == selected.key %}bg-brand-600 text-white{% else %}bg-slate-100 text-slate-600{% endif %}" aria-hidden="true">
+                  {% if profile.key == "incoming" %}{% icon "inbox" "size-4.5" %}{% else %}{% icon "mail" "size-4.5" %}{% endif %}
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-900">{{ profile.label }}</span>
+                  <span class="block text-meta text-slate-600">
+                    {% if profile.is_migration %}Import historical records once - existing records are never changed.
+                    {% else %}Keep in step with the register - new rows are added, changed rows updated.{% endif %}
+                  </span>
+                </span>
+              </a>
+            {% else %}
+              <div class="flex h-full items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500" aria-disabled="true">
+                <span class="grid size-9 shrink-0 place-items-center rounded-md bg-slate-100" aria-hidden="true">{% icon "lock" "size-4.5" %}</span>
+                <span>
+                  <span class="block text-sm font-semibold">{{ profile.label }}</span>
+                  <span class="block text-meta">Your role does not permit this migration.</span>
+                </span>
+              </div>
+            {% endif %}
+          </div>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if selected.is_migration %}
+    {% include "dashboard/sync/_steps.html" %}
+  {% endif %}
+
+  <div class="grid gap-4 xl:grid-cols-3">
+
+    <section class="card xl:col-span-2" aria-labelledby="upload-heading">
+      <div class="card-header">
+        <h2 id="upload-heading" class="card-title">
+          {% if selected.is_migration %}Step 1 - Upload the {{ selected.label }} Excel file{% else %}Upload the {{ selected.label }} register{% endif %}
+        </h2>
+      </div>
+      {% if can_upload %}
+        <form method="post" enctype="multipart/form-data" class="card-body space-y-5" data-once data-loading="upload-loading" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="module" value="{{ selected.key }}">
+          {% for error in form.non_field_errors %}
+            <p class="form-error" role="alert">{% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span></p>
+          {% endfor %}
+          {% for error in form.module.errors %}
+            <p class="form-error" role="alert">{% icon "error" "size-3.5 mt-px shrink-0" %}<span>{{ error }}</span></p>
+          {% endfor %}
+          <div>{% include "components/bound_field.html" with field=form.file %}</div>
+          {% if selected.is_migration %}
+            <ol class="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+              <li>The file is read and its columns are checked against the ones listed here.</li>
+              <li>Every row is validated and compared with the records already in the system. You see each row as <strong>Valid</strong>, <strong>Warning</strong>, <strong>Duplicate</strong> or <strong>Error</strong>.</li>
+              <li>Nothing is saved until you choose <strong>Import Valid Records</strong>. Duplicates and rows with errors are never imported.</li>
+              <li>LGMED codes are kept exactly as written in the file; none is generated.</li>
+            </ol>
+          {% else %}
+            <ol class="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+              <li>Every sheet is read; empty sheets are passed over.</li>
+              <li>You see what would be created, updated and skipped, and why.</li>
+              <li>Nothing changes until you choose <strong>Commit sync</strong>.</li>
+            </ol>
+          {% endif %}
+          <div class="flex justify-end">
+            <button type="submit" class="btn btn-primary">
+              {% icon "upload" "size-4" %}Upload and preview
+            </button>
+          </div>
+        </form>
+      {% else %}
+        <div class="card-body">
+          <p class="text-sm text-slate-600">Your role does not permit this migration. Choose another type above.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="mapping-heading">
+      <div class="card-header">
+        <h2 id="mapping-heading" class="card-title">Columns read</h2>
+      </div>
+      <div class="card-body space-y-4">
+        <p class="text-sm text-slate-600">
+          Headers are matched without regard to case, spaces or punctuation.
+          Every other column is ignored. A column found under one of the other
+          names below is pointed out in the preview for you to confirm.
+        </p>
+        <dl class="space-y-3 text-sm">
+          {% for column in selected.columns %}
+            <div>
+              <dt class="font-medium text-slate-900">
+                {{ column.aliases.0 }}
+                {% if column.name == selected.key_column %}<span class="text-meta text-brand-700">(key, required)</span>
+                {% elif column.name in selected.required_columns %}<span class="text-meta text-brand-700">(required)</span>{% endif %}
+              </dt>
+              {% if column.aliases|length > 1 or column.blank_header_fallback %}
+                <dd class="text-meta text-slate-500">
+                  Also recognised: {{ column.aliases|slice:"1:"|join:", " }}{% if column.blank_header_fallback %}{% if column.aliases|length > 1 %}; {% endif %}or a blank header{% endif %}
+                </dd>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </dl>
+      </div>
+    </section>
+  </div>
+
+  <section class="card mt-4" aria-labelledby="history-heading">
+    <div class="card-header">
+      <h2 id="history-heading" class="card-title">Recent uploads</h2>
+    </div>
+    {% if batches %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">File</th>
+              <th scope="col">Type</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="hidden md:table-cell">Imported</th>
+              <th scope="col" class="hidden md:table-cell">Updated</th>
+              <th scope="col" class="hidden md:table-cell">Duplicates</th>
+              <th scope="col" class="hidden md:table-cell">Errors</th>
+              <th scope="col" class="hidden lg:table-cell">Uploaded</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for batch in batches %}
+              <tr>
+                <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
+                  <a href="{{ batch.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ batch.original_name }}</a>
+                </th>
+                <td>{{ batch.get_module_display }}</td>
+                <td>
+                  {% if batch.status == "COMMITTED" %}{% status_badge "completed" batch.get_status_display %}
+                  {% elif batch.status == "PREVIEW" %}{% status_badge "pending" batch.get_status_display %}
+                  {% else %}{% status_badge "inactive" batch.get_status_display %}{% endif %}
+                </td>
+                <td class="hidden tabular md:table-cell">{{ batch.counts.created|default:0 }}</td>
+                <td class="hidden tabular md:table-cell">{% if batch.profile.is_migration %}-{% else %}{{ batch.counts.updated|default:0 }}{% endif %}</td>
+                <td class="hidden tabular md:table-cell">{% if batch.profile.is_migration %}{{ batch.counts.duplicates|default:0 }}{% else %}-{% endif %}</td>
+                <td class="hidden tabular md:table-cell">{% if batch.profile.is_migration %}{{ batch.counts.errors|default:0 }}{% else %}{{ batch.counts.skipped|default:0 }}{% endif %}</td>
+                <td class="hidden text-slate-500 lg:table-cell">
+                  {{ batch.uploaded_by.get_display_name|default:"-" }}
+                  <span class="block text-meta">{{ batch.uploaded_at|date:"j M Y, g:i A" }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="upload" title="Nothing uploaded yet" message="Upload an Incoming or Outgoing workbook to begin." %}
+    {% endif %}
+  </section>
+  {# Shown by static/js/app.js while the workbook is uploaded and read. #}
+  <div id="upload-loading" hidden
+       class="fixed inset-0 z-50 hidden place-items-center bg-slate-900/50 p-4 [&:not([hidden])]:grid">
+    <div class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center shadow-overlay"
+         role="status" aria-live="polite" tabindex="-1">
+      <svg class="mx-auto size-10 animate-spin text-brand-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-20"></circle>
+        <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+      </svg>
+      <p class="mt-4 text-base font-semibold text-slate-900">Uploading and checking your file&hellip;</p>
+      <ul class="mt-3 space-y-1 text-left text-sm text-slate-600">
+        <li class="flex gap-2">{% icon "upload" "size-4 mt-0.5 shrink-0 text-brand-600" %}Uploading the workbook</li>
+        <li class="flex gap-2">{% icon "file" "size-4 mt-0.5 shrink-0 text-brand-600" %}Reading every sheet and checking the columns</li>
+        <li class="flex gap-2">{% icon "check-circle" "size-4 mt-0.5 shrink-0 text-brand-600" %}Validating each row and looking for duplicates</li>
+      </ul>
+      <p class="mt-4 text-meta text-slate-500">
+        A large register can take up to a minute. Please keep this page open -
+        nothing is saved until you confirm the import.
+      </p>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>New {{ agency.system_name }} account</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr><td style="background:#1e3a8a;padding:20px 24px;color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:.85;">{{ agency.department }} &middot; {{ agency.office_short }}</div>
+          <div style="font-size:20px;font-weight:bold;margin-top:4px;">New account created</div>
+        </td></tr>
+        <tr><td style="padding:24px;font-size:14px;line-height:1.6;">
+          <p style="margin:0 0 16px;">A new {{ agency.system_name }} account has been created.</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e2e8f0;border-radius:6px;font-size:14px;">
+            <tr><td style="padding:10px 14px;color:#64748b;width:40%;border-bottom:1px solid #e2e8f0;">Name</td>
+                <td style="padding:10px 14px;font-weight:bold;border-bottom:1px solid #e2e8f0;">{{ user.get_display_name }}</td></tr>
+            <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0;">Username</td>
+                <td style="padding:10px 14px;font-family:Consolas,monospace;font-weight:bold;border-bottom:1px solid #e2e8f0;">{{ user.username }}</td></tr>
+            <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0;">Email</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">{{ user.email }}</td></tr>
+            <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0;">Role</td>
+                <td style="padding:10px 14px;font-weight:bold;border-bottom:1px solid #e2e8f0;">{{ role }}</td></tr>
+            <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0;">Position</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">{{ user.position|default:"Not recorded" }}</td></tr>
+            <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0;">Created by</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">{{ created_by.get_display_name }} ({{ created_by.username }})</td></tr>
+            <tr><td style="padding:10px 14px;color:#64748b;">Created on</td>
+                <td style="padding:10px 14px;">{{ user.date_joined|date:"j F Y, g:i A" }}</td></tr>
+          </table>
+          <p style="margin:16px 0 0;font-size:13px;color:#475569;">
+            A welcome email with the sign-in details and a temporary password was sent to {{ user.email }}. The temporary password is not included in this notice.
+          </p>
+          <p style="margin:20px 0;text-align:center;">
+            <a href="{{ detail_url }}" style="display:inline-block;background:#1e3a8a;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:bold;">View the account</a>
+          </p>
+          <p style="margin:0;font-size:13px;color:#64748b;">If this account was not expected, deactivate it from Users &amp; Roles and review the audit log.</p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">
+          {{ agency.division }}<br>{{ agency.office }}<br>
+          <em>This is an automated message. Please do not reply.</em>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

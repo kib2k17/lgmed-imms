@@ -1,0 +1,29 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="timestamp" label="When" %}
+  {% include "components/th_sort.html" with field="document_reference" label="Document" %}
+  {% include "components/th_sort.html" with field="action" label="Action" %}
+  {% include "components/th_sort.html" with field="actor_label" label="By" th_class="hidden md:table-cell" %}
+  <th scope="col" class="hidden lg:table-cell">Detail</th>
+{% endblock %}
+
+{% block table_body %}
+  {% for entry in records %}
+    <tr>
+      <td class="text-meta whitespace-nowrap"><time datetime="{{ entry.timestamp|date:'c' }}">{{ entry.timestamp|date:"j M Y, g:i:s A" }}</time></td>
+      <td class="whitespace-nowrap">
+        {% if entry.document_id %}<a href="{% url 'esira:detail' entry.document_id %}" class="text-brand-700 hover:underline">{{ entry.document_reference }}</a>{% else %}<span class="text-slate-400">&mdash;</span>{% endif %}
+      </td>
+      <td>{% status_badge entry.status_tone entry.get_action_display %}</td>
+      <td class="hidden md:table-cell">{{ entry.actor_label }}<span class="block text-meta text-slate-500">{{ entry.actor_role }}</span></td>
+      <td class="hidden text-meta text-slate-600 lg:table-cell">{{ entry.detail|truncatechars:160 }}{% if entry.ip_address %}<span class="block text-slate-400">{{ entry.ip_address }}</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+{% endblock %}

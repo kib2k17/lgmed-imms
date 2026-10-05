@@ -8,21 +8,19 @@
   <button type="button" class="btn btn-ghost relative px-2"
           data-menu-button aria-expanded="false" aria-haspopup="true">
     {% icon "bell" "size-5" %}
-    {% if unread_notifications %}
-      <span aria-hidden="true"
-            class="absolute top-1 right-1 grid min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.625rem] font-bold text-white">
-        {% if unread_notifications > 9 %}9+{% else %}{{ unread_notifications }}{% endif %}
-      </span>
-      <span class="sr-only">
-        Notifications, {{ unread_notifications }} unread
-      </span>
-    {% else %}
-      <span class="sr-only">Notifications, none unread</span>
-    {% endif %}
+    {% comment %}
+     Always rendered, hidden at zero: static/js/pwa.js keeps the count current
+     while the page stays open, through the data-notif-* hooks.
+    {% endcomment %}
+    <span aria-hidden="true" data-notif-badge {% if not unread_notifications %}hidden{% endif %}
+          class="absolute top-1 right-1 grid min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.625rem] font-bold text-white">{% if unread_notifications > 9 %}9+{% else %}{{ unread_notifications }}{% endif %}</span>
+    <span class="sr-only" data-notif-sr data-unread="{{ unread_notifications|default:0 }}">
+      {% if unread_notifications %}Notifications, {{ unread_notifications }} unread{% else %}Notifications, none unread{% endif %}
+    </span>
   </button>
 
   <div data-menu-panel hidden
-       class="absolute right-0 z-50 mt-1 w-80 origin-top-right rounded-lg border border-slate-200 bg-white shadow-overlay">
+       class="absolute right-0 z-50 mt-1 w-80 origin-top-right rounded-lg border border-slate-200 bg-white shadow-overlay max-sm:fixed max-sm:inset-x-2 max-sm:top-[calc(var(--app-header-h)+env(safe-area-inset-top))] max-sm:w-auto">
     <div class="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
       <h2 class="text-sm font-semibold text-slate-900">Notifications</h2>
       {% if unread_notifications %}
@@ -65,10 +63,15 @@
       </div>
     {% endif %}
 
-    <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-4 py-2">
+    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-slate-200 px-4 py-2">
       <a href="{% url 'notifications:list' %}" class="text-sm font-medium text-brand-700 hover:underline">
         View all notifications
       </a>
+      {# Revealed by static/js/pwa.js while device notifications are undecided. #}
+      <button type="button" data-push-enable hidden
+              class="text-meta font-medium text-brand-700 hover:underline">
+        Notify me on this device
+      </button>
       {% if unread_notifications %}
         <form method="post" action="{% url 'notifications:read_all' %}">
           {% csrf_token %}

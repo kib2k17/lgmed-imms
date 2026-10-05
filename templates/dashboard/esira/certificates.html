@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+  {% include "dashboard/esira/_setup_notice.html" %}
+
+  <div class="grid gap-4 xl:grid-cols-3">
+    <section class="card xl:col-span-2" aria-labelledby="mine-heading">
+      <div class="card-header">
+        <h2 id="mine-heading" class="card-title">My Registered Certificates</h2>
+      </div>
+      {% if certificates %}
+        <ul class="divide-y divide-slate-100">
+          {% for certificate in certificates %}
+            <li class="px-4 py-3 sm:px-5">{% include "dashboard/esira/_certificate_row.html" %}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include "components/empty_state.html" with icon="key" title="No certificate registered" message="Register the PNPKI certificate DICT issued to you. You can sign once an administrator has verified it." %}
+      {% endif %}
+    </section>
+
+    <form method="post" enctype="multipart/form-data" class="card h-fit" novalidate autocomplete="off">
+      {% csrf_token %}
+      <div class="card-header"><h2 class="card-title">Register a Certificate</h2></div>
+      <div class="card-body space-y-4">
+        {% if form.non_field_errors %}
+          <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+        <fieldset>
+          <legend class="form-label">{{ form.kind.label }}</legend>
+          <div class="mt-1 space-y-2">
+            {% for choice in form.kind %}
+              <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-slate-300 px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+                {{ choice.tag }}<span class="text-slate-800">{{ choice.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <div>{% include "components/bound_field.html" with field=form.certificate_file %}</div>
+        <div>{% include "components/bound_field.html" with field=form.passphrase %}</div>
+        <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta text-slate-600">
+          Only the <strong>public</strong> certificate is kept. From a .p12 / .pfx file the private key is
+          opened once to prove the file is genuine, then discarded. You present the file again each time you sign.
+        </p>
+      </div>
+      <div class="card-footer flex justify-end">
+        <button type="submit" class="btn btn-primary">{% icon "key" "size-4" %}Register certificate</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

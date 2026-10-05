@@ -1,21 +1,7 @@
-{% load static ui %}<!doctype html>
-<html lang="en" class="h-full">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Sign in &middot; {{ agency.system_name }}</title>
-  {% comment %}
-   The agency's own seal is the tab icon. Offering a second icon in another
-   format is not a fallback: a browser given both picks whichever it prefers -
-   Chrome takes the SVG - and the generic mark won, so the seal is now the only
-   icon declared.
-  {% endcomment %}
-  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
-  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
-  <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
+{% extends "registration/signin_base.html" %}
+{% load ui %}
 
+{% block extra_head %}
   {% comment %}
     reCAPTCHA v3. Loaded only when a site key is configured, so a checkout
     without keys is not left waiting on a request to Google that can never
@@ -31,59 +17,11 @@
   {% if recaptcha_site_key %}
     <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}" async defer></script>
   {% endif %}
-</head>
-<body class="flex h-full flex-col bg-linear-to-b from-slate-100 to-slate-200 font-sans">
+{% endblock %}
 
-  <div class="bg-brand-950 text-brand-200">
-    <div class="mx-auto flex h-8 max-w-6xl items-center px-4 text-[0.6875rem] sm:px-6">
-      <p class="truncate">{{ agency.department }} <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span> {{ agency.office }}</p>
-    </div>
-  </div>
-
-  <main class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
-    <div class="w-full max-w-md lg:max-w-4xl">
-
-      {% comment %}
-        Below lg the office identity stacks above the form, as before. From lg
-        it moves into a panel beside it: on a desktop the single narrow column
-        left most of the screen empty, and the standing notices (who this
-        system belongs to, and that access is logged) are better placed next to
-        the form than queued above and below it.
-      {% endcomment %}
-
-      {# Identity - stacked, small screens only #}
-      <div class="mb-6 flex flex-col items-center text-center lg:hidden">
-        {% include "includes/agency_logo.html" with size="size-20" %}
-        <h1 class="mt-4 text-2xl font-bold tracking-tight text-brand-900">{{ agency.system_name }}</h1>
-        <p class="mt-1 max-w-sm text-[0.8125rem] leading-snug text-slate-600">
-          {{ agency.system_full_name }}
-        </p>
-        <p class="mt-1.5 text-meta font-medium text-slate-500">{{ agency.office_short }}</p>
-      </div>
-
-      <div class="overflow-hidden rounded-xl border-t-4 border-accent-400 bg-white shadow-overlay ring-1 ring-slate-900/5 lg:grid lg:grid-cols-5">
-
-        {# Identity panel - lg and up #}
-        <aside class="hidden bg-linear-to-b from-brand-900 to-brand-950 p-8 text-brand-200 lg:col-span-2 lg:flex lg:flex-col">
-          {% include "includes/agency_logo.html" with size="size-16" on_dark=True %}
-          <h1 class="mt-5 text-xl font-bold tracking-tight text-white">{{ agency.system_name }}</h1>
-          <p class="mt-2 text-[0.8125rem] leading-relaxed">{{ agency.system_full_name }}</p>
-          <p class="mt-4 text-meta font-medium text-brand-300">{{ agency.office_short }}</p>
-
-          <div class="mt-auto flex items-start gap-2.5 border-t border-white/10 pt-5 text-meta leading-relaxed">
-            <span class="mt-0.5 shrink-0 text-brand-400">{% icon "shield" "size-4" %}</span>
-            <p>
-              This is an official government information system. Access is
-              restricted to authorized personnel. All activity is logged for
-              audit purposes.
-            </p>
-          </div>
-        </aside>
-
-        {# Form #}
-        <div class="p-4 sm:p-5 lg:col-span-3 lg:p-8">
-          <h2 class="text-xl font-bold tracking-tight text-slate-900">Sign in to your account</h2>
-          <p class="mt-1.5 text-sm text-slate-600">Use the credentials issued by the LGMED system administrator.</p>
+{% block panel %}
+          <h2 class="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h2>
+          <p class="mt-1.5 text-sm text-slate-600">Sign in with the account issued by the {{ agency.division_short }} system administrator.</p>
 
           {# Session and authorization feedback #}
           {% if messages %}
@@ -109,6 +47,8 @@
 
           <form method="post" action="{% url 'accounts:login' %}" class="mt-6 space-y-5" novalidate
                 data-signin-form
+                data-loading-title="Signing in&hellip;"
+                data-loading-note="Checking your username and password. Please keep this page open."
                 data-recaptcha-site-key="{{ recaptcha_site_key }}"
                 data-recaptcha-action="{{ recaptcha_action }}">
             {% csrf_token %}
@@ -122,10 +62,8 @@
               reference dangles and a screen reader announces nothing.
             {% endcomment %}
             <div>
-              <label for="{{ form.username.id_for_label }}" class="form-label">
-                {{ form.username.label }}<span class="required-mark" aria-hidden="true">*</span>
-                <span class="sr-only">(required)</span>
-              </label>
+              {# Both fields are plainly needed to sign in; asterisks on a two-field form are noise. #}
+              <label for="{{ form.username.id_for_label }}" class="form-label">{{ form.username.label }}</label>
               {{ form.username }}
               {% if form.username.errors %}
                 <div id="{{ form.username.auto_id }}_error">
@@ -137,10 +75,16 @@
             </div>
 
             <div>
-              <label for="{{ form.password.id_for_label }}" class="form-label">
-                {{ form.password.label }}<span class="required-mark" aria-hidden="true">*</span>
-                <span class="sr-only">(required)</span>
-              </label>
+              {% comment %}
+                "Forgot password?" sits where people look for it - beside the
+                field they cannot fill. Accounts are issued by the administrator,
+                so it opens a pre-addressed request rather than a reset flow.
+              {% endcomment %}
+              <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                <label for="{{ form.password.id_for_label }}" class="form-label mb-0">{{ form.password.label }}</label>
+                <a href="mailto:{{ agency.email }}?subject={{ 'Password reset request - '|urlencode }}{{ agency.system_name|urlencode }}"
+                   class="text-meta font-medium text-brand-700 hover:underline">Forgot password?</a>
+              </div>
 
               {# The toggle is hidden until scripting confirms it works, so a #}
               {# browser without JavaScript is never shown a dead button.     #}
@@ -185,35 +129,14 @@
             </noscript>
           {% endif %}
 
-          <p class="mt-5 border-t border-slate-200 pt-4 text-meta text-slate-500">
-            Forgot your password? Contact the system administrator at
-            <a href="mailto:{{ agency.email }}" class="font-medium text-brand-700 hover:underline">{{ agency.email }}</a>.
+          <p class="mt-6 flex items-start gap-2 text-meta leading-relaxed text-slate-500">
+            <span class="mt-px shrink-0 text-slate-400">{% icon "help" "size-3.5" %}</span>
+            <span>No account yet, or locked out? Contact the system administrator at
+              <a href="mailto:{{ agency.email }}" class="font-medium whitespace-nowrap text-brand-700 hover:underline">{{ agency.email }}</a>.</span>
           </p>
+{% endblock %}
 
-        </div>
-      </div>
-
-      {# Security notice - stacked, small screens only #}
-      <div class="mt-5 flex items-start gap-2.5 rounded-md border border-slate-200 bg-white/70 p-3 text-meta leading-relaxed text-slate-600 lg:hidden">
-        <span class="mt-0.5 shrink-0 text-slate-400">{% icon "shield" "size-4" %}</span>
-        <p>
-          This is an official government information system. Access is restricted to
-          authorized personnel. All activity is logged for audit purposes.
-        </p>
-      </div>
-
-      <p class="mt-5 text-center text-meta text-slate-500">
-        <a href="{% url 'core:home' %}" class="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
-          {% icon "chevron-left" "size-3.5" %}Return to the public website
-        </a>
-      </p>
-    </div>
-  </main>
-
-  <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-meta text-slate-500 sm:px-6">
-    <p>&copy; {% now "Y" %} {{ agency.office_short }} &mdash; {{ agency.division }}</p>
-  </footer>
-
+{% block extra_scripts %}
   {% comment %}
     A v3 token is only good for two minutes, so it is fetched when the form is
     sent rather than when the page loads - a sign-in page left open over lunch
@@ -257,6 +180,8 @@
 
         event.preventDefault();
         event.stopImmediatePropagation();
+        /* The wait for Google counts as signing in - show it as such. */
+        if (window.showPageLoading) window.showPageLoading(form);
 
         var label = form.querySelector("[data-signin-submit-label]");
         if (label) label.textContent = "Verifying\u2026";
@@ -285,7 +210,4 @@
     })();
   </script>
   {% endif %}
-
-  <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
-</body>
-</html>
+{% endblock %}

@@ -8,6 +8,7 @@ server rather than merely hidden from the page.
 """
 
 import datetime
+import os
 
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
@@ -227,6 +228,7 @@ class FocalPersonTests(IncomingTestCase):
 
     def test_completing_stamps_the_completion_time(self):
         document = self.assign_to_focal(self.make_document())
+        workflow.acknowledge(document, self.focal)
         workflow.add_update(
             document,
             self.focal,
@@ -260,9 +262,10 @@ class FocalPersonTests(IncomingTestCase):
 
     def test_an_unassigned_person_cannot_post_an_update(self):
         document = self.assign_to_focal(self.make_document())
+        workflow.acknowledge(document, self.focal)
         self.client.force_login(self.other_focal)
         response = self.client.post(
-            reverse("incoming:add_update", args=[document.pk]),
+            reverse("outgoing:add_update", args=[document.outgoing_document.pk]),
             {"action_taken": "Meddling.", "status": IncomingStatus.IN_PROGRESS},
         )
         self.assertEqual(response.status_code, 403)
@@ -270,6 +273,7 @@ class FocalPersonTests(IncomingTestCase):
 
     def test_returning_sends_the_document_back_to_the_focal_person(self):
         document = self.assign_to_focal(self.make_document())
+        workflow.acknowledge(document, self.focal)
         workflow.add_update(
             document,
             self.focal,
@@ -330,6 +334,7 @@ class OverdueTests(IncomingTestCase):
             due_date=timezone.localdate() - datetime.timedelta(days=3)
         )
         document.refresh_from_db()
+        workflow.acknowledge(document, self.focal)
         workflow.add_update(
             document,
             self.focal,
@@ -355,6 +360,7 @@ class OverdueTests(IncomingTestCase):
         )
 
         document.refresh_from_db()
+        workflow.acknowledge(document, self.focal)
         workflow.add_update(
             document,
             self.focal,
@@ -472,3 +478,319 @@ class ReportTests(IncomingTestCase):
         people = {row[0]: row for row in result["rows"]}
         self.assertEqual(people["Mario Salazar"][1], "1")
         self.assertEqual(people["Rosa Antonio"][1], "1")
+
+
+class LgmedCodeTests(IncomingTestCase):
+    """
+    Incoming first, assignment second, LGMED code third - and only once.
+    """
+
+    def expected_code(self, initials, number, on=None):
+        on = on or timezone.localdate()
+        return f"LGMED-13 - {initials} - {on:%Y-%m-%d}-{number:04d}"
+
+    def test_a_recorded_document_has_no_lgmed_code(self):
+        document = self.make_document()
+        self.assertIsNone(document.lgmed_code)
+        self.assertEqual(document.tracking_number, "2026-0001")
+
+    def test_reviewing_does_not_issue_a_code(self):
+        document = self.make_document()
+        workflow.review(document, self.chief, "Prepare a reply.")
+        document.refresh_from_db()
+        self.assertIsNone(document.lgmed_code)
+
+    def test_assigning_issues_the_code_from_the_focal_persons_initials(self):
+        document = self.assign_to_focal(self.make_document())
+        document.refresh_from_db()
+        self.assertEqual(document.lgmed_code, self.expected_code("MS", 1))
+        self.assertEqual(document.tracking_number, document.lgmed_code)
+        self.assertIn(
+            document.lgmed_code, document.events.get(event_type=EventType.ASSIGNED).detail
+        )
+
+    def test_configured_initials_carry_the_middle_initial(self):
+        self.focal.code_initials = "rgfj"
+        self.focal.save()
+        document = self.assign_to_focal(self.make_document())
+        self.assertEqual(document.lgmed_code, self.expected_code("RGFJ", 1))
+
+    def test_reassigning_and_acting_never_issue_another_code(self):
+        document = self.assign_to_focal(self.make_document())
+        issued = document.lgmed_code
+
+        self.assign_to_focal(document, assignee=self.other_focal)
+        workflow.acknowledge(document, self.other_focal)
+        workflow.add_update(
+            document, self.other_focal,
+            IncomingUpdate(action_taken="Drafted the reply",
+                           status=IncomingStatus.COMPLETED),
+        )
+        document.refresh_from_db()
+        self.assertEqual(document.lgmed_code, issued)
+
+    def test_numbers_run_on_across_documents(self):
+        first = self.assign_to_focal(self.make_document())
+        second = self.assign_to_focal(
+            self.make_document(docket_number="2026-0002"), assignee=self.other_focal
+        )
+        self.assertEqual(first.lgmed_code, self.expected_code("MS", 1))
+        self.assertEqual(second.lgmed_code, self.expected_code("RA", 2))
+
+    def test_numbers_continue_after_the_outgoing_register(self):
+        """A code issued here never repeats one written in the spreadsheet."""
+        from outgoing.models import OutgoingDocument
+
+        today = timezone.localdate()
+        OutgoingDocument.objects.create(
+            control_code=f"LGMED-13 - (DBA) - {today:%Y}-01-05-0041"
+        )
+        document = self.assign_to_focal(self.make_document())
+        self.assertEqual(document.lgmed_code, self.expected_code("MS", 42))
+
+    def test_a_deleted_documents_number_is_not_issued_again(self):
+        self.assign_to_focal(self.make_document()).delete()
+        document = self.assign_to_focal(
+            self.make_document(docket_number="2026-0002")
+        )
+        self.assertEqual(document.lgmed_code, self.expected_code("MS", 2))
+
+    def test_numbering_restarts_each_year(self):
+        from outgoing.codes import issue_code
+
+        self.assertTrue(issue_code(self.focal, datetime.date(2025, 12, 31)).endswith(
+            "2025-12-31-0001"
+        ))
+        self.assertTrue(issue_code(self.focal, datetime.date(2025, 12, 31)).endswith(
+            "2025-12-31-0002"
+        ))
+        self.assertTrue(issue_code(self.focal, datetime.date(2026, 1, 2)).endswith(
+            "2026-01-02-0001"
+        ))
+
+    def test_the_encoders_form_cannot_carry_a_code(self):
+        from .forms import IncomingDocumentForm
+
+        self.assertNotIn("lgmed_code", IncomingDocumentForm().fields)
+
+
+class OutgoingHandoverTests(IncomingTestCase):
+    """Acknowledged, the document moves to Outgoing Monitoring; action is taken there."""
+
+    def acknowledged(self):
+        document = self.assign_to_focal(self.make_document())
+        workflow.acknowledge(document, self.focal)
+        return document
+
+    def test_the_code_has_no_parentheses(self):
+        document = self.assign_to_focal(self.make_document())
+        self.assertNotIn("(", document.lgmed_code)
+        self.assertTrue(document.lgmed_code.startswith("LGMED-13 - MS - "))
+
+    def test_nothing_moves_before_acknowledgement(self):
+        from outgoing.models import OutgoingDocument
+
+        document = self.assign_to_focal(self.make_document())
+        self.assertFalse(OutgoingDocument.objects.exists())
+        self.assertIsNone(document.outgoing_document)
+        self.assertFalse(document.may_be_updated_by(self.focal))
+
+    def test_acknowledging_opens_the_outgoing_record_under_the_same_code(self):
+        from outgoing.models import OutgoingDocument
+
+        document = self.acknowledged()
+        outgoing = OutgoingDocument.objects.get()
+        self.assertEqual(outgoing.control_code, document.lgmed_code)
+        self.assertEqual(outgoing.incoming, document)
+        self.assertEqual(outgoing.incoming_reference, document.docket_number)
+        self.assertIsNone(outgoing.date_sent)
+        self.assertEqual(document.action_url, outgoing.get_absolute_url())
+
+    def test_acknowledging_through_the_page_lands_in_outgoing(self):
+        document = self.assign_to_focal(self.make_document())
+        self.client.force_login(self.focal)
+        response = self.client.post(reverse("incoming:acknowledge", args=[document.pk]))
+        document.refresh_from_db()
+        self.assertRedirects(response, document.outgoing_document.get_absolute_url())
+
+    def test_a_reassigned_document_keeps_its_one_outgoing_record(self):
+        from outgoing.models import OutgoingDocument
+
+        document = self.acknowledged()
+        self.assign_to_focal(document, assignee=self.other_focal)
+        workflow.acknowledge(document, self.other_focal)
+        self.assertEqual(OutgoingDocument.objects.count(), 1)
+
+    def test_the_focal_person_updates_and_completes_in_outgoing(self):
+        document = self.acknowledged()
+        record = document.outgoing_document
+        self.client.force_login(self.focal)
+        response = self.client.post(
+            reverse("outgoing:add_update", args=[record.pk]),
+            {"action_taken": "Reply sent.", "status": IncomingStatus.COMPLETED},
+        )
+        self.assertRedirects(response, record.get_absolute_url())
+        document.refresh_from_db()
+        self.assertTrue(document.is_completed)
+
+    def test_the_chief_returns_for_revision_in_outgoing(self):
+        document = self.acknowledged()
+        self.client.force_login(self.chief)
+        self.client.post(
+            reverse("outgoing:return", args=[document.outgoing_document.pk]),
+            {"remarks": "Check the figures."},
+        )
+        document.refresh_from_db()
+        self.assertEqual(document.status, IncomingStatus.RETURNED)
+
+    def test_the_incoming_urls_for_action_are_gone(self):
+        from django.urls import NoReverseMatch
+
+        with self.assertRaises(NoReverseMatch):
+            reverse("incoming:add_update", args=[1])
+
+    def test_recording_the_communication_sent(self):
+        document = self.acknowledged()
+        record = document.outgoing_document
+        self.client.force_login(self.focal)
+        response = self.client.post(
+            reverse("outgoing:transmittal", args=[record.pk]),
+            {
+                "date_sent": timezone.localdate().isoformat(),
+                "communication_type": "Letter",
+                "subject": "Reply on the SGLG validation",
+                "sent_to": "Office of the Regional Director",
+                "sent_via": "Email",
+            },
+        )
+        self.assertRedirects(response, record.get_absolute_url())
+        record.refresh_from_db()
+        self.assertEqual(record.control_code, document.lgmed_code)
+        self.assertEqual(record.date_sent, timezone.localdate())
+        self.assertTrue(document.events.filter(event_type=EventType.OUTGOING).exists())
+        document.refresh_from_db()
+        self.assertEqual(document.status, IncomingStatus.ACKNOWLEDGED)
+
+    def test_only_the_focal_person_or_the_chief_may_act(self):
+        document = self.acknowledged()
+        record = document.outgoing_document
+        self.client.force_login(self.other_focal)
+        self.assertEqual(
+            self.client.get(reverse("outgoing:transmittal", args=[record.pk])).status_code,
+            403,
+        )
+
+    def test_the_pages_render(self):
+        document = self.acknowledged()
+        record = document.outgoing_document
+        self.client.force_login(self.focal)
+        page = self.client.get(record.get_absolute_url())
+        self.assertContains(page, document.lgmed_code)
+        self.assertContains(page, reverse("outgoing:add_update", args=[record.pk]))
+        self.assertContains(
+            self.client.get(document.get_absolute_url()), record.get_absolute_url()
+        )
+        self.assertContains(self.client.get(reverse("outgoing:list")), document.lgmed_code)
+        self.assertEqual(
+            self.client.get(reverse("outgoing:transmittal", args=[record.pk])).status_code,
+            200,
+        )
+
+
+class DocumentRegisterSyncTests(IncomingTestCase):
+    """Every incoming document is in the Documents register, and moves with it."""
+
+    def entry(self, document):
+        from documents.models import Document
+
+        return Document.objects.get(incoming=document)
+
+    def test_recording_registers_the_document(self):
+        document = self.make_document()
+        entry = self.entry(document)
+        self.assertEqual(entry.reference_number, "2026-0001")
+        self.assertEqual(entry.title, document.subject)
+        self.assertEqual(entry.sender, document.source_office)
+        self.assertEqual(entry.owner, self.encoder)
+        self.assertEqual(entry.status, "FOR_REVIEW")
+        self.assertTrue(entry.events.filter(event_type="REGISTERED").exists())
+
+    def test_the_chiefs_review_moves_it_to_for_assignment(self):
+        document = self.make_document()
+        workflow.review(document, self.chief, "Prepare a reply.")
+        entry = self.entry(document)
+        self.assertEqual(entry.status, "FOR_ASSIGNMENT")
+        self.assertEqual(entry.review_notes, "Prepare a reply.")
+
+    def test_assignment_carries_the_focal_person_and_the_lgmed_code(self):
+        document = self.assign_to_focal(self.make_document())
+        entry = self.entry(document)
+        self.assertEqual(entry.status, "ASSIGNED")
+        self.assertEqual(entry.assigned_to, self.focal)
+        self.assertEqual(entry.reference_number, document.lgmed_code)
+        self.assertIn("2026-0001", entry.description)
+
+    def test_acknowledging_and_completing_follow_through(self):
+        document = self.assign_to_focal(self.make_document())
+        workflow.acknowledge(document, self.focal)
+        self.assertEqual(self.entry(document).status, "IN_PROGRESS")
+
+        workflow.add_update(
+            document, self.focal,
+            IncomingUpdate(action_taken="Reply sent.", status=IncomingStatus.COMPLETED),
+        )
+        entry = self.entry(document)
+        self.assertEqual(entry.status, "COMPLETED")
+        self.assertIsNotNone(entry.completed_at)
+
+        workflow.return_for_revision(document, self.chief, "Check the figures.")
+        entry = self.entry(document)
+        self.assertEqual(entry.status, "IN_PROGRESS")
+        self.assertIsNone(entry.completed_at)
+
+    def test_one_entry_per_document(self):
+        from documents.models import Document
+
+        document = self.assign_to_focal(self.make_document())
+        workflow.acknowledge(document, self.focal)
+        self.assertEqual(Document.objects.filter(incoming=document).count(), 1)
+
+    def test_the_entry_cannot_be_moved_from_the_register(self):
+        from documents import workflow as register_workflow
+
+        document = self.assign_to_focal(self.make_document())
+        entry = self.entry(document)
+        self.assertFalse(entry.may_be_edited_by(self.chief))
+        self.assertFalse(entry.may_be_assigned_by(self.chief))
+        with self.assertRaises(PermissionDenied):
+            register_workflow.start_processing(entry, self.focal)
+        with self.assertRaises(PermissionDenied):
+            register_workflow.cancel(entry, self.chief, reason="No.")
+
+    def test_the_register_page_points_back_to_incoming(self):
+        document = self.make_document()
+        self.client.force_login(self.chief)
+        response = self.client.get(self.entry(document).get_absolute_url())
+        self.assertContains(response, document.get_absolute_url())
+        self.assertNotContains(response, "Mark reviewed")
+
+    def test_the_backfill_registers_what_came_before(self):
+        from django.core.management import call_command
+
+        from documents.models import Document
+
+        document = IncomingDocument.objects.create(
+            docket_number="2025-0900",
+            subject="An old document",
+            document_type=self.document_type,
+            date_received=datetime.date(2025, 3, 1),
+            source_office="Province of Agusan del Norte",
+            created_by=self.encoder,
+            status=IncomingStatus.IMPORTED,
+        )
+        call_command("sync_document_register", stdout=open(os.devnull, "w"))
+        call_command("sync_document_register", stdout=open(os.devnull, "w"))
+        entry = Document.objects.get(incoming=document)
+        self.assertEqual(entry.status, "RECEIVED")
+        self.assertEqual(entry.year, 2025)
+        self.assertEqual(Document.objects.filter(incoming=document).count(), 1)

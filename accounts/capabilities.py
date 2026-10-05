@@ -67,6 +67,25 @@ CAPABILITIES = [
         "of its retention period, against a recorded written authority.",
     ),
     (
+        "can_upload_esira",
+        "Upload and route e-SIRA documents",
+        "Upload or scan a document into e-SIRA, place signature boxes and "
+        "route it for signature and approval. Every active account may sign "
+        "or act on a document routed to it.",
+    ),
+    (
+        "can_oversee_esira",
+        "Oversee e-SIRA",
+        "Read every e-SIRA document, its routing and audit trail, and the "
+        "office-wide signing figures; cancel a stalled document.",
+    ),
+    (
+        "can_verify_signing_certificates",
+        "Verify PNPKI signing certificates",
+        "Confirm that a registered PNPKI certificate belongs to the employee "
+        "who registered it, and revoke one that no longer does.",
+    ),
+    (
         "can_delete",
         "Delete records",
         "Permanently remove a record. Always confirmed, always logged.",

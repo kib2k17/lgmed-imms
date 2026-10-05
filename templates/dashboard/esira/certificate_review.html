@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+  {% include "dashboard/esira/_setup_notice.html" %}
+
+  <section class="card mb-4" aria-labelledby="pending-heading">
+    <div class="card-header">
+      <h2 id="pending-heading" class="card-title">Awaiting Verification</h2>
+      <span class="text-meta text-slate-500">{{ pending|length }} pending</span>
+    </div>
+    <p class="border-b border-slate-100 px-4 py-2.5 text-meta text-slate-600 sm:px-5">
+      Verify a certificate only after confirming it was issued by DICT to the named employee &mdash;
+      compare the name and email on the certificate with the account, and the serial number with the
+      employee's PNPKI issuance record. A verified certificate lets that account sign in the office's name.
+    </p>
+    {% if pending %}
+      <ul class="divide-y divide-slate-100">
+        {% for certificate in pending %}
+          <li class="px-4 py-3 sm:px-5">
+            <p class="mb-2 text-sm text-slate-700">
+              Registered by <span class="font-semibold text-slate-900">{{ certificate.user.get_display_name }}</span>
+              ({{ certificate.user.email|default:certificate.user.username }}) on {{ certificate.submitted_at|date:"j M Y, g:i A" }}
+            </p>
+            {% include "dashboard/esira/_certificate_row.html" %}
+            <form method="post" class="mt-3 flex flex-wrap items-end gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="certificate" value="{{ certificate.pk }}">
+              <div class="min-w-0 flex-1 basis-64">
+                <label for="remarks-{{ certificate.pk }}" class="form-label">Remarks <span class="font-normal text-slate-500">(required to reject)</span></label>
+                <input id="remarks-{{ certificate.pk }}" type="text" name="remarks" maxlength="500" class="form-input">
+              </div>
+              <button type="submit" name="decision" value="reject" class="btn btn-danger">{% icon "error" "size-4" %}Reject</button>
+              <button type="submit" name="decision" value="verify" class="btn btn-primary"{% if certificate.user_id == user.pk and not user.is_superuser %} disabled title="Another administrator must verify your own certificate"{% endif %}>{% icon "check" "size-4" %}Verify</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with icon="check-circle" title="Nothing awaiting verification" %}
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="others-heading">
+    <div class="card-header"><h2 id="others-heading" class="card-title">Reviewed Certificates</h2></div>
+    {% if others %}
+      <ul class="divide-y divide-slate-100">
+        {% for certificate in others %}
+          <li class="px-4 py-3 sm:px-5">
+            <p class="mb-2 text-sm font-semibold text-slate-900">{{ certificate.user.get_display_name }}</p>
+            {% include "dashboard/esira/_certificate_row.html" %}
+            {% if certificate.status == "VERIFIED" %}
+              <form method="post" class="mt-3 flex flex-wrap items-end gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="certificate" value="{{ certificate.pk }}">
+                <div class="min-w-0 flex-1 basis-64">
+                  <label for="revoke-{{ certificate.pk }}" class="form-label">Reason for revoking</label>
+                  <input id="revoke-{{ certificate.pk }}" type="text" name="remarks" maxlength="500" class="form-input" required>
+                </div>
+                <button type="submit" name="decision" value="revoke" class="btn btn-danger">{% icon "lock" "size-4" %}Revoke</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with icon="key" title="No reviewed certificates" %}
+    {% endif %}
+  </section>
+{% endblock %}

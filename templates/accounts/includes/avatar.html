@@ -1,0 +1,11 @@
+{% comment %}
+  An account's profile photo, or its initials when it has none.
+    person - the User
+    size   - utility classes for the box, e.g. "size-8 text-xs"
+{% endcomment %}
+{% if person.photo %}
+  <img src="{{ person.get_photo_url }}" alt="" aria-hidden="true" loading="lazy"
+       class="{{ size }} shrink-0 rounded-md bg-slate-100 object-cover">
+{% else %}
+  <span aria-hidden="true" class="grid {{ size }} shrink-0 place-items-center rounded-md bg-brand-100 font-bold text-brand-800">{{ person.get_initials }}</span>
+{% endif %}

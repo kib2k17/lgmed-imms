@@ -1,2 +1,37 @@
 # LGMED-iMMS runtime dependencies
 Django==6.1.1
+
+# MySQL driver. Django names this one in its own documentation and it is the
+# fastest of the three, being a C extension over the official client library.
+# On Windows that would normally mean a compiler and the MySQL headers, but the
+# project's Python (3.14, 64-bit) has a prebuilt wheel, so `pip install` is the
+# whole story. If a future interpreter has no wheel, PyMySQL is the pure-Python
+# stand-in - it is slower and needs a line in config/__init__.py to register
+# itself, which is why it is not the default here.
+mysqlclient==2.3.0
+
+# Draws the QR code a phone scans to set up two-step verification. Pure Python
+# with no dependencies of its own; drawing it here rather than with an online
+# QR service keeps the account's secret key on this server.
+segno==1.6.6
+
+# Reads the Incoming and Outgoing Excel registers for Data Sync (datasync/).
+openpyxl==3.1.5
+
+# Profile photos. Opens each upload to prove it is an image, then crops and
+# re-encodes it, which also drops the location data a phone camera embeds.
+Pillow==12.3.0
+
+# e-SIRA digital signing (esira/signing/). pyHanko makes PAdES signatures with
+# the signer's PNPKI key, validates the certificate chain against the DICT
+# PNPKI roots, and verifies signatures already on a document. It brings
+# cryptography and asn1crypto with it. Pinned to the versions tested.
+pyHanko==0.37.0
+pyhanko-certvalidator==0.32.1
+cryptography==50.0.1
+
+# Real-time updates over WebSockets (core/consumers.py) - the full-screen
+# system announcement reaches every open page at once. Daphne is the ASGI
+# server; listed in INSTALLED_APPS, it also makes `runserver` speak WebSocket.
+channels==4.3.2
+daphne==4.2.3

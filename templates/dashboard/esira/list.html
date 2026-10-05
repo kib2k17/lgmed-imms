@@ -1,0 +1,68 @@
+{% extends "dashboard/module_list.html" %}
+{% load ui %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+
+  <nav aria-label="Quick views" class="mb-3 flex flex-wrap items-center gap-1.5">
+    <a href="{% url 'esira:list' %}"
+       class="rounded-full border px-3 py-1 text-meta font-medium {% if not current_view %}border-brand-600 bg-brand-600 text-white{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %}">All</a>
+    {% for key, label in quick_views %}
+      <a href="?view={{ key }}{% if request.GET.scope %}&amp;scope={{ request.GET.scope }}{% endif %}"
+         class="rounded-full border px-3 py-1 text-meta font-medium {% if current_view == key %}border-brand-600 bg-brand-600 text-white{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %}"
+         {% if current_view == key %}aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% if current_view_label or period_week %}
+    <p class="mb-3 text-meta text-slate-600" role="status">
+      Showing: <span class="font-semibold">{{ current_view_label|default:"All documents" }}</span>{% if period_week %}, last 7 days{% endif %}.
+    </p>
+  {% endif %}
+
+  {{ block.super }}
+{% endblock %}
+
+{% block table_head %}
+  {% include "components/th_sort.html" with field="reference_no" label="Reference no." %}
+  {% include "components/th_sort.html" with field="title" label="Document" %}
+  {% include "components/th_sort.html" with field="owner__last_name" label="Owner" th_class="hidden lg:table-cell" %}
+  <th scope="col" class="hidden xl:table-cell">With</th>
+  {% include "components/th_sort.html" with field="status" label="Status" %}
+  {% include "components/th_sort.html" with field="updated_at" label="Last activity" th_class="hidden sm:table-cell" %}
+  <th scope="col" class="text-right"><span class="sr-only">Actions</span></th>
+{% endblock %}
+
+{% block table_body %}
+  {% for record in records %}
+    <tr>
+      <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium whitespace-nowrap text-slate-900">
+        <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.reference_no }}</a>
+      </th>
+      <td>
+        {{ record.title|truncatechars:70 }}
+        <span class="block text-meta text-slate-500">
+          {{ record.document_type|default:"Document" }} &middot; {{ record.page_count }} page{{ record.page_count|pluralize }}
+        </span>
+      </td>
+      <td class="hidden lg:table-cell">{{ record.owner.get_display_name }}</td>
+      <td class="hidden xl:table-cell">
+        {% with step=record.current_step %}
+          {% if step %}
+            {{ step.recipient.get_display_name }}
+            <span class="block text-meta text-slate-500">{{ step.get_action_display }}</span>
+          {% else %}<span class="text-slate-400">&mdash;</span>{% endif %}
+        {% endwith %}
+      </td>
+      <td>{% status_badge record.status_tone record.get_status_display %}</td>
+      <td class="hidden whitespace-nowrap sm:table-cell">
+        <time datetime="{{ record.updated_at|date:'c' }}">{{ record.updated_at|date:"j M Y, g:i A" }}</time>
+      </td>
+      <td class="text-right whitespace-nowrap">
+        <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
+          {% icon "view" "size-3.5" %}<span class="hidden sm:inline">Open</span>
+          <span class="sr-only">{{ record.reference_no }}</span>
+        </a>
+      </td>
+    </tr>
+  {% endfor %}
+{% endblock %}

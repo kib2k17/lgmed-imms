@@ -1,0 +1,42 @@
+{% load ui %}
+{% comment %}
+ Thumb-reach navigation for phones and tablets (below lg). The four things
+ reached for most on a phone; "Menu" opens the full sidebar drawer, which
+ still holds every module the user's role allows (core/navigation.py). Every
+ destination here is open to every signed-in role, so nothing is shown that
+ the sidebar would have hidden.
+{% endcomment %}
+{% with ns=request.resolver_match.namespace view=request.resolver_match.view_name %}
+<nav class="bottom-nav no-print lg:hidden" aria-label="Quick navigation">
+  <ul class="grid grid-cols-4">
+    <li>
+      <a href="{% url 'core:dashboard' %}" class="bottom-nav-link{% if view == 'core:dashboard' %} bottom-nav-link-active{% endif %}"
+         {% if view == 'core:dashboard' %}aria-current="page"{% endif %}>
+        {% icon "dashboard" "size-5" %}<span>Dashboard</span>
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'activities:list' %}" class="bottom-nav-link{% if ns == 'activities' %} bottom-nav-link-active{% endif %}"
+         {% if ns == 'activities' %}aria-current="page"{% endif %}>
+        {% icon "calendar" "size-5" %}<span>Calendar</span>
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'notifications:list' %}" class="bottom-nav-link{% if ns == 'notifications' %} bottom-nav-link-active{% endif %}"
+         {% if ns == 'notifications' %}aria-current="page"{% endif %}>
+        <span class="relative">
+          {% icon "bell" "size-5" %}
+          <span data-notif-badge aria-hidden="true" {% if not unread_notifications %}hidden{% endif %}
+                class="absolute -top-1.5 -right-2.5 grid min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.625rem] leading-4 font-bold text-white">{% if unread_notifications > 9 %}9+{% else %}{{ unread_notifications }}{% endif %}</span>
+        </span>
+        <span>Alerts</span>
+      </a>
+    </li>
+    <li>
+      <button type="button" class="bottom-nav-link w-full" data-sidebar-open aria-controls="sidebar" aria-expanded="false">
+        {% icon "menu" "size-5" %}<span>Menu</span>
+      </button>
+    </li>
+  </ul>
+</nav>
+{% endwith %}

@@ -13,6 +13,7 @@ The public document library is tested here too, because it reads from the same
 table and a change to the lifecycle must not quietly empty the public page.
 """
 
+import datetime
 import shutil
 import tempfile
 
@@ -23,6 +24,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Role, User
+from core.testing import close_response
 
 from . import workflow
 from .models import (
@@ -32,6 +34,7 @@ from .models import (
     DocumentStatus,
     DocumentType,
     EventType,
+    FileSource,
     RetentionAction,
     RetentionDisposition,
 )
@@ -484,7 +487,7 @@ class AccessTests(DocumentTestCase):
         self.client.force_login(self.viewer)
         response = self.client.get(reverse("documents:download", args=[document.pk]))
         self.assertEqual(response.status_code, 200)
-        response.close()
+        close_response(response)
 
         self.assertTrue(
             document.events.filter(
@@ -824,3 +827,281 @@ class EndToEndTests(DocumentTestCase):
         self.assertEqual(summary["total"], 2)
         self.assertEqual(summary["for_review"], 1)
         self.assertEqual(summary["completed"], 1)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class PdfViewerTests(DocumentTestCase):
+    """The in-system viewer shows files inline, under the download's own checks."""
+
+    def test_the_viewer_serves_the_file_inline_and_frameable_by_the_site_only(self):
+        document = self.make(file=pdf())
+        workflow.register(document, self.encoder)
+
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse("documents:view_file", args=[document.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response["Content-Disposition"].startswith("inline"))
+        self.assertEqual(response["X-Frame-Options"], "SAMEORIGIN")
+        close_response(response)
+        self.assertTrue(
+            document.events.filter(event_type=EventType.VIEWED, actor=self.viewer,
+                                   detail__contains="in the viewer").exists()
+        )
+
+    def test_every_other_page_still_refuses_to_be_framed(self):
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse("documents:list"))
+        self.assertEqual(response["X-Frame-Options"], "DENY")
+
+    def test_an_archived_document_cannot_be_viewed_by_an_unconnected_user(self):
+        document = self.carry_to_completion(self.make(file=pdf()))
+        workflow.archive(document, self.approver)
+
+        self.client.force_login(self.other)
+        self.assertEqual(
+            self.client.get(reverse("documents:view_file", args=[document.pk])).status_code,
+            403,
+        )
+        version = document.versions.first()
+        self.assertEqual(
+            self.client.get(
+                reverse("documents:version_view", args=[document.pk, version.pk])
+            ).status_code,
+            403,
+        )
+
+    def test_the_record_offers_the_viewer_for_a_pdf(self):
+        document = self.make(file=pdf())
+        workflow.register(document, self.encoder)
+
+        self.client.force_login(self.viewer)
+        response = self.client.get(document.get_absolute_url())
+        self.assertContains(response, "data-pdf-view")
+        self.assertContains(response, reverse("documents:view_file", args=[document.pk]))
+        self.assertContains(response, 'id="pdf-viewer"')
+
+    def test_no_viewer_is_offered_for_other_files(self):
+        document = self.make(file=SimpleUploadedFile("sheet.xlsx", b"PK"))
+        workflow.register(document, self.encoder)
+
+        self.client.force_login(self.viewer)
+        response = self.client.get(document.get_absolute_url())
+        self.assertNotContains(response, "data-pdf-view ")
+        self.assertNotContains(response, reverse("documents:view_file", args=[document.pk]))
+
+    def test_a_missing_file_reads_as_not_found(self):
+        document = self.make(file=pdf())
+        document.file.storage.delete(document.file.name)
+
+        self.client.force_login(self.viewer)
+        self.assertEqual(
+            self.client.get(reverse("documents:view_file", args=[document.pk])).status_code,
+            404,
+        )
+
+    def test_incoming_attachments_open_in_the_viewer(self):
+        from incoming.models import IncomingDocument
+
+        incoming = IncomingDocument.objects.create(
+            docket_number="2026-0500",
+            subject="With a PDF",
+            document_type=self.memo,
+            date_received=timezone.localdate(),
+            source_office="Province",
+            attachment=pdf("letter.pdf"),
+            created_by=self.encoder,
+        )
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse("incoming:view_file", args=[incoming.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Frame-Options"], "SAMEORIGIN")
+        close_response(response)
+        self.assertContains(
+            self.client.get(incoming.get_absolute_url()),
+            reverse("incoming:view_file", args=[incoming.pk]),
+        )
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class FileCaptureTests(DocumentTestCase):
+    """Every file uploaded in Incoming and Outgoing Monitoring is in the register."""
+
+    def incoming(self, **overrides):
+        from incoming import workflow as incoming_workflow
+        from incoming.models import IncomingDocument
+
+        fields = {
+            "docket_number": "2026-0700",
+            "subject": "Request for the SGLG validation report",
+            "document_type": self.memo,
+            "date_received": timezone.localdate(),
+            "source_office": "Province of Surigao del Norte",
+            "attachment": pdf("request.pdf"),
+            "created_by": self.encoder,
+        }
+        fields.update(overrides)
+        document = IncomingDocument.objects.create(**fields)
+        incoming_workflow.record_received(document, self.encoder)
+        incoming_workflow.assign(document, self.chief, assignee=self.encoder)
+        incoming_workflow.acknowledge(document, self.encoder)
+        return document
+
+    def entry(self, incoming):
+        return Document.objects.get(incoming=incoming)
+
+    def test_the_incoming_attachment_is_the_entrys_file(self):
+        incoming = self.incoming()
+        entry = self.entry(incoming)
+        self.assertEqual(entry.file.name, incoming.attachment.name)
+        self.assertEqual(entry.versions.count(), 1)
+
+    def test_an_updates_attachment_is_captured(self):
+        from incoming import workflow as incoming_workflow
+        from incoming.models import IncomingStatus, IncomingUpdate
+
+        incoming = self.incoming()
+        incoming_workflow.add_update(
+            incoming, self.encoder,
+            IncomingUpdate(action_taken="Drafted the report.",
+                           status=IncomingStatus.IN_PROGRESS,
+                           attachment=pdf("draft.pdf")),
+        )
+        files = self.entry(incoming).supporting_files.all()
+        self.assertEqual(len(files), 1)
+        self.assertEqual(files[0].source, FileSource.UPDATE)
+        self.assertEqual(files[0].uploaded_by, self.encoder)
+
+        # Syncing again captures nothing twice.
+        from incoming.register import sync
+
+        sync(incoming)
+        self.assertEqual(self.entry(incoming).supporting_files.count(), 1)
+
+    def test_the_file_of_the_communication_sent_is_captured(self):
+        incoming = self.incoming()
+        record = incoming.outgoing_document
+        self.client.force_login(self.encoder)
+        response = self.client.post(
+            reverse("outgoing:transmittal", args=[record.pk]),
+            {
+                "date_sent": timezone.localdate().isoformat(),
+                "communication_type": "Letter",
+                "subject": "Reply",
+                "file": pdf("reply.pdf"),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        record.refresh_from_db()
+        self.assertTrue(record.file)
+        captured = self.entry(incoming).supporting_files.get(source=FileSource.OUTGOING)
+        self.assertEqual(captured.file.name, record.file.name)
+
+    def test_a_stand_alone_outgoing_row_gets_its_own_entry(self):
+        from incoming.register import sync_all_outgoing
+        from outgoing.models import OutgoingDocument
+
+        row = OutgoingDocument.objects.create(
+            control_code="LGMED-13 - (DBA) - 2026-01-05-0001",
+            date_sent=datetime.date(2026, 1, 5),
+            communication_type="Memorandum",
+            subject="Advisory to all LGUs",
+            sent_to="All provinces",
+            created_by=self.encoder,
+        )
+        sync_all_outgoing()
+        entry = Document.objects.get(outgoing=row)
+        self.assertEqual(entry.reference_number, row.control_code)
+        self.assertEqual(entry.document_type, self.memo)
+        self.assertEqual(entry.status, DocumentStatus.COMPLETED)
+        self.assertEqual(entry.source, "outgoing")
+        self.assertFalse(entry.may_be_edited_by(self.chief))
+
+        sync_all_outgoing()
+        self.assertEqual(Document.objects.filter(outgoing=row).count(), 1)
+
+    def test_the_file_library_lists_every_file(self):
+        from incoming import workflow as incoming_workflow
+        from incoming.models import IncomingStatus, IncomingUpdate
+
+        incoming = self.incoming()
+        incoming_workflow.add_update(
+            incoming, self.encoder,
+            IncomingUpdate(action_taken="Drafted.", status=IncomingStatus.IN_PROGRESS,
+                           attachment=pdf("draft.pdf")),
+        )
+        direct = self.make(title="Registered here", file=pdf("direct.pdf"))
+        workflow.register(direct, self.encoder)
+
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse("documents:files"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page_obj"].paginator.count, 3)
+        self.assertContains(response, "request")
+        self.assertContains(response, "draft")
+        self.assertContains(response, "direct")
+
+        response = self.client.get(reverse("documents:files"), {"source": "update"})
+        self.assertEqual(response.context["page_obj"].paginator.count, 1)
+        response = self.client.get(reverse("documents:files"), {"q": "direct"})
+        self.assertEqual(response.context["page_obj"].paginator.count, 1)
+
+    def test_an_archived_documents_files_stay_restricted(self):
+        from incoming import workflow as incoming_workflow
+        from incoming.models import IncomingStatus, IncomingUpdate
+
+        incoming = self.incoming()
+        incoming_workflow.add_update(
+            incoming, self.encoder,
+            IncomingUpdate(action_taken="Done.", status=IncomingStatus.COMPLETED,
+                           attachment=pdf("final.pdf")),
+        )
+        entry = self.entry(incoming)
+        workflow.archive(entry, self.approver)
+        supporting = entry.supporting_files.get()
+
+        self.client.force_login(self.other)
+        self.assertEqual(
+            self.client.get(reverse(
+                "documents:supporting_download", args=[entry.pk, supporting.pk]
+            )).status_code,
+            403,
+        )
+        response = self.client.get(reverse("documents:files"))
+        self.assertEqual(response.context["page_obj"].paginator.count, 0)
+
+    def test_the_record_lists_and_serves_captured_files(self):
+        from incoming import workflow as incoming_workflow
+        from incoming.models import IncomingStatus, IncomingUpdate
+
+        incoming = self.incoming()
+        incoming_workflow.add_update(
+            incoming, self.encoder,
+            IncomingUpdate(action_taken="Drafted.", status=IncomingStatus.IN_PROGRESS,
+                           attachment=pdf("draft.pdf")),
+        )
+        entry = self.entry(incoming)
+        supporting = entry.supporting_files.get()
+
+        self.client.force_login(self.viewer)
+        page = self.client.get(entry.get_absolute_url())
+        self.assertContains(page, "Files from Incoming and Outgoing Monitoring")
+        self.assertContains(
+            page, reverse("documents:supporting_view", args=[entry.pk, supporting.pk])
+        )
+        response = self.client.get(
+            reverse("documents:supporting_download", args=[entry.pk, supporting.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        close_response(response)
+        self.assertTrue(entry.events.filter(
+            event_type=EventType.DOWNLOADED, detail__contains="supporting file"
+        ).exists())
+
+    def test_the_register_filters_by_source(self):
+        self.incoming()
+        self.make(title="Registered here")
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse("documents:list"), {"source": "incoming"})
+        self.assertContains(response, "Request for the SGLG validation report")
+        self.assertNotContains(response, "Registered here</a>")

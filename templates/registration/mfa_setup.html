@@ -1,0 +1,37 @@
+{% extends "registration/signin_base.html" %}
+{% load ui %}
+
+{% block title %}Set up two-step verification{% endblock %}
+
+{% block panel %}
+  <h2 class="text-xl font-bold tracking-tight text-slate-900">Set up two-step verification</h2>
+  <p class="mt-1.5 text-sm text-slate-600">
+    Your role, <span class="font-medium text-slate-800">{{ account.get_role_display }}</span>,
+    requires a code from your phone as well as your password. Set it up once now;
+    from then on each sign-in asks for a code.
+  </p>
+
+  {% if messages %}
+    <div class="mt-4 space-y-3">{% include "includes/alerts.html" %}</div>
+  {% endif %}
+
+  <div class="mt-6">
+    {% include "accounts/includes/mfa_enrol.html" %}
+  </div>
+
+  <form method="post" action="{% url 'accounts:mfa_setup' %}" class="mt-5 space-y-5" novalidate data-loading-title="Verifying your code&hellip;">
+    {% csrf_token %}
+    {% include "accounts/includes/mfa_code_field.html" with field=form.code %}
+    <button type="submit" class="btn btn-primary w-full py-2.5 text-[0.9375rem] font-semibold">
+      {% icon "shield" "size-4" %}Confirm and sign in
+    </button>
+  </form>
+{% endblock %}
+
+{% block below_panel %}
+  <p class="mt-5 text-center text-meta text-slate-500">
+    <a href="{% url 'accounts:login' %}" class="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+      {% icon "chevron-left" "size-3.5" %}Cancel and return to sign in
+    </a>
+  </p>
+{% endblock %}
