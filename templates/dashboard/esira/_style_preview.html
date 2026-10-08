@@ -1,0 +1,23 @@
+{% comment %}
+ How a signature box will look in one style. An HTML likeness of what
+ esira/signing/pkcs12.py draws, with placeholders for the date.
+ Pass: style (from workflow.signature_styles), profile, sample_name,
+ sample_zone, large (bool).
+{% endcomment %}
+<div class="grid w-full place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white px-3 {% if large %}h-36 sm:px-6{% else %}h-16{% endif %}">
+  {% if style.kind == "description" %}
+    <p class="text-left font-sans leading-tight text-slate-950 {% if large %}text-lg sm:text-2xl{% else %}text-[0.6875rem]{% endif %}">
+      Digitally signed by {{ sample_name }}<br>Date: YYYY.MM.DD HH:MM:SS {{ sample_zone }}
+    </p>
+  {% elif style.kind == "graphic" %}
+    <div class="flex w-full items-center gap-2 {% if large %}sm:gap-4{% endif %}">
+      <img src="{% url 'esira:signature_image' %}?v={{ profile.updated_at|date:'U' }}" alt=""
+           class="w-[42%] object-contain {% if large %}max-h-28{% else %}max-h-12{% endif %}">
+      <p class="min-w-0 text-left font-sans leading-tight text-slate-950 {% if large %}text-base sm:text-xl{% else %}text-[0.625rem]{% endif %}">
+        Digitally signed by<br>{{ sample_name }}<br>Date: YYYY.MM.DD HH:MM:SS {{ sample_zone }}
+      </p>
+    </div>
+  {% else %}
+    <img src="{% url 'esira:signature_style_image' style.style.pk %}" alt="" class="max-w-full object-contain {% if large %}max-h-32{% else %}max-h-12{% endif %}">
+  {% endif %}
+</div>

@@ -30,12 +30,15 @@ signature, to a DICT PNPKI root certificate installed on the server. An issuer
 ## 2. How signing works today (`ESIRA_SIGNING_BACKEND=pkcs12`)
 
 DICT issues PNPKI individual certificates to government employees as a
-password-protected **PKCS#12 file (.p12 / .pfx)**. At the moment of signing the
-signer selects that file and types its passphrase in the Sign dialog.
+password-protected **PKCS#12 file (.p12 / .pfx)**. The signer keeps that file
+and its password on file on the **My Digital Certificate** page (encrypted,
+see below), or selects the file and types its password in the Sign dialog.
 
-1. The file and passphrase travel with the signing request (use HTTPS — see §5).
-2. The server opens the key **in memory**. It is never written to disk, the
-   database or a log, and is dropped when the request ends.
+1. With a certificate on file, the Sign dialog asks only for the password —
+   and only when **Require .p12 password when signing** is on (the default).
+   With it off, the stored password is used and no prompt appears.
+2. The server opens the key **in memory** for that one request. The decrypted
+   key is never written to disk, the database or a log.
 3. Before the key is used, `workflow.authorise_certificate` requires that the
    certificate:
    - is **registered to this user's account** (by SHA-256 fingerprint),
@@ -53,9 +56,42 @@ signer selects that file and types its passphrase in the Sign dialog.
 
 ### Certificate registration and verification
 
-- **My Certificates**: the employee uploads their .p12/.pfx (with passphrase,
-  to prove possession — only the public certificate is kept) or the public
-  .cer/.crt/.pem.
+- **My Digital Certificate**: the employee uploads their .p12/.pfx with its
+  password. The file is opened to prove the password, then kept with it, both
+  encrypted. Uploading the same certificate again replaces the stored copy.
+  The page also holds the **signature image** (PNG/JPG, re-drawn as a PNG and
+  drawn inside every signature box behind the signature text), the
+  **require password** switch, and **Show my certificate password** (every
+  reveal is logged as `CERT_PASSWORD_VIEWED`).
+
+### Signature styles (**My Signature Style**)
+
+A style decides only how a signature box *looks*; the PAdES signature behind
+it is identical whichever is chosen. The signer picks one in the Sign dialog,
+which starts on the style they last signed with.
+
+| Style | Box shows | Available |
+|---|---|---|
+| Description Only | `Digitally signed by <certificate name>` / `Date: YYYY.MM.DD HH:MM:SS PST` | Always |
+| Signature and Description | The signature image (My Digital Certificate) beside that text | Once a signature image is uploaded |
+| Custom (`esira.SignatureStyle`) | A graphic alone — e.g. a signature over a printed name | Added one at a time from the setup dialog; up to 10 per person |
+
+The name is the certificate's common name, written by pyHanko; the date is the
+office's local time followed by `ESIRA_TIME_ZONE_LABEL` (default `PST`).
+Uploaded graphics are re-drawn as PNGs with empty margins trimmed
+(`esira/signature_images.py`) and served only to their owner.
+
+### Stored certificates (`esira/signing/vault.py`)
+
+The .p12 and password are stored as Fernet tokens (AES-128 + HMAC-SHA256) in
+`SigningCertificate.pkcs12_sealed` / `passphrase_sealed`. The key comes from
+`ESIRA_CREDENTIAL_KEY`; if that is unset it is derived from
+`DJANGO_SECRET_KEY`. Either way a copy of the database alone opens nothing —
+but **anyone with the database and the key can sign as every employee who
+keeps a certificate on file**, and with protection off so can anyone who gets
+into their account. Keep the key out of database backups and back it up
+separately: losing or changing it makes every stored certificate unreadable,
+and signers must upload their files again.
 - **Certificate Verification** (administrators): confirm the certificate was
   issued by DICT to that employee — compare name, email and serial number with
   the PNPKI issuance record — then **Verify**. An administrator cannot verify
@@ -73,6 +109,8 @@ signer selects that file and types its passphrase in the Sign dialog.
 | `ESIRA_TSA_URL` | *(empty)* | RFC 3161 time-stamping authority URL. Empty signs with the server clock. |
 | `ESIRA_SIGNATURE_LOCATION` | `DILG Regional Office XIII - Caraga` | Written into each signature. |
 | `ESIRA_MAX_UPLOAD_MB` | `25` | Upload size limit. |
+| `ESIRA_TIME_ZONE_LABEL` | `PST` | Written after the time in each signature box. |
+| `ESIRA_CREDENTIAL_KEY` | *(derived from `DJANGO_SECRET_KEY`)* | Fernet key encrypting stored .p12 files and passwords. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. |
 | `ESIRA_ALLOW_UNTRUSTED_CERTIFICATES` | `0` | **Development/training only; ignored unless `DJANGO_DEBUG=1`.** Lets a test certificate sign before the PNPKI chain is installed. Such signatures are recorded and shown everywhere as *NOT PNPKI-verified*. |
 
 Example:
@@ -125,8 +163,11 @@ suitable for personal signatures and is deliberately not offered.
 
 ## 5. Security notes
 
-- **Serve over HTTPS in production.** The .p12 and passphrase cross the network
-  at signing time.
+- **Serve over HTTPS in production.** The .p12 and password cross the network
+  when uploaded, when typed at signing, and when revealed.
+- **Stored certificates are a signing capability.** See §2, *Stored
+  certificates*. Encourage signers to leave *Require .p12 password when
+  signing* on.
 - Files live under `PROTECTED_MEDIA_ROOT` (never web-served) and are streamed
   only by `esira:file`, which re-checks access and the SHA-256 on every read. A
   mismatch is refused and logged as `INTEGRITY_FAILURE`.

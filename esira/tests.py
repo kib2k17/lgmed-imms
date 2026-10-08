@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -39,11 +39,15 @@ from .models import (
     EsiraDocument,
     ImmutableRecordError,
     SignatureBox,
+    SignatureStyle,
+    SignerProfile,
     SigningCertificate,
     StepAction,
     StepStatus,
 )
 from .pdf import PageGeometry, PdfRejected, box_to_pdf_rect, images_to_pdf, inspect_pdf
+from .signature_images import process_signature_image
+from .signing.vault import unseal
 from .verification import verify_pdf
 
 NOW = datetime.datetime.now(datetime.timezone.utc)
@@ -386,15 +390,45 @@ class BoxTests(EsiraTestCase):
 
 
 class CertificateTests(EsiraTestCase):
-    def test_registration_keeps_only_the_public_certificate(self):
+    def test_registration_stores_the_file_encrypted(self):
         data, cert = PKI.issue("Sam Signer")
         record = workflow.register_certificate(
             self.signer, pkcs12_file=p12_upload(data), passphrase="secret",
         )
+        self.assertTrue(record.created)
         self.assertEqual(record.status, SigningCertificate.Status.PENDING)
         self.assertTrue(record.chain_trusted)
         self.assertIn("BEGIN CERTIFICATE", record.certificate_pem)
         self.assertNotIn("PRIVATE KEY", record.certificate_pem)
+        record.refresh_from_db()
+        self.assertTrue(record.has_stored_credential)
+        self.assertEqual(record.pkcs12_filename, "me.p12")
+        # Neither the file nor the password is kept in the clear.
+        self.assertNotIn(data, bytes(record.pkcs12_sealed))
+        self.assertNotIn(b"secret", bytes(record.passphrase_sealed))
+        self.assertEqual(unseal(record.pkcs12_sealed), data)
+        self.assertEqual(unseal(record.passphrase_sealed), b"secret")
+
+    def test_uploading_the_same_file_again_replaces_the_stored_copy(self):
+        data, _ = PKI.issue("Sam Signer")
+        first = workflow.register_certificate(self.signer, pkcs12_file=p12_upload(data), passphrase="secret")
+        again = workflow.register_certificate(
+            self.signer, pkcs12_file=p12_upload(data, name="renamed.pfx"), passphrase="secret",
+        )
+        self.assertFalse(again.created)
+        self.assertEqual(again.pk, first.pk)
+        self.assertEqual(SigningCertificate.objects.filter(user=self.signer).count(), 1)
+        self.assertEqual(again.pkcs12_filename, "renamed.pfx")
+
+    @override_settings(ESIRA_CREDENTIAL_KEY="")
+    def test_a_changed_key_cannot_open_the_store(self):
+        data, _ = PKI.issue("Sam Signer")
+        record = workflow.register_certificate(self.signer, pkcs12_file=p12_upload(data), passphrase="secret")
+        with override_settings(SECRET_KEY="a-different-secret-key"):
+            with self.assertRaisesMessage(workflow.WorkflowError, "could not be decrypted"):
+                workflow.reveal_passphrase(self.signer)
+        self.assertEqual(workflow.reveal_passphrase(self.signer), "secret")
+        self.assertTrue(record.has_stored_credential)
 
     def test_a_wrong_passphrase_is_refused(self):
         data, _ = PKI.issue("Sam Signer")
@@ -420,6 +454,240 @@ class CertificateTests(EsiraTestCase):
             workflow.review_certificate(record, self.owner, decision="verify")
         self.client.force_login(self.owner)
         self.assertEqual(self.client.get(reverse("esira:certificate_review")).status_code, 403)
+
+
+class StoredCertificateTests(EsiraTestCase):
+    def draft_with_box(self):
+        document = self.new_document()
+        workflow.save_boxes(document, self.owner, [self.box(document, self.owner)])
+        return document
+
+    def test_signs_with_the_stored_password_when_protection_is_off(self):
+        self.verified_certificate(self.owner)
+        workflow.set_require_passphrase(self.owner, False)
+        document = self.draft_with_box()
+        signature = workflow.sign(document, self.owner, credentials={"stored": True})
+        self.assertTrue(signature.chain_trusted)
+        document.refresh_from_db()
+        self.assertEqual(document.status, DocumentStatus.FULLY_SIGNED)
+
+    def test_protection_on_requires_the_right_password(self):
+        self.verified_certificate(self.owner)
+        self.assertTrue(SignerProfile.for_user(self.owner).require_passphrase)
+        document = self.draft_with_box()
+        with self.assertRaisesMessage(workflow.WorkflowError, "Enter your certificate password"):
+            workflow.sign(document, self.owner, credentials={"stored": True})
+        with self.assertRaisesMessage(workflow.WorkflowError, "passphrase"):
+            workflow.sign(document, self.owner, credentials={"stored": True, "passphrase": "wrong"})
+        workflow.sign(document, self.owner, credentials={"stored": True, "passphrase": "secret"})
+
+    def test_an_unverified_stored_certificate_cannot_sign(self):
+        data, _ = PKI.issue("Olivia Owner")
+        workflow.register_certificate(self.owner, pkcs12_file=p12_upload(data), passphrase="secret")
+        workflow.set_require_passphrase(self.owner, False)
+        with self.assertRaisesMessage(workflow.WorkflowError, "no verified certificate file"):
+            workflow.sign(self.draft_with_box(), self.owner, credentials={"stored": True})
+
+    def test_removed_credentials_cannot_sign(self):
+        self.verified_certificate(self.owner)
+        workflow.set_require_passphrase(self.owner, False)
+        workflow.remove_stored_certificate(self.owner, workflow.stored_certificate(self.owner))
+        self.assertIsNone(workflow.stored_certificate(self.owner))
+        with self.assertRaises(workflow.WorkflowError):
+            workflow.sign(self.draft_with_box(), self.owner, credentials={"stored": True})
+        self.assertTrue(AuditEntry.objects.filter(action=AuditAction.CERT_REMOVED).exists())
+
+    def test_signature_image_is_drawn_in_the_box(self):
+        self.verified_certificate(self.owner)
+        workflow.set_require_passphrase(self.owner, False)
+        workflow.set_signature_image(self.owner, process_signature_image(signature_png()))
+        document = self.draft_with_box()
+        workflow.sign(document, self.owner, credentials={"stored": True})
+        reports = verify_pdf(document.current_version.read_verified(), document.signatures.all())
+        self.assertTrue(all(r.intact and r.valid for r in reports))
+
+    def test_a_non_image_is_refused_as_a_signature(self):
+        with self.assertRaises(ValidationError):
+            process_signature_image(SimpleUploadedFile("sig.png", b"not a picture"))
+
+
+def signature_png(width=400, height=160):
+    picture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    for x in range(40, width - 40):
+        picture.putpixel((x, height // 2 + (x % 30) - 15), (10, 10, 60, 255))
+    buffer = io.BytesIO()
+    picture.save(buffer, format="PNG")
+    return SimpleUploadedFile("sig.png", buffer.getvalue(), content_type="image/png")
+
+
+class SignatureStyleTests(EsiraTestCase):
+    def setUp(self):
+        self.verified_certificate(self.owner)
+        workflow.set_require_passphrase(self.owner, False)
+
+    def sign_with(self, style):
+        document = self.new_document()
+        workflow.save_boxes(document, self.owner, [self.box(document, self.owner)])
+        workflow.sign(document, self.owner, credentials={"stored": True}, style=style)
+        reports = verify_pdf(document.current_version.read_verified(), document.signatures.all())
+        self.assertTrue(reports and all(r.intact and r.valid for r in reports))
+        return document
+
+    def test_the_built_in_styles(self):
+        keys = [s["key"] for s in workflow.signature_styles(self.owner)]
+        self.assertEqual(keys, ["description"])  # no signature image yet
+        workflow.set_signature_image(self.owner, process_signature_image(signature_png()))
+        keys = [s["key"] for s in workflow.signature_styles(self.owner)]
+        self.assertEqual(keys, ["description", "graphic"])
+        self.assertEqual(workflow.default_style_key(self.owner), "graphic")
+
+    def test_every_style_signs(self):
+        workflow.set_signature_image(self.owner, process_signature_image(signature_png()))
+        row = workflow.add_signature_style(
+            self.owner, name="IVY D. BACON", content=process_signature_image(signature_png()),
+        )
+        for key in ("description", "graphic", row.key):
+            self.sign_with(key)
+        # The last style signed with is offered first next time.
+        self.assertEqual(workflow.default_style_key(self.owner), row.key)
+
+    def test_unavailable_styles_are_refused(self):
+        with self.assertRaisesMessage(workflow.WorkflowError, "needs a signature image"):
+            self.sign_with("graphic")
+        theirs = workflow.add_signature_style(
+            self.signer, name="Sam", content=process_signature_image(signature_png()),
+        )
+        with self.assertRaisesMessage(workflow.WorkflowError, "not available"):
+            self.sign_with(theirs.key)
+
+    def test_custom_styles_are_limited_and_deletable(self):
+        for n in range(SignatureStyle.MAX_PER_USER):
+            workflow.add_signature_style(
+                self.owner, name=f"Style {n}", content=process_signature_image(signature_png()),
+            )
+        with self.assertRaisesMessage(workflow.WorkflowError, "up to"):
+            workflow.add_signature_style(
+                self.owner, name="One more", content=process_signature_image(signature_png()),
+            )
+        row = self.owner.esira_signature_styles.first()
+        storage, name = row.image.storage, row.image.name
+        with self.assertRaises(PermissionDenied):
+            workflow.delete_signature_style(self.signer, row)
+        workflow.delete_signature_style(self.owner, row)
+        self.assertFalse(storage.exists(name))
+
+    def test_page_add_and_delete(self):
+        self.client.force_login(self.owner)
+        url = reverse("esira:signature_styles")
+        page = self.client.get(url)
+        self.assertContains(page, "Description Only")
+        self.assertContains(page, "Available by Default")
+
+        response = self.client.post(url, {"action": "add", "name": "IVY D. BACON", "image": signature_png()})
+        self.assertRedirects(response, url)
+        row = self.owner.esira_signature_styles.get()
+        self.assertContains(self.client.get(url), "IVY D. BACON")
+        image = self.client.get(reverse("esira:signature_style_image", args=[row.pk]))
+        self.assertEqual(image["Content-Type"], "image/png")
+        close_response(image)
+
+        self.client.force_login(self.signer)
+        self.assertEqual(
+            self.client.get(reverse("esira:signature_style_image", args=[row.pk])).status_code, 404,
+        )
+        self.assertEqual(self.client.post(url, {"action": "delete", "style": row.pk}).status_code, 404)
+
+        self.client.force_login(self.owner)
+        self.client.post(url, {"action": "delete", "style": row.pk})
+        self.assertFalse(self.owner.esira_signature_styles.exists())
+
+    def test_a_bad_upload_reopens_the_dialog(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(reverse("esira:signature_styles"), {
+            "action": "add", "name": "Broken",
+            "image": SimpleUploadedFile("x.png", b"nope", content_type="image/png"),
+        })
+        self.assertContains(response, "data-open-on-load")
+        self.assertContains(response, "not an image")
+
+    def test_sign_dialog_offers_the_styles(self):
+        workflow.add_signature_style(
+            self.owner, name="IVY D. BACON", content=process_signature_image(signature_png()),
+        )
+        document = self.new_document()
+        workflow.save_boxes(document, self.owner, [self.box(document, self.owner)])
+        self.client.force_login(self.owner)
+        page = self.client.get(reverse("esira:workspace", args=[document.pk]))
+        self.assertContains(page, 'value="description"')
+        self.assertContains(page, "IVY D. BACON")
+
+
+class CertificatePageTests(EsiraTestCase):
+    def test_page_and_actions(self):
+        self.client.force_login(self.signer)
+        url = reverse("esira:certificates")
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+        data, _ = PKI.issue("Sam Signer")
+        response = self.client.post(url, {
+            "action": "certificate", "cert-passphrase": "secret",
+            "cert-certificate_file": p12_upload(data, name="sam.p12"),
+        })
+        self.assertRedirects(response, url)
+        page = self.client.get(url)
+        self.assertContains(page, "sam.p12")
+
+        self.client.post(url, {"action": "protection"})  # switch unchecked = off
+        self.assertFalse(SignerProfile.for_user(self.signer).require_passphrase)
+        self.client.post(url, {"action": "protection", "require_passphrase": "on"})
+        self.assertTrue(SignerProfile.for_user(self.signer).require_passphrase)
+
+        reveal = self.client.post(reverse("esira:certificate_password"))
+        self.assertEqual(reveal.json(), {"password": "secret"})
+        self.assertEqual(reveal["Cache-Control"], "no-store")
+        self.assertTrue(AuditEntry.objects.filter(
+            action=AuditAction.CERT_PASSWORD_VIEWED, actor=self.signer).exists())
+        self.assertEqual(self.client.get(reverse("esira:certificate_password")).status_code, 405)
+
+    def test_a_wrong_password_is_shown_on_the_form(self):
+        self.client.force_login(self.signer)
+        data, _ = PKI.issue("Sam Signer")
+        response = self.client.post(reverse("esira:certificates"), {
+            "action": "certificate", "cert-passphrase": "nope",
+            "cert-certificate_file": p12_upload(data),
+        })
+        self.assertContains(response, "could not be opened")
+        self.assertFalse(SigningCertificate.objects.filter(user=self.signer).exists())
+
+    def test_nobody_else_sees_or_removes_your_certificate(self):
+        self.verified_certificate(self.signer)
+        record = workflow.stored_certificate(self.signer)
+        self.client.force_login(self.outsider)
+        reveal = self.client.post(reverse("esira:certificate_password"))
+        self.assertEqual(reveal.status_code, 404)
+        response = self.client.post(reverse("esira:certificates"), {
+            "action": "remove_certificate", "certificate": record.pk,
+        })
+        self.assertEqual(response.status_code, 404)
+        record.refresh_from_db()
+        self.assertTrue(record.has_stored_credential)
+
+    def test_sign_dialog_skips_the_file_when_one_is_stored(self):
+        self.verified_certificate(self.owner)
+        document = self.new_document()
+        workflow.save_boxes(document, self.owner, [self.box(document, self.owner)])
+        self.client.force_login(self.owner)
+        page = self.client.get(reverse("esira:workspace", args=[document.pk]))
+        self.assertContains(page, "Signing with the certificate you keep on file")
+        self.assertNotContains(page, 'name="certificate_file"')
+        self.assertContains(page, 'name="passphrase"')
+
+        response = self.client.post(reverse("esira:sign", args=[document.pk]), {
+            "passphrase": "secret", "confirm": "on",
+        })
+        self.assertRedirects(response, reverse("esira:detail", args=[document.pk]))
+        document.refresh_from_db()
+        self.assertEqual(document.status, DocumentStatus.FULLY_SIGNED)
 
 
 # ---------------------------------------------------------------------------

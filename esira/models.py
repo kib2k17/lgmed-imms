@@ -522,11 +522,13 @@ class SigningCertificate(models.Model):
     """
     A PNPKI certificate an employee has registered as theirs.
 
-    Only the public certificate is kept - never a private key. Registering a
-    certificate does not authorise it: an administrator checks that it was
-    issued to this employee and marks it verified. Signing then requires the
-    signer to present the matching private key, and the certificate to be
-    verified, in date and (outside development) chained to the PNPKI roots.
+    Registered from a .p12 / .pfx, the file and its passphrase are kept on
+    file - encrypted by `esira.signing.vault`, never in the clear - so the
+    signer need not present them each time. Registering a certificate does not
+    authorise it: an administrator checks that it was issued to this employee
+    and marks it verified. Signing then requires the matching private key, and
+    the certificate to be verified, in date and (outside development) chained
+    to the PNPKI roots.
     """
 
     class Status(models.TextChoices):
@@ -553,6 +555,13 @@ class SigningCertificate(models.Model):
     # last checked, and what the check said.
     chain_trusted = models.BooleanField(default=False)
     chain_note = models.CharField(max_length=500, blank=True)
+
+    # The signer's .p12 / .pfx and its passphrase, as vault tokens. Empty when
+    # only the public certificate was registered, or the signer removed them.
+    pkcs12_sealed = models.BinaryField(null=True, blank=True, editable=False)
+    passphrase_sealed = models.BinaryField(null=True, blank=True, editable=False)
+    pkcs12_filename = models.CharField(max_length=255, blank=True)
+    stored_at = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True,
@@ -603,6 +612,86 @@ class SigningCertificate(models.Model):
     def fingerprint_display(self):
         f = self.fingerprint_sha256.upper()
         return ":".join(f[i:i + 2] for i in range(0, len(f), 2))
+
+    @property
+    def has_stored_credential(self):
+        return bool(self.pkcs12_sealed) and bool(self.passphrase_sealed)
+
+
+class SignerProfile(models.Model):
+    """
+    How one person signs: whether their stored certificate needs its password
+    at every signature, and the picture drawn inside their signature boxes.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name="esira_signer_profile",
+    )
+    require_passphrase = models.BooleanField(
+        "require .p12 password when signing", default=True,
+        help_text="Ask for the certificate password on every signing action.",
+    )
+    # Always a PNG re-drawn by esira.views, never the file as uploaded. Read
+    # back only through esira:signature_image.
+    signature_image = models.ImageField(
+        upload_to="esira/signatures/", storage=protected_storage, blank=True,
+    )
+    # The signature style last signed with - see SignatureStyle.key - so the
+    # Sign dialog starts on it.
+    preferred_style = models.CharField(max_length=40, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "signer profile"
+
+    def __str__(self):
+        return f"Signer profile of {self.user}"
+
+    @classmethod
+    def for_user(cls, user):
+        profile, _ = cls.objects.get_or_create(user=user)
+        return profile
+
+
+class SignatureStyle(models.Model):
+    """
+    A custom signature appearance: a picture drawn alone in the signature box,
+    e.g. a scanned signature over a printed name.
+
+    Two styles need no row and every signer has them: "description" (the
+    signature text alone) and "graphic" (the profile's signature image beside
+    the text). A style is only how the box looks; the PAdES signature behind
+    it is the same whichever is chosen.
+    """
+
+    DESCRIPTION = "description"
+    GRAPHIC = "graphic"
+    BUILT_IN = {
+        DESCRIPTION: "Description Only",
+        GRAPHIC: "Signature and Description",
+    }
+    MAX_PER_USER = 10
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name="esira_signature_styles",
+    )
+    name = models.CharField(max_length=80)
+    # Always a PNG re-drawn by esira.signature_images.
+    image = models.ImageField(upload_to="esira/styles/", storage=protected_storage)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "signature style"
+        ordering = ("created_at", "pk")
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def key(self):
+        return f"custom:{self.pk}"
 
 
 class DigitalSignature(WriteOnceModel):
@@ -692,6 +781,10 @@ class AuditAction(models.TextChoices):
     CERT_VERIFIED = "CERT_VERIFIED", "Certificate verified"
     CERT_REJECTED = "CERT_REJECTED", "Certificate rejected"
     CERT_REVOKED = "CERT_REVOKED", "Certificate revoked"
+    CERT_STORED = "CERT_STORED", "Certificate file stored"
+    CERT_REMOVED = "CERT_REMOVED", "Stored certificate file removed"
+    CERT_PASSWORD_VIEWED = "CERT_PASSWORD_VIEWED", "Certificate password viewed"
+    SIGNING_SETTINGS = "SIGNING_SETTINGS", "Signing settings changed"
 
 
 AUDIT_TONES = {
@@ -718,6 +811,10 @@ AUDIT_TONES = {
     AuditAction.CERT_VERIFIED: "verified",
     AuditAction.CERT_REJECTED: "rejected",
     AuditAction.CERT_REVOKED: "cancelled",
+    AuditAction.CERT_STORED: "submitted",
+    AuditAction.CERT_REMOVED: "cancelled",
+    AuditAction.CERT_PASSWORD_VIEWED: "pending",
+    AuditAction.SIGNING_SETTINGS: "in_progress",
 }
 
 

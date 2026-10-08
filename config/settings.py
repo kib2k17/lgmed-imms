@@ -397,10 +397,12 @@ STORAGES = {
 # whole integration, and esira/signing/ for the backends.
 #
 # ESIRA_SIGNING_BACKEND
-#   "pkcs12"   The signer presents their PNPKI certificate file (.p12/.pfx) and
-#              its passphrase at the moment of signing. The key is held in
-#              memory for that one request and never written to disk or the
-#              database. This is how PNPKI individual certificates are issued.
+#   "pkcs12"   Signing with the signer's PNPKI certificate file (.p12/.pfx).
+#              The signer either keeps the file and its passphrase on file
+#              (encrypted with ESIRA_CREDENTIAL_KEY, see esira/signing/vault.py)
+#              or presents them at the moment of signing. The opened key is
+#              held in memory for that one request only. This is how PNPKI
+#              individual certificates are issued.
 #   "external" A signing agent on the signer's own computer (PKCS#11 token or
 #              DICT middleware). Declared, not yet connected - the backend
 #              refuses to sign and says what is missing. See docs/esira.md.
@@ -431,6 +433,14 @@ ESIRA_SIGNATURE_LOCATION = env(
     "ESIRA_SIGNATURE_LOCATION", "DILG Regional Office XIII - Caraga"
 )
 ESIRA_MAX_UPLOAD_MB = int(env_float("ESIRA_MAX_UPLOAD_MB", 25))
+# Fernet key that encrypts the certificate files and passphrases signers keep
+# on file. Empty derives one from SECRET_KEY - then rotating SECRET_KEY makes
+# every stored certificate unreadable. Set it in production, keep it out of
+# the database backups, and back it up separately.
+ESIRA_CREDENTIAL_KEY = env("ESIRA_CREDENTIAL_KEY")
+# Written after the time in each signature box ("Date: 2026.10.08 15:04:32 PST").
+# PST is Philippine Standard Time, Asia/Manila (TIME_ZONE above).
+ESIRA_TIME_ZONE_LABEL = env("ESIRA_TIME_ZONE_LABEL", "PST")
 
 
 # ---------------------------------------------------------------------------

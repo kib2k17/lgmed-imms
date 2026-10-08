@@ -2,10 +2,10 @@
 Signing with a PNPKI certificate file (PKCS#12, .p12 / .pfx).
 
 DICT issues PNPKI individual certificates to government employees as a
-password-protected PKCS#12 file. The signer selects that file and types its
-passphrase in the signing dialog; both travel over the (TLS) connection with
-the signing request, are opened in memory, used for the signatures on this one
-document, and dropped. Neither is written to disk, the database or a log.
+password-protected PKCS#12 file. The file and passphrase come either from the
+signer's encrypted store (esira.signing.vault) or from the signing dialog. The
+key is opened in memory, used for the signatures on this one document, and
+dropped; it is never written out in the clear.
 
 Each signature box becomes its own PAdES signature field (ETSI.CAdES.detached,
 SHA-256), applied as an incremental update so that every earlier signature on
@@ -19,11 +19,31 @@ import io
 
 from cryptography.hazmat.primitives import serialization
 from django.conf import settings
+from django.utils import timezone
 
 from .base import OpenedCredential, SigningBackend, SigningError
 from .certificates import open_pkcs12
 
-STAMP_TEXT = "Digitally signed by\n%(signer)s\n%(ts)s"
+# What the signature box shows. %(signer)s is the certificate holder's name,
+# %(date)s the signing time in the office's time zone (see signing_date).
+DESCRIPTION_TEXT = "Digitally signed by %(signer)s\nDate: %(date)s"
+GRAPHIC_TEXT = "Digitally signed by\n%(signer)s\nDate: %(date)s"
+# Share of the box the picture takes in the "graphic" style; the text has the rest.
+GRAPHIC_SHARE = 0.42
+
+
+def signing_date(moment=None):
+    """e.g. 2026.10.08 15:04:32 PST - local time, with the office's zone label."""
+    moment = timezone.localtime(moment)
+    label = getattr(settings, "ESIRA_TIME_ZONE_LABEL", "") or moment.strftime("%Z")
+    return f"{moment:%Y.%m.%d %H:%M:%S} {label}".strip()
+
+
+def _font():
+    from pyhanko.pdf_utils.font.basic import SimpleFontEngineFactory
+    from pyhanko.pdf_utils.text import TextBoxStyle
+
+    return TextBoxStyle(font=SimpleFontEngineFactory("Helvetica", 0.5))
 
 
 class Pkcs12Backend(SigningBackend):
@@ -32,8 +52,8 @@ class Pkcs12Backend(SigningBackend):
     collects_credentials = True
     instructions = (
         "Select the PNPKI certificate file DICT issued to you (.p12 or .pfx) "
-        "and enter its passphrase. The file and passphrase are used for this "
-        "signature only and are not stored."
+        "and enter its passphrase, or keep them on file on the My Certificates "
+        "page."
     )
 
     def open(self, credentials):
@@ -70,6 +90,79 @@ class Pkcs12Backend(SigningBackend):
             ),
         )
 
+    @staticmethod
+    def _picture(request):
+        if request.appearance == "description" or not request.appearance_image:
+            return None
+        from PIL import Image
+        from pyhanko.pdf_utils.images import PdfImage
+
+        try:
+            picture = Image.open(io.BytesIO(request.appearance_image))
+            picture.load()
+        except Exception as exc:
+            raise SigningError(
+                "Your signature image could not be read. Upload it again on "
+                "the My Signature Style page."
+            ) from exc
+        return PdfImage(picture)
+
+    @staticmethod
+    def _style(appearance, picture, rect):
+        """
+        The box's appearance for one placement. Margins are in PDF points, so
+        the side-by-side layout is worked out from this box's own width.
+        """
+        from pyhanko import stamp
+        from pyhanko.pdf_utils.layout import (
+            AxisAlignment,
+            InnerScaling,
+            Margins,
+            SimpleBoxLayoutRule,
+        )
+
+        def layout(x_align, margins):
+            return SimpleBoxLayoutRule(
+                x_align=x_align,
+                y_align=AxisAlignment.ALIGN_MID,
+                margins=margins,
+                inner_content_scaling=InnerScaling.SHRINK_TO_FIT,
+            )
+
+        if picture is None:
+            appearance = "description"
+        if appearance == "image":
+            return stamp.StaticStampStyle(
+                border_width=0,
+                background=picture,
+                background_opacity=1.0,
+                background_layout=layout(AxisAlignment.ALIGN_MID, Margins.uniform(2)),
+            )
+        if appearance == "graphic":
+            width = abs(rect[2] - rect[0])
+            split = int(width * GRAPHIC_SHARE)
+            return stamp.TextStampStyle(
+                stamp_text=GRAPHIC_TEXT,
+                text_box_style=_font(),
+                border_width=0,
+                background=picture,
+                background_opacity=1.0,
+                background_layout=layout(
+                    AxisAlignment.ALIGN_MID,
+                    Margins(left=2, right=max(width - split, 2), top=2, bottom=2),
+                ),
+                inner_content_layout=layout(
+                    AxisAlignment.ALIGN_MIN,
+                    Margins(left=split + 4, right=2, top=2, bottom=2),
+                ),
+            )
+        return stamp.TextStampStyle(
+            stamp_text=DESCRIPTION_TEXT,
+            text_box_style=_font(),
+            border_width=0,
+            inner_content_layout=layout(AxisAlignment.ALIGN_MID, Margins.uniform(3)),
+        )
+
     def _timestamper(self):
         url = getattr(settings, "ESIRA_TSA_URL", "")
         if not url:
@@ -79,14 +172,7 @@ class Pkcs12Backend(SigningBackend):
         return HTTPTimeStamper(url)
 
     def sign(self, opened, request):
-        from pyhanko import stamp
         from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
-        from pyhanko.pdf_utils.layout import (
-            AxisAlignment,
-            InnerScaling,
-            Margins,
-            SimpleBoxLayoutRule,
-        )
         from pyhanko.sign import fields, signers
 
         if opened is None or opened.handle is None:
@@ -96,17 +182,7 @@ class Pkcs12Backend(SigningBackend):
 
         signer = self._signer(opened)
         timestamper = self._timestamper()
-        style = stamp.TextStampStyle(
-            stamp_text=STAMP_TEXT,
-            border_width=1,
-            timestamp_format="%d %b %Y %H:%M %Z",
-            inner_content_layout=SimpleBoxLayoutRule(
-                x_align=AxisAlignment.ALIGN_MID,
-                y_align=AxisAlignment.ALIGN_MID,
-                margins=Margins.uniform(3),
-                inner_content_scaling=InnerScaling.SHRINK_TO_FIT,
-            ),
-        )
+        picture = self._picture(request)
 
         data = request.pdf_bytes
         for placement in request.placements:
@@ -124,7 +200,7 @@ class Pkcs12Backend(SigningBackend):
                     meta,
                     signer,
                     timestamper=timestamper,
-                    stamp_style=style,
+                    stamp_style=self._style(request.appearance, picture, placement.rect),
                     new_field_spec=fields.SigFieldSpec(
                         placement.field_name,
                         on_page=placement.page_index,
@@ -132,7 +208,10 @@ class Pkcs12Backend(SigningBackend):
                     ),
                 )
                 output = io.BytesIO()
-                pdf_signer.sign_pdf(writer, output=output)
+                pdf_signer.sign_pdf(
+                    writer, output=output,
+                    appearance_text_params={"date": signing_date()},
+                )
                 data = output.getvalue()
             except SigningError:
                 raise

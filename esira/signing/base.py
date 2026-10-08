@@ -47,6 +47,11 @@ class SignatureRequest:
     reason: str = ""
     location: str = ""
     contact_info: str = ""
+    # How each box looks: "description" (the signature text), "graphic" (the
+    # picture beside the text) or "image" (the picture alone). The picture is
+    # PNG bytes; without one every style falls back to "description".
+    appearance: str = "description"
+    appearance_image: bytes = b""
 
 
 @dataclass

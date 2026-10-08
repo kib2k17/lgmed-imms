@@ -27,7 +27,15 @@
       <a href="{{ tab_url }}"
          class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'certificates' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
          {% if esira_tab == "certificates" %}aria-current="page"{% endif %}>
-        {% icon "key" "size-4" %}My Certificates
+        {% icon "key" "size-4" %}My Digital Certificate
+      </a>
+    </li>
+    {% url 'esira:signature_styles' as tab_url %}
+    <li>
+      <a href="{{ tab_url }}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium {% if esira_tab == 'styles' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if esira_tab == "styles" %}aria-current="page"{% endif %}>
+        {% icon "signature" "size-4" %}My Signature Style
       </a>
     </li>
     {% if user.can_verify_signing_certificates %}

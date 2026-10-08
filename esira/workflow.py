@@ -34,6 +34,8 @@ from .models import (
     ReferenceSequence,
     RoutingStep,
     SignatureBox,
+    SignatureStyle,
+    SignerProfile,
     SigningCertificate,
     StepAction,
     StepStatus,
@@ -787,12 +789,13 @@ def authorise_certificate(user, opened):
     return record, chain
 
 
-def sign(document, user, *, credentials, reason="", remarks=""):
+def sign(document, user, *, credentials, reason="", remarks="", style=""):
     """
     Apply this user's digital signature to every one of their unsigned boxes.
 
     The whole operation - the signature, the new version, the step and the
-    route - commits together or not at all.
+    route - commits together or not at all. `style` is a signature style key
+    (see `signature_styles`); empty uses the one last signed with.
     """
     from .signing import (
         CredentialError,
@@ -843,7 +846,7 @@ def sign(document, user, *, credentials, reason="", remarks=""):
                 document.save(update_fields=["routed_at", "updated_at"])
 
             try:
-                opened = backend.open(credentials)
+                opened = backend.open(_resolve_credentials(user, credentials))
             except CredentialError as exc:
                 refuse(str(exc))
 
@@ -876,6 +879,11 @@ def sign(document, user, *, credentials, reason="", remarks=""):
                     field_name=box.field_name,
                 ))
 
+            try:
+                style_key, appearance, picture = resolve_style(user, style)
+            except WorkflowError as exc:
+                refuse(str(exc))
+
             reason = (reason or step.purpose or f"{step.get_action_display()} - {document.title}")[:255]
             try:
                 signed = backend.sign(opened, SignatureRequest(
@@ -884,6 +892,8 @@ def sign(document, user, *, credentials, reason="", remarks=""):
                     reason=reason,
                     location=getattr(settings, "ESIRA_SIGNATURE_LOCATION", ""),
                     contact_info=user.email or "",
+                    appearance=appearance,
+                    appearance_image=picture,
                 ))
             except SigningError as exc:
                 refuse(str(exc))
@@ -920,6 +930,8 @@ def sign(document, user, *, credentials, reason="", remarks=""):
             for box in boxes:
                 box.signature = signature
                 box.save(update_fields=["signature", "field_name", "updated_at"])
+
+            SignerProfile.objects.filter(user=user).update(preferred_style=style_key)
 
             step.status = StepStatus.SIGNED
             step.acted_at = timezone.now()
@@ -962,6 +974,102 @@ def sign(document, user, *, credentials, reason="", remarks=""):
         backend.close(opened)
 
 
+def _resolve_credentials(user, credentials):
+    """
+    The .p12 bytes and passphrase to open, from the request or the store.
+
+    `{"stored": True}` signs with the certificate the user keeps on file. When
+    their profile requires the password, it must come with the request; the
+    stored copy is used only when it does not.
+    """
+    from .signing import CredentialError
+    from .signing.vault import unseal
+
+    if not credentials.get("stored"):
+        return credentials
+    record = stored_certificate(user, usable_only=True)
+    if record is None:
+        raise CredentialError(
+            "You have no verified certificate file on file. Upload your .p12 "
+            "on the My Certificates page, or select it here."
+        )
+    typed = credentials.get("passphrase") or ""
+    if SignerProfile.for_user(user).require_passphrase:
+        if not typed:
+            raise CredentialError("Enter your certificate password to sign.")
+        passphrase = typed
+    else:
+        passphrase = typed or unseal(record.passphrase_sealed).decode("utf-8")
+    return {"pkcs12": unseal(record.pkcs12_sealed), "passphrase": passphrase}
+
+
+def _read_image(field):
+    try:
+        with field.open("rb") as handle:
+            return handle.read()
+    except (FileNotFoundError, OSError, ValueError):
+        return b""
+
+
+def signature_styles(user):
+    """
+    The styles this user may sign with, in display order, as dicts with
+    `key`, `name`, `kind` ("description", "graphic", "image"), `built_in`
+    and, for custom styles, the `style` row.
+    """
+    profile = SignerProfile.for_user(user)
+    styles = [{
+        "key": SignatureStyle.DESCRIPTION,
+        "name": SignatureStyle.BUILT_IN[SignatureStyle.DESCRIPTION],
+        "kind": "description", "built_in": True,
+    }]
+    if profile.signature_image:
+        styles.append({
+            "key": SignatureStyle.GRAPHIC,
+            "name": SignatureStyle.BUILT_IN[SignatureStyle.GRAPHIC],
+            "kind": "graphic", "built_in": True,
+        })
+    for row in user.esira_signature_styles.all():
+        styles.append({
+            "key": row.key, "name": row.name, "kind": "image",
+            "built_in": False, "style": row,
+        })
+    return styles
+
+
+def default_style_key(user):
+    keys = [s["key"] for s in signature_styles(user)]
+    preferred = SignerProfile.for_user(user).preferred_style
+    if preferred in keys:
+        return preferred
+    if SignatureStyle.GRAPHIC in keys:
+        return SignatureStyle.GRAPHIC
+    return SignatureStyle.DESCRIPTION
+
+
+def resolve_style(user, key=""):
+    """(key, appearance, picture bytes) for a style key, or WorkflowError."""
+    key = key or default_style_key(user)
+    if key == SignatureStyle.DESCRIPTION:
+        return key, "description", b""
+    if key == SignatureStyle.GRAPHIC:
+        profile = SignerProfile.for_user(user)
+        picture = _read_image(profile.signature_image) if profile.signature_image else b""
+        if not picture:
+            raise WorkflowError(
+                "Signature and Description needs a signature image. Upload one "
+                "on the My Digital Certificate page, or choose another style."
+            )
+        return key, "graphic", picture
+    if key.startswith("custom:") and key[7:].isdigit():
+        row = user.esira_signature_styles.filter(pk=int(key[7:])).first()
+        if row is not None:
+            picture = _read_image(row.image)
+            if picture:
+                return key, "image", picture
+    raise WorkflowError("That signature style is not available. Choose another.")
+
+
 class _Refusal(WorkflowError):
     """A refused signing attempt, to be logged after the rollback."""
 
@@ -997,8 +1105,13 @@ def register_certificate(user, *, certificate_file=None, pkcs12_file=None, passp
     """
     Register a PNPKI certificate to the user's account, awaiting verification.
 
-    From a .p12/.pfx, only the public certificate is kept; the private key is
-    opened to prove the file is genuine and then discarded.
+    From a .p12/.pfx, the file is opened to prove the passphrase is right, then
+    kept with that passphrase - both encrypted - so the user can sign without
+    presenting them again. Uploading the file of a certificate already
+    registered to this user replaces what is stored for it.
+
+    Sets `created` on the returned record: False when an existing registration
+    only had its stored file replaced.
     """
     from .signing.certificates import (
         CertificateRejected,
@@ -1012,9 +1125,11 @@ def register_certificate(user, *, certificate_file=None, pkcs12_file=None, passp
     )
 
     intermediates = []
+    pkcs12_data = None
     try:
         if pkcs12_file is not None:
-            certificate, intermediates = certificate_from_pkcs12(pkcs12_file.read(), passphrase)
+            pkcs12_data = pkcs12_file.read()
+            certificate, intermediates = certificate_from_pkcs12(pkcs12_data, passphrase)
         elif certificate_file is not None:
             certificate = load_certificate(certificate_file.read())
         else:
@@ -1033,7 +1148,11 @@ def register_certificate(user, *, certificate_file=None, pkcs12_file=None, passp
     ).first()
     if existing is not None:
         if existing.user_id == user.pk:
-            raise WorkflowError("This certificate is already registered to your account.")
+            if pkcs12_data is None:
+                raise WorkflowError("This certificate is already registered to your account.")
+            _store_pkcs12(existing, pkcs12_data, passphrase, pkcs12_file, user)
+            existing.created = False
+            return existing
         log(AuditAction.CERT_REGISTERED, actor=user,
             detail="Refused: certificate already registered to another account",
             metadata={"fingerprint": details["fingerprint_sha256"]})
@@ -1050,6 +1169,9 @@ def register_certificate(user, *, certificate_file=None, pkcs12_file=None, passp
         chain_note=chain.note[:500],
         **details,
     )
+    record.created = True
+    if pkcs12_data is not None:
+        _store_pkcs12(record, pkcs12_data, passphrase, pkcs12_file, user)
     log(
         AuditAction.CERT_REGISTERED,
         actor=user,
@@ -1134,3 +1256,151 @@ def review_certificate(record, reviewer, *, decision, remarks=""):
             url=reverse("esira:certificates"),
         )
         return record
+
+
+def _store_pkcs12(record, data, passphrase, upload, user):
+    from .signing.vault import seal
+
+    record.pkcs12_sealed = seal(data)
+    record.passphrase_sealed = seal(passphrase)
+    record.pkcs12_filename = (getattr(upload, "name", "") or "certificate.p12")[:255]
+    record.stored_at = timezone.now()
+    record.save(update_fields=[
+        "pkcs12_sealed", "passphrase_sealed", "pkcs12_filename", "stored_at",
+    ])
+    log(
+        AuditAction.CERT_STORED,
+        actor=user,
+        detail=(f"{record.pkcs12_filename} stored (encrypted) for "
+                f"{record.subject_common_name or record.subject}")[:500],
+        metadata={"certificate": record.pk, "fingerprint": record.fingerprint_sha256},
+    )
+
+
+# ---------------------------------------------------------------------------
+# The signer's stored certificate and signing settings
+# ---------------------------------------------------------------------------
+
+
+def stored_certificate(user, *, usable_only=False):
+    """The newest certificate whose .p12 this user keeps on file, if any."""
+    records = (
+        user.esira_certificates
+        .filter(pkcs12_sealed__isnull=False, passphrase_sealed__isnull=False)
+        .exclude(status__in=[SigningCertificate.Status.REJECTED,
+                             SigningCertificate.Status.REVOKED])
+        .order_by("-stored_at", "-submitted_at")
+    )
+    for record in records:
+        if not record.has_stored_credential:
+            continue
+        if usable_only and not record.is_usable:
+            continue
+        return record
+    return None
+
+
+def remove_stored_certificate(user, record):
+    """Delete the stored .p12 and password. The registration itself stays."""
+    if record.user_id != user.pk:
+        raise PermissionDenied("This is not your certificate.")
+    record.pkcs12_sealed = None
+    record.passphrase_sealed = None
+    record.pkcs12_filename = ""
+    record.stored_at = None
+    record.save(update_fields=[
+        "pkcs12_sealed", "passphrase_sealed", "pkcs12_filename", "stored_at",
+    ])
+    log(
+        AuditAction.CERT_REMOVED,
+        actor=user,
+        detail=f"Stored file removed for {record.subject_common_name or record.subject}"[:500],
+        metadata={"certificate": record.pk, "fingerprint": record.fingerprint_sha256},
+    )
+
+
+def reveal_passphrase(user):
+    """The stored certificate password, for its owner only. Always logged."""
+    from .signing import CredentialError
+    from .signing.vault import unseal
+
+    record = stored_certificate(user)
+    if record is None:
+        raise WorkflowError("You have no certificate file on file.")
+    try:
+        passphrase = unseal(record.passphrase_sealed).decode("utf-8")
+    except CredentialError as exc:
+        raise WorkflowError(str(exc))
+    log(
+        AuditAction.CERT_PASSWORD_VIEWED,
+        actor=user,
+        detail=f"Password shown for {record.subject_common_name or record.subject}"[:500],
+        metadata={"certificate": record.pk},
+    )
+    return passphrase
+
+
+def set_require_passphrase(user, required):
+    profile = SignerProfile.for_user(user)
+    required = bool(required)
+    if profile.require_passphrase == required:
+        return profile
+    profile.require_passphrase = required
+    profile.save(update_fields=["require_passphrase", "updated_at"])
+    log(
+        AuditAction.SIGNING_SETTINGS,
+        actor=user,
+        detail=("Certificate password now required when signing" if required
+                else "Certificate password no longer required when signing"),
+        metadata={"require_passphrase": required},
+    )
+    return profile
+
+
+def set_signature_image(user, content):
+    """Store `content` (a processed PNG ContentFile), or remove it when None."""
+    profile = SignerProfile.for_user(user)
+    previous = profile.signature_image.name if profile.signature_image else ""
+    if content is None:
+        if not previous:
+            return profile
+        profile.signature_image = ""
+    else:
+        profile.signature_image.save(content.name, content, save=False)
+    profile.save(update_fields=["signature_image", "updated_at"])
+    if previous:
+        profile.signature_image.storage.delete(previous)
+    log(
+        AuditAction.SIGNING_SETTINGS,
+        actor=user,
+        detail="Signature image removed" if content is None else "Signature image updated",
+    )
+    return profile
+
+
+def add_signature_style(user, *, name, content):
+    """Save a custom style. `content` is a PNG from process_signature_image."""
+    if user.esira_signature_styles.count() >= SignatureStyle.MAX_PER_USER:
+        raise WorkflowError(
+            f"You can keep up to {SignatureStyle.MAX_PER_USER} custom styles. "
+            "Delete one first."
+        )
+    row = SignatureStyle(user=user, name=name.strip()[:80])
+    row.image.save(content.name, content, save=False)
+    row.save()
+    log(AuditAction.SIGNING_SETTINGS, actor=user,
+        detail=f"Signature style added: {row.name}"[:500],
+        metadata={"style": row.pk})
+    return row
+
+
+def delete_signature_style(user, row):
+    if row.user_id != user.pk:
+        raise PermissionDenied("This is not your signature style.")
+    name, image = row.name, row.image.name
+    storage = row.image.storage
+    row.delete()
+    if image:
+        storage.delete(image)
+    log(AuditAction.SIGNING_SETTINGS, actor=user,
+        detail=f"Signature style deleted: {name}"[:500])

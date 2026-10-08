@@ -196,10 +196,37 @@
               <p class="mt-1 text-sm text-slate-600"><span data-sign-count>0</span> signature box(es) will be signed with your PNPKI certificate.</p>
             </div>
           </div>
-          <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta text-slate-600">{{ setup.backend.instructions }}</p>
-          {% if setup.backend.collects_credentials %}
+          {% if sign_form.stored %}
+            <p class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-meta text-emerald-900">
+              Signing with the certificate you keep on file.
+              {% if sign_form.require_passphrase %}Enter its password to confirm.{% else %}Your stored password will be used.{% endif %}
+              <a href="{% url 'esira:certificates' %}" class="font-medium underline">Manage</a>
+            </p>
+          {% else %}
+            <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-meta text-slate-600">{{ setup.backend.instructions }}</p>
+          {% endif %}
+          {% if sign_form.asks_for_file %}
             <div>{% include "components/bound_field.html" with field=sign_form.certificate_file %}</div>
+          {% endif %}
+          {% if sign_form.asks_for_passphrase %}
             <div>{% include "components/bound_field.html" with field=sign_form.passphrase %}</div>
+          {% endif %}
+          {% if sign_form.styles %}
+            <fieldset>
+              <legend class="form-label">Signature style <a href="{% url 'esira:signature_styles' %}" class="ml-1 font-normal text-brand-700 underline">Manage</a></legend>
+              <div class="mt-1 grid gap-2 sm:grid-cols-2">
+                {% for style in sign_form.styles %}
+                  <label class="block cursor-pointer rounded-md border border-slate-300 p-2 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+                    <span class="mb-1.5 flex items-center gap-2 text-sm text-slate-800">
+                      <input type="radio" name="{{ sign_form.style.html_name }}" value="{{ style.key }}"
+                             {% if style.key == sign_form.style.value %}checked{% endif %}>
+                      <span class="truncate">{{ style.name }}</span>
+                    </span>
+                    {% include "dashboard/esira/_style_preview.html" with large=False %}
+                  </label>
+                {% endfor %}
+              </div>
+            </fieldset>
           {% endif %}
           <div>{% include "components/bound_field.html" with field=sign_form.reason %}</div>
           <div>{% include "components/bound_field.html" with field=sign_form.remarks %}</div>

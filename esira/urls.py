@@ -24,6 +24,10 @@ urlpatterns = [
     path("documents/<int:pk>/cancel/", views.CancelView.as_view(), name="cancel"),
 
     path("certificates/", views.CertificateListView.as_view(), name="certificates"),
+    path("certificates/password/", views.CertificatePasswordView.as_view(), name="certificate_password"),
+    path("certificates/signature.png", views.SignatureImageView.as_view(), name="signature_image"),
+    path("signature-styles/", views.SignatureStyleView.as_view(), name="signature_styles"),
+    path("signature-styles/<int:pk>.png", views.SignatureStyleImageView.as_view(), name="signature_style_image"),
     path("certificates/verification/", views.CertificateReviewView.as_view(), name="certificate_review"),
     path("audit/", views.AuditTrailView.as_view(), name="audit"),
 ]

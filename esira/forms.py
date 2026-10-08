@@ -201,10 +201,12 @@ class ActForm(GovForm):
 
 class SignForm(GovForm):
     """
-    The signer's credential, presented at the moment of signing.
+    The signer's credential for this signature.
 
-    Nothing here is stored: the file and passphrase go straight to the signing
-    backend and are dropped when the request ends.
+    With a certificate on file (`stored`), the file is not asked for, and the
+    password only when the signer's profile requires it (`require_passphrase`).
+    Otherwise both are presented here. Nothing typed here is stored: it goes
+    straight to the signing backend and is dropped when the request ends.
     """
 
     certificate_file = forms.FileField(
@@ -212,14 +214,20 @@ class SignForm(GovForm):
         widget=forms.ClearableFileInput(attrs={"accept": ".p12,.pfx,application/x-pkcs12"}),
     )
     passphrase = forms.CharField(
-        required=False, strip=False, label="Certificate passphrase",
-        widget=forms.PasswordInput(attrs={"autocomplete": "off"}),
+        required=False, strip=False, label="Certificate password (.p12)",
+        # "new-password", not "off": browsers ignore "off" on password fields
+        # and fill in the saved sign-in password, which is never this one.
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+        help_text="The password of your .p12 file - not your system sign-in password.",
     )
     reason = forms.CharField(
         max_length=255, required=False, label="Reason for signing",
         help_text="Written into the signature, e.g. Approved, Noted, Certified correct.",
     )
     remarks = forms.CharField(widget=forms.Textarea, required=False, label="Remarks")
+    style = forms.ChoiceField(
+        required=False, widget=forms.RadioSelect, label="Signature style",
+    )
     confirm = forms.BooleanField(
         label=(
             "I am signing this document myself, with my own PNPKI certificate, "
@@ -229,15 +237,34 @@ class SignForm(GovForm):
 
     def __init__(self, *args, **kwargs):
         self.collects_credentials = kwargs.pop("collects_credentials", True)
+        self.stored = kwargs.pop("stored", False)
+        self.require_passphrase = kwargs.pop("require_passphrase", True)
+        # Dicts from workflow.signature_styles; the template draws a preview
+        # of each beside its radio button.
+        self.styles = kwargs.pop("styles", [])
         super().__init__(*args, **kwargs)
+
+    def prepare_fields(self):
+        self.fields["style"].choices = [(s["key"], s["name"]) for s in self.styles]
+
+    @property
+    def asks_for_file(self):
+        return self.collects_credentials and not self.stored
+
+    @property
+    def asks_for_passphrase(self):
+        return self.collects_credentials and (not self.stored or self.require_passphrase)
 
     def clean(self):
         cleaned = super().clean()
-        if self.collects_credentials:
-            if not cleaned.get("certificate_file"):
-                self.add_error("certificate_file", "Select your PNPKI certificate file.")
-            if not cleaned.get("passphrase"):
-                self.add_error("passphrase", "Enter the certificate passphrase.")
+        if self.asks_for_file and not cleaned.get("certificate_file"):
+            self.add_error("certificate_file", "Select your PNPKI certificate file.")
+        if self.asks_for_passphrase and not cleaned.get("passphrase"):
+            self.add_error(
+                "passphrase",
+                "Enter your .p12 certificate password, or turn off \"Require .p12 "
+                "password when signing\" on the My Digital Certificate page.",
+            )
         return cleaned
 
 
@@ -251,30 +278,40 @@ class CancelForm(GovForm):
 
 
 class CertificateRegisterForm(GovForm):
-    KIND_CHOICES = (
-        ("pkcs12", "My PNPKI certificate file (.p12 / .pfx) and its passphrase"),
-        ("certificate", "The public certificate only (.cer / .crt / .pem)"),
-    )
+    """Upload or replace the .p12 / .pfx kept on file, with its password."""
 
-    kind = forms.ChoiceField(
-        choices=KIND_CHOICES, initial="pkcs12", widget=forms.RadioSelect,
-        label="What are you registering from?",
-    )
-    certificate_file = forms.FileField(label="Certificate file")
-    passphrase = forms.CharField(
-        required=False, strip=False,
-        widget=forms.PasswordInput(attrs={"autocomplete": "off"}),
-        help_text=(
-            "Needed for a .p12 / .pfx file, to prove the file is yours. Only the "
-            "public certificate is kept; the private key is not stored."
+    certificate_file = forms.FileField(
+        label="Certificate file (.p12)",
+        widget=forms.ClearableFileInput(
+            attrs={"accept": ".p12,.pfx,application/x-pkcs12"}
         ),
+    )
+    passphrase = forms.CharField(
+        label="Certificate password", strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+        help_text="The password you set when the certificate was issued or exported.",
     )
 
     def clean_certificate_file(self):
         upload = self.cleaned_data["certificate_file"]
+        if not upload.name.lower().endswith((".p12", ".pfx")):
+            raise forms.ValidationError("Choose your .p12 or .pfx certificate file.")
         if upload.size > 256 * 1024:
             raise forms.ValidationError("A certificate file is never this large.")
         return upload
+
+
+class SignatureImageForm(GovForm):
+    signature_image = forms.FileField(
+        label="Signature image",
+        widget=forms.ClearableFileInput(attrs={"accept": "image/png,image/jpeg,.png,.jpg,.jpeg"}),
+        help_text="PNG or JPG, up to 2 MB. A transparent PNG looks best.",
+    )
+
+    def clean_signature_image(self):
+        from .signature_images import process_signature_image
+
+        return process_signature_image(self.cleaned_data["signature_image"])
 
 
 class CertificateReviewForm(GovForm):
@@ -283,3 +320,22 @@ class CertificateReviewForm(GovForm):
         widget=forms.HiddenInput,
     )
     remarks = forms.CharField(max_length=500, required=False)
+
+
+class SignatureStyleForm(GovForm):
+    """One custom signature style: a name and the picture drawn in the box."""
+
+    name = forms.CharField(
+        max_length=80, label="Style name",
+        help_text="e.g. your name, or \"Full signature\".",
+    )
+    image = forms.FileField(
+        label="Signature graphic",
+        widget=forms.ClearableFileInput(attrs={"accept": "image/png,image/jpeg,.png,.jpg,.jpeg"}),
+        help_text="PNG or JPG, up to 2 MB - e.g. your signature over your printed name.",
+    )
+
+    def clean_image(self):
+        from .signature_images import process_signature_image
+
+        return process_signature_image(self.cleaned_data["image"])

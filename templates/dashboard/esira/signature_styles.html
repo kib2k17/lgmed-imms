@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static ui %}
+
+{% block content %}
+  {% include "dashboard/esira/_tabs.html" %}
+
+  <div class="mb-4 flex items-center gap-2.5">
+    <span class="text-red-600">{% icon "signature" "size-5" "2.25" %}</span>
+    <h2 class="text-card-title font-bold text-slate-900">My Signature Style</h2>
+    <span aria-hidden="true" class="ml-2 h-px flex-1 bg-gradient-to-r from-slate-300 to-transparent"></span>
+  </div>
+
+  {# ================= Configured styles ================================== #}
+  <section class="rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:p-4" aria-labelledby="configured-heading">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h3 id="configured-heading" class="text-sm font-semibold text-slate-900">Configured Signature Styles</h3>
+      <button type="button" class="btn btn-primary btn-sm" data-dialog-open="style-dialog"
+              {% if not can_add %}disabled title="You can keep up to {{ max_styles }} custom styles"{% endif %}>
+        {% icon "plus" "size-4" %}Add custom style
+      </button>
+    </div>
+    <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {% for style in styles %}
+        <li class="rounded-lg border border-slate-200 bg-white p-2.5">
+          <div class="mb-2 flex min-h-8 items-center justify-between gap-2">
+            <p class="min-w-0 truncate text-sm font-semibold text-slate-900" title="{{ style.name }}">{{ style.name }}</p>
+            <div class="flex shrink-0 items-center gap-1.5">
+              {% if style.key == default_key %}
+                <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[0.6875rem] font-semibold text-brand-700">Last used</span>
+              {% endif %}
+              {% if not style.built_in %}
+                <form method="post" data-confirm="Delete the signature style “{{ style.name }}”?">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="style" value="{{ style.style.pk }}">
+                  <button type="submit" class="grid size-8 place-items-center rounded-full border border-red-300 text-red-600 hover:bg-red-50">
+                    {% icon "delete" "size-4" "2" %}<span class="sr-only">Delete {{ style.name }}</span>
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+          {% include "dashboard/esira/_style_preview.html" with large=False %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% if not profile.signature_image %}
+      <p class="mt-3 text-meta text-slate-600">
+        <strong>Signature and Description</strong> appears once you add a signature image on
+        <a href="{% url 'esira:certificates' %}" class="font-medium text-brand-700 underline">My Digital Certificate</a>.
+      </p>
+    {% endif %}
+  </section>
+
+  {# ================= Samples ============================================ #}
+  <div class="mt-4 space-y-4">
+    {% for style in styles %}
+      <section class="grid items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-2" aria-label="{{ style.name }} sample">
+        <div class="flex h-full flex-col justify-between gap-3">
+          <p class="flex-1 content-center text-sm font-medium text-slate-700">{{ style.name }}</p>
+          {% if style.built_in %}
+            <p class="text-meta font-semibold text-emerald-700">Available by Default</p>
+          {% else %}
+            <p class="text-meta font-semibold text-brand-700">Custom &middot; added {{ style.style.created_at|date:"j M Y" }}</p>
+          {% endif %}
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:p-4">
+          <p class="mb-2 text-sm font-medium text-slate-600">Sample</p>
+          {% include "dashboard/esira/_style_preview.html" with large=True %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+
+  {# ================= Setup dialog ======================================= #}
+  <dialog id="style-dialog" aria-labelledby="style-dialog-title" {% if open_dialog %}data-open-on-load{% endif %}
+          class="m-auto w-[calc(100vw-2rem)] max-w-lg rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+    <form method="post" enctype="multipart/form-data" novalidate autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add">
+      <div class="space-y-4 p-5">
+        <div class="flex items-start gap-3">
+          <span aria-hidden="true" class="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700">{% icon "signature" "size-5" %}</span>
+          <div>
+            <h2 id="style-dialog-title" class="text-card-title font-semibold text-slate-900">Add a custom signature style</h2>
+            <p class="mt-1 text-sm text-slate-600">The graphic is drawn alone in the signature box. The digital signature behind it is the same whichever style you use.</p>
+          </div>
+        </div>
+        {% if form.non_field_errors %}
+          <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+        <div>{% include "components/bound_field.html" with field=form.name %}</div>
+        <div>{% include "components/bound_field.html" with field=form.image %}</div>
+      </div>
+      <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+        <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">{% icon "check" "size-4" %}Save style</button>
+      </div>
+    </form>
+  </dialog>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/esira-certificates.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

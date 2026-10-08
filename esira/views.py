@@ -12,6 +12,7 @@ import io
 import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -37,6 +38,8 @@ from .forms import (
     CertificateRegisterForm,
     CertificateReviewForm,
     RouteFormSet,
+    SignatureImageForm,
+    SignatureStyleForm,
     SignForm,
     UploadForm,
     active_users,
@@ -49,6 +52,8 @@ from .models import (
     DocumentStatus,
     EsiraDocument,
     FileIntegrityError,
+    SignatureStyle,
+    SignerProfile,
     SigningCertificate,
     StepAction,
 )
@@ -87,6 +92,32 @@ def signing_setup():
         "roots_installed": len(roots),
         "untrusted_allowed": untrusted_allowed(),
     }
+
+
+def style_sample_context(user):
+    """What the signature style previews need: the name and time zone they show."""
+    stored = workflow.stored_certificate(user)
+    return {
+        "profile": SignerProfile.for_user(user),
+        "sample_name": (stored.subject_common_name if stored else "") or user.get_display_name(),
+        "sample_zone": settings.ESIRA_TIME_ZONE_LABEL or timezone.localtime().strftime("%Z"),
+    }
+
+
+def sign_form_for(user, backend, *args):
+    """The Sign dialog's form, shaped by whether the user keeps a certificate on file."""
+    stored = (
+        backend.collects_credentials
+        and workflow.stored_certificate(user, usable_only=True) is not None
+    )
+    return SignForm(
+        *args,
+        collects_credentials=backend.collects_credentials,
+        stored=stored,
+        require_passphrase=SignerProfile.for_user(user).require_passphrase,
+        styles=workflow.signature_styles(user),
+        initial={"style": workflow.default_style_key(user)},
+    )
 
 
 class DocumentMixin(EsiraMixin):
@@ -424,7 +455,8 @@ class WorkspaceView(DocumentMixin, TemplateView):
             "page_subtitle": f"{document.reference_no} - {document.title}",
             "version": version,
             "setup": setup,
-            "sign_form": SignForm(collects_credentials=setup["backend"].collects_credentials),
+            "sign_form": sign_form_for(user, setup["backend"]),
+            **style_sample_context(user),
             "usable_certificates": [
                 c for c in user.esira_certificates.filter(
                     status=SigningCertificate.Status.VERIFIED,
@@ -542,8 +574,7 @@ class SignView(DocumentMixin, View):
     def post(self, request, pk):
         document = self.get_document()
         backend = get_backend()
-        form = SignForm(request.POST, request.FILES,
-                        collects_credentials=backend.collects_credentials)
+        form = sign_form_for(request.user, backend, request.POST, request.FILES)
         workspace = redirect("esira:workspace", pk=document.pk)
         if not form.is_valid():
             for field_errors in form.errors.values():
@@ -552,7 +583,9 @@ class SignView(DocumentMixin, View):
             return workspace
         data = form.cleaned_data
         credentials = {}
-        if backend.collects_credentials:
+        if form.stored:
+            credentials = {"stored": True, "passphrase": data["passphrase"]}
+        elif backend.collects_credentials:
             credentials = {
                 "pkcs12": data["certificate_file"].read(),
                 "passphrase": data["passphrase"],
@@ -561,6 +594,7 @@ class SignView(DocumentMixin, View):
             signature = workflow.sign(
                 document, request.user, credentials=credentials,
                 reason=data["reason"], remarks=data["remarks"],
+                style=data["style"],
             )
         except workflow.WorkflowError as exc:
             messages.error(request, f"The document was not signed. {exc}")
@@ -754,43 +788,168 @@ class VerifyView(DocumentMixin, TemplateView):
 # ---------------------------------------------------------------------------
 
 
-class CertificateListView(EsiraMixin, FormView):
-    """Register and see your own PNPKI certificates."""
+class CertificateListView(EsiraMixin, TemplateView):
+    """
+    My Digital Certificate: the .p12 kept on file, the signature image, and
+    whether signing asks for the password. Each card posts its own `action`.
+    """
 
-    form_class = CertificateRegisterForm
     template_name = "dashboard/esira/certificates.html"
-    page_title = "My PNPKI Certificates"
-    page_subtitle = "Register the certificate you sign with; an administrator verifies it is yours"
+    page_title = "My Digital Certificate"
+    page_subtitle = "Keep your DICT PNPKI certificate and default signature image ready for signing"
     tab = "certificates"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["certificates"] = self.request.user.esira_certificates.select_related("reviewed_by")
-        context["setup"] = signing_setup()
+        user = self.request.user
+        profile = SignerProfile.for_user(user)
+        context.setdefault("form", CertificateRegisterForm(prefix="cert"))
+        context.setdefault("signature_form", SignatureImageForm(prefix="sig"))
+        context.update({
+            "certificates": user.esira_certificates.select_related("reviewed_by"),
+            "stored": workflow.stored_certificate(user),
+            "profile": profile,
+            "setup": signing_setup(),
+        })
         return context
 
-    def form_valid(self, form):
-        data = form.cleaned_data
-        upload = data["certificate_file"]
-        try:
-            if data["kind"] == "pkcs12":
-                if not data["passphrase"]:
-                    form.add_error("passphrase", "Enter the passphrase of the .p12 / .pfx file.")
-                    return self.form_invalid(form)
+    def post(self, request):
+        user = request.user
+        action = request.POST.get("action")
+        if action == "certificate":
+            form = CertificateRegisterForm(request.POST, request.FILES, prefix="cert")
+            if not form.is_valid():
+                return self.render_to_response(self.get_context_data(form=form))
+            try:
                 record = workflow.register_certificate(
-                    self.request.user, pkcs12_file=upload, passphrase=data["passphrase"],
+                    user, pkcs12_file=form.cleaned_data["certificate_file"],
+                    passphrase=form.cleaned_data["passphrase"],
+                )
+            except workflow.WorkflowError as exc:
+                form.add_error(None, str(exc))
+                return self.render_to_response(self.get_context_data(form=form))
+            if record.created:
+                messages.success(
+                    request,
+                    f"Certificate for {record.subject_common_name or record.subject} saved. "
+                    "An administrator will verify it before you can sign with it.",
                 )
             else:
-                record = workflow.register_certificate(self.request.user, certificate_file=upload)
-        except workflow.WorkflowError as exc:
-            form.add_error(None, str(exc))
-            return self.form_invalid(form)
-        messages.success(
-            self.request,
-            f"Certificate for {record.subject_common_name or record.subject} registered. "
-            "An administrator will verify it before you can sign with it.",
-        )
+                messages.success(request, "Your stored certificate file was replaced.")
+        elif action == "signature":
+            form = SignatureImageForm(request.POST, request.FILES, prefix="sig")
+            if not form.is_valid():
+                return self.render_to_response(self.get_context_data(signature_form=form))
+            workflow.set_signature_image(user, form.cleaned_data["signature_image"])
+            messages.success(request, "Your signature image was saved.")
+        elif action == "remove_signature":
+            workflow.set_signature_image(user, None)
+            messages.success(request, "Your signature image was removed.")
+        elif action == "protection":
+            required = request.POST.get("require_passphrase") == "on"
+            workflow.set_require_passphrase(user, required)
+            messages.success(
+                request,
+                "Your certificate password will be asked for on every signature."
+                if required else
+                "Signing will use your stored password without asking.",
+            )
+        elif action == "remove_certificate":
+            record = get_object_or_404(
+                SigningCertificate, pk=request.POST.get("certificate"), user=user,
+            )
+            workflow.remove_stored_certificate(user, record)
+            messages.success(request, "Your stored certificate file and password were deleted.")
         return redirect("esira:certificates")
+
+
+class SignatureStyleView(EsiraMixin, TemplateView):
+    """My Signature Style: the built-in styles and the signer's custom ones."""
+
+    template_name = "dashboard/esira/signature_styles.html"
+    page_title = "My Signature Style"
+    page_subtitle = (
+        "Configure the signature styles available when you sign documents. "
+        "Custom styles are saved individually from each setup dialog."
+    )
+    tab = "styles"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context.setdefault("form", SignatureStyleForm())
+        context.update(style_sample_context(user))
+        context.update({
+            "styles": workflow.signature_styles(user),
+            "default_key": workflow.default_style_key(user),
+            "max_styles": SignatureStyle.MAX_PER_USER,
+            "can_add": user.esira_signature_styles.count() < SignatureStyle.MAX_PER_USER,
+        })
+        return context
+
+    def post(self, request):
+        user = request.user
+        action = request.POST.get("action")
+        if action == "add":
+            form = SignatureStyleForm(request.POST, request.FILES)
+            if not form.is_valid():
+                return self.render_to_response(self.get_context_data(form=form, open_dialog=True))
+            try:
+                row = workflow.add_signature_style(
+                    user, name=form.cleaned_data["name"], content=form.cleaned_data["image"],
+                )
+            except workflow.WorkflowError as exc:
+                form.add_error(None, str(exc))
+                return self.render_to_response(self.get_context_data(form=form, open_dialog=True))
+            messages.success(request, f"Signature style \u201c{row.name}\u201d saved.")
+        elif action == "delete":
+            row = get_object_or_404(SignatureStyle, pk=request.POST.get("style"), user=user)
+            workflow.delete_signature_style(user, row)
+            messages.success(request, f"Signature style \u201c{row.name}\u201d deleted.")
+        return redirect("esira:signature_styles")
+
+
+class SignatureStyleImageView(EsiraMixin, View):
+    """The picture of one of the signed-in user's own custom styles."""
+
+    def get(self, request, pk):
+        row = get_object_or_404(SignatureStyle, pk=pk, user=request.user)
+        try:
+            handle = row.image.open("rb")
+        except FileNotFoundError:
+            raise Http404("The style image is missing from storage.")
+        response = FileResponse(handle, content_type="image/png")
+        response["Cache-Control"] = "private, max-age=86400"
+        return response
+
+
+class CertificatePasswordView(EsiraMixin, View):
+    """Show the signer their own stored certificate password. POST only, logged."""
+
+    def post(self, request):
+        try:
+            password = workflow.reveal_passphrase(request.user)
+        except workflow.WorkflowError as exc:
+            return JsonResponse({"error": str(exc)}, status=404)
+        response = JsonResponse({"password": password})
+        response["Cache-Control"] = "no-store"
+        return response
+
+
+class SignatureImageView(EsiraMixin, View):
+    """The signed-in user's own signature image, from the protected root."""
+
+    def get(self, request):
+        profile = SignerProfile.objects.filter(user=request.user).first()
+        if profile is None or not profile.signature_image:
+            raise Http404("No signature image.")
+        try:
+            handle = profile.signature_image.open("rb")
+        except FileNotFoundError:
+            raise Http404("The signature image is missing from storage.")
+        response = FileResponse(handle, content_type="image/png")
+        response["Cache-Control"] = "private, no-cache"
+        return response
 
 
 class CertificateReviewView(EsiraMixin, TemplateView):
