@@ -1,0 +1,3240 @@
+{
+ "access-login": {
+  "id": "access-login",
+  "module": "access",
+  "file": "assets/access/access-login.png",
+  "caption": "The staff sign-in page (/staff or /accounts/login/)",
+  "role": "Public visitor",
+  "page": "/accounts/login/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Username",
+    "text": "The username issued by the system administrator.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Password",
+    "text": "Your password. The eye button shows or hides what you typed; a warning appears if Caps Lock is on.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Forgot password?",
+    "text": "Opens an e-mail to the office asking for a password reset. Passwords are reset by an administrator.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Sign in",
+    "text": "Submits your username and password.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "access-privacy": {
+  "id": "access-privacy",
+  "module": "access",
+  "file": "assets/access/access-privacy.png",
+  "caption": "The Data Privacy Notice shown at first sign-in",
+  "role": "Viewer",
+  "page": "/app/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Notice title",
+    "text": "Data Privacy Act of 2012 (Republic Act No. 10173). Scroll to read all sections.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Agreement box",
+    "text": "Tick to confirm you have read and agree to the notice.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Decline and sign out",
+    "text": "Leaves the system without accepting. You cannot use LGMED-iMMS until you accept.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "I Agree and Continue",
+    "text": "Becomes available once the box is ticked; records your acceptance and opens the system.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "access-account-menu": {
+  "id": "access-account-menu",
+  "module": "access",
+  "file": "assets/access/access-account-menu.png",
+  "caption": "The account menu in the top bar",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Account menu",
+    "text": "Your name and position. Click to open or close the menu.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "My profile",
+    "text": "Your account details, profile photo, permissions and two-step verification.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Public website",
+    "text": "Opens the public LGMED website.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Sign out",
+    "text": "Ends your session. Always sign out on a shared computer.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "ui-layout": {
+  "id": "ui-layout",
+  "module": "interface",
+  "file": "assets/interface/ui-layout.png",
+  "caption": "Parts of the LGMED-iMMS screen (Dashboard, signed in as the Division Chief)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "System banner",
+    "text": "Confirms you are in the secure internal system, for authorised personnel only.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Search records",
+    "text": "Quick search box in the top bar.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Notifications bell",
+    "text": "The red badge counts your unread notifications. Click to see the latest.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Account menu",
+    "text": "Profile, public website and Sign out.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Sidebar - Main",
+    "text": "Operational modules. You only see the modules your role and menu permissions allow.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Current page",
+    "text": "The highlighted item shows where you are.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "LGMED Innovation Action",
+    "text": "e-SIRA, pinned at the foot of the sidebar.",
+    "found": true
+   },
+   {
+    "n": 8,
+    "label": "Breadcrumb",
+    "text": "The path to the current page. Click an earlier part to go back.",
+    "found": true
+   },
+   {
+    "n": 9,
+    "label": "Page title",
+    "text": "The name of the page, with a short description beneath it.",
+    "found": true
+   },
+   {
+    "n": 10,
+    "label": "Page actions",
+    "text": "The main actions for the page, at the top right.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "ui-notification-bell": {
+  "id": "ui-notification-bell",
+  "module": "interface",
+  "file": "assets/interface/ui-notification-bell.png",
+  "caption": "The notifications drop-down",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/",
+  "legend": [],
+  "missing": [],
+  "source": "live capture"
+ },
+ "dashboard-overview": {
+  "id": "dashboard-overview",
+  "module": "dashboard",
+  "file": "assets/dashboard/dashboard-overview.png",
+  "caption": "The Dashboard - summary figures",
+  "role": "LGMED Staff",
+  "page": "/app/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Summary figure",
+    "text": "A headline count taken directly from the records.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "View details",
+    "text": "Opens the records behind the figure.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Export reports",
+    "text": "Downloads the Reports register as a CSV file.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "New monitoring record",
+    "text": "Shortcut to record a monitoring activity (roles that may encode).",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Time stamp",
+    "text": "When the figures were calculated (Philippine Standard Time).",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "dashboard-panels": {
+  "id": "dashboard-panels",
+  "module": "dashboard",
+  "file": "assets/dashboard/dashboard-panels.png",
+  "caption": "The Dashboard - recent activity and items requiring attention",
+  "role": "LGMED Staff",
+  "page": "/app/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Recent Monitoring Activities",
+    "text": "The latest monitoring records; click an LGU or the eye icon to open one.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Requires Attention",
+    "text": "Work waiting on the Division, such as documents awaiting review or overdue follow-ups. Each line opens the matching records.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Upcoming Activities",
+    "text": "Calendar activities coming up that you are allowed to see.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "profile-page": {
+  "id": "profile-page",
+  "module": "profile",
+  "file": "assets/profile/profile-page.png",
+  "caption": "My Profile",
+  "role": "LGMED Staff",
+  "page": "/accounts/profile/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Account Details",
+    "text": "Your name, username, e-mail, position and office as recorded by the administrator.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Profile photo",
+    "text": "Choose a JPEG, PNG or WebP picture (up to 5 MB) and click Upload.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Request a correction",
+    "text": "Opens an e-mail to the office to correct your account details.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "System Access",
+    "text": "Your role and the permissions it carries.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Two-step verification",
+    "text": "Protect your account with an authenticator app (required for administrators).",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "profile-mfa-setup": {
+  "id": "profile-mfa-setup",
+  "module": "profile",
+  "file": "assets/profile/profile-mfa-setup.png",
+  "caption": "Setting up two-step verification",
+  "role": "LGMED Staff",
+  "page": "/accounts/mfa/setup/",
+  "legend": [],
+  "missing": [],
+  "source": "live capture"
+ },
+ "notifications-list": {
+  "id": "notifications-list",
+  "module": "notifications",
+  "file": "assets/notifications/notifications-list.png",
+  "caption": "The Notifications page",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/notifications/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Mark all read",
+    "text": "Marks every notification as read.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Unread only",
+    "text": "Shows only notifications you have not opened.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Category filter",
+    "text": "Awaiting review, Overdue, Awaiting publication, Assigned to you, Account or System.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Priority filter",
+    "text": "Information, Needs action or Urgent.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Notification",
+    "text": "Click the title or Open to go to the record it concerns. Dismiss removes it from your list.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-workbench": {
+  "id": "programs-workbench",
+  "module": "programs",
+  "file": "assets/programs/programs-workbench.png",
+  "caption": "Programs, Projects and Activities - the workbench",
+  "role": "LGMED Staff",
+  "page": "/app/programs/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Programs & Projects",
+    "text": "Sidebar entry for the module.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Organizational Outcome",
+    "text": "Shows the programmes under one of the Department's five outcomes, or all of them.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Include archived",
+    "text": "Also lists archived records.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Review queue",
+    "text": "Items waiting for review (reviewers only).",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Add Program",
+    "text": "Starts a new programme.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Programme",
+    "text": "Click a title to open the record.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-new": {
+  "id": "programs-new",
+  "module": "programs",
+  "file": "assets/programs/programs-new.png",
+  "caption": "New Program form",
+  "role": "LGMED Staff",
+  "page": "/app/programs/program/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Title",
+    "text": "Required. The programme's name.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Organizational outcome",
+    "text": "Required. Which of the five Department outcomes it serves.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Implementation status",
+    "text": "Required. Pending, Active, Completed, Suspended or Archived.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Covered LGUs",
+    "text": "Select the LGUs the programme covers.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Public page headings",
+    "text": "Optional headings used on the public page.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Save",
+    "text": "Saves the record as a Draft. Cancel returns without saving.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-detail": {
+  "id": "programs-detail",
+  "module": "programs",
+  "file": "assets/programs/programs-detail.png",
+  "caption": "A project record (Administrator view)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/programs/project/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Preview public page",
+    "text": "Shows how the page will look on the public website.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Edit",
+    "text": "Changes the record's details.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Upload document",
+    "text": "Adds supporting files or photographs.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Sub-Projects / Activities",
+    "text": "Records under this one. Add creates a new one.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-publication": {
+  "id": "programs-publication",
+  "module": "programs",
+  "file": "assets/programs/programs-publication.png",
+  "caption": "Supporting documents and the Publication panel",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/programs/project/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Supporting documents",
+    "text": "Uploaded files with their screening result and review status.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Publication",
+    "text": "Where the record stands: Draft, For review, Screening, Review required, Approved, Published, Unpublished, Archived.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Publish to the public website",
+    "text": "Administrators only, once the content is approved.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Archive",
+    "text": "Closes the record out; kept, not public.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-upload": {
+  "id": "programs-upload",
+  "module": "programs",
+  "file": "assets/programs/programs-upload.png",
+  "caption": "Upload supporting documents",
+  "role": "LGMED Staff",
+  "page": "/app/programs/project/1/documents/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "File or photographs",
+    "text": "Required. One file, or several photographs at once.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Document title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Type of document",
+    "text": "Issuance, report, guidelines, presentation, photograph, certificate or other.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Confirmation",
+    "text": "Required. Confirms you checked the file's contents before uploading.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Upload and screen",
+    "text": "Uploads the file and runs the automated screening for personal or confidential information.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-queue": {
+  "id": "programs-queue",
+  "module": "programs",
+  "file": "assets/programs/programs-queue.png",
+  "caption": "The PPA Review Queue",
+  "role": "LGMED Staff",
+  "page": "/app/programs/queue/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "PPA Review Queue",
+    "text": "Visible to LGMED Staff, the Division Chief and administrators.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Files awaiting review",
+    "text": "Uploaded files whose screening needs a reviewer's decision.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Content awaiting review",
+    "text": "Records submitted for review. Click Review to open one.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-decision": {
+  "id": "programs-decision",
+  "module": "programs",
+  "file": "assets/programs/programs-decision.png",
+  "caption": "Recording a review decision on a submitted record",
+  "role": "LGMED Staff",
+  "page": "/app/programs/sub-project/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Decision",
+    "text": "Approve the content, Request revision, or Reject.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Review comments",
+    "text": "Required when requesting revision or rejecting, so the encoder knows what to change.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Record decision",
+    "text": "Saves the decision; the record moves to Approved, back to Draft, or is rejected.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "programs-authorities": {
+  "id": "programs-authorities",
+  "module": "programs",
+  "file": "assets/programs/programs-authorities.png",
+  "caption": "Publication Authorities",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/programs/authorities/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Publication Authorities",
+    "text": "Memoranda that authorise releasing files to the public.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Record a memorandum",
+    "text": "Records a new memorandum before any file is cited against it.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Recorded memoranda",
+    "text": "Reference, date issued, whether it is in effect, and how many files it released.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "monitoring-list": {
+  "id": "monitoring-list",
+  "module": "monitoring",
+  "file": "assets/monitoring/monitoring-list.png",
+  "caption": "The Monitoring register",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/monitoring/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Monitoring",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Export CSV",
+    "text": "Downloads the rows currently listed - with the search and filters applied - as a spreadsheet file. Every export is recorded in the audit trail.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "New Monitoring Record",
+    "text": "Records a monitoring activity.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Search box",
+    "text": "Type part of a name, title, code or other text, then press Enter or click Apply.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Filters",
+    "text": "Province, LGU type, Status and Year narrow the list.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Apply",
+    "text": "Runs the search and filters.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Sortable heading",
+    "text": "Click to sort by this column.",
+    "found": true
+   },
+   {
+    "n": 8,
+    "label": "Row actions",
+    "text": "View (eye), Edit (pencil) and Delete (bin) for that record. Only the actions your role permits are shown.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "monitoring-new": {
+  "id": "monitoring-new",
+  "module": "monitoring",
+  "file": "assets/monitoring/monitoring-new.png",
+  "caption": "New Monitoring Record form",
+  "role": "Encoder",
+  "page": "/app/monitoring/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Activity",
+    "text": "Required. What was monitored.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "LGU",
+    "text": "Required. The LGU monitored.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Monitoring date",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Monitoring team",
+    "text": "Required. Who conducted it.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Findings and Recommendations",
+    "text": "What was found and what is recommended.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Follow-up due date",
+    "text": "When the follow-up action falls due; overdue follow-ups raise notifications.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Status",
+    "text": "Required. Scheduled, In progress, For review, Completed or Cancelled.",
+    "found": true
+   },
+   {
+    "n": 8,
+    "label": "Save",
+    "text": "Saves the record.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "monitoring-detail": {
+  "id": "monitoring-detail",
+  "module": "monitoring",
+  "file": "assets/monitoring/monitoring-detail.png",
+  "caption": "A monitoring record",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/monitoring/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Back to list",
+    "text": "Returns to the register.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Print",
+    "text": "Prints the record.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Edit",
+    "text": "Changes the record.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Delete",
+    "text": "Administrators only; asks for confirmation.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Progress",
+    "text": "Where the record stands.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Supporting Documents",
+    "text": "Attach files with a title and click Attach.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "monitoring-delete": {
+  "id": "monitoring-delete",
+  "module": "monitoring",
+  "file": "assets/monitoring/monitoring-delete.png",
+  "caption": "Every deletion asks for confirmation",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/monitoring/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Cancel",
+    "text": "Closes the dialog; nothing is deleted.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Delete Record",
+    "text": "Permanently deletes the record. This cannot be undone.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-list": {
+  "id": "incoming-list",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-list.png",
+  "caption": "Incoming Monitoring - the documents register",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/incoming/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Incoming Monitoring",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Monitoring dashboard",
+    "text": "The Division Chief's overview (Administrators).",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Record Incoming Document",
+    "text": "Records a newly received document.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Tabs",
+    "text": "Documents, Monitoring dashboard and Monitoring reports.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Status figures",
+    "text": "Totals by status; overdue items are shown in red.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "View",
+    "text": "Quick lists such as Assigned to me, For Division Chief review, Awaiting acknowledgement, Overdue.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Open",
+    "text": "Opens the document's record.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-new": {
+  "id": "incoming-new",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-new.png",
+  "caption": "Recording an incoming document (Encoder)",
+  "role": "Encoder",
+  "page": "/app/incoming/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "DNS number",
+    "text": "Required. The document's number in the Document Numbering System.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Subject",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Document type",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Date received",
+    "text": "Required. Defaults to today.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Source / office",
+    "text": "Required. Who sent it.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Attachment",
+    "text": "The scanned document (optional).",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Save",
+    "text": "Records the document. It starts at For Division Chief review with no focal person.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-recorded": {
+  "id": "incoming-recorded",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-recorded.png",
+  "caption": "The new record, awaiting the Division Chief's review",
+  "role": "Encoder",
+  "page": "",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Confirmation",
+    "text": "Confirms the document was recorded.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Progress",
+    "text": "Shows each stage; the current one is highlighted.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "LGMED code",
+    "text": "The record's identifier.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-review-assign": {
+  "id": "incoming-review-assign",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-review-assign.png",
+  "caption": "The Division Chief's review and assignment (Administrator)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/incoming/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Division Chief's Review",
+    "text": "Notes or instructions on what the document requires. Save review notes records them.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Focal person",
+    "text": "Required. The officer who will act on the document.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Priority",
+    "text": "Low, Normal, High or Urgent.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Action due date",
+    "text": "When action is due; the document becomes overdue after this date.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Assign and notify",
+    "text": "Assigns the document and notifies the focal person.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-acknowledge": {
+  "id": "incoming-acknowledge",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-acknowledge.png",
+  "caption": "The focal person acknowledges the assignment (LGMED Staff)",
+  "role": "LGMED Staff",
+  "page": "/app/incoming/3/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Acknowledge receipt",
+    "text": "Confirms you received the assignment. The document then continues in Outgoing Monitoring under its LGMED code.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Assignment",
+    "text": "Who assigned it, when, the priority, due date and the Chief's instructions.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-dashboard": {
+  "id": "incoming-dashboard",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-dashboard.png",
+  "caption": "Incoming Monitoring Dashboard (Administrators)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/incoming/dashboard/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Figures",
+    "text": "Every figure is a link to the documents it counts.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "For Review",
+    "text": "Documents still waiting for the Chief.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Overdue Documents",
+    "text": "Past their action due date and not completed.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Documents by Focal Person",
+    "text": "Workload per officer.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "incoming-reports": {
+  "id": "incoming-reports",
+  "module": "incoming",
+  "file": "assets/incoming/incoming-reports.png",
+  "caption": "Monitoring Reports",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/incoming/reports/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Reports",
+    "text": "Ten ready-made reports. Click one to open it.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Filters",
+    "text": "Narrow the report by text, dates, focal person, status, type; choose the sort order.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Print",
+    "text": "Prints the report.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Export CSV",
+    "text": "Downloads the same rows as a spreadsheet file.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "outgoing-list": {
+  "id": "outgoing-list",
+  "module": "outgoing",
+  "file": "assets/outgoing/outgoing-list.png",
+  "caption": "Outgoing Monitoring",
+  "role": "LGMED Staff",
+  "page": "/app/outgoing/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Outgoing Monitoring",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Sync from Excel",
+    "text": "Imports historical records from the Outgoing spreadsheet (Data Sync).",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "View",
+    "text": "Assigned to me, For action (open), Action completed, Communication not yet sent, From the spreadsheet register.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Search box",
+    "text": "Type part of a name, title, code or other text, then press Enter or click Apply.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Open",
+    "text": "Opens the outgoing record.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "outgoing-update": {
+  "id": "outgoing-update",
+  "module": "outgoing",
+  "file": "assets/outgoing/outgoing-update.png",
+  "caption": "Reporting action on an assigned document (focal person)",
+  "role": "LGMED Staff",
+  "page": "/app/outgoing/2/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Action Progress",
+    "text": "Where the document stands.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Action taken",
+    "text": "Required. What you did.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Current status",
+    "text": "Required. In progress, For action, Pending or Completed - the update and the status change are one act.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Supporting attachment",
+    "text": "Optional file, e.g. the reply sent.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Record update",
+    "text": "Saves the update.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Record communication sent",
+    "text": "Records the reply or transmittal that was sent.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "outgoing-return": {
+  "id": "outgoing-return",
+  "module": "outgoing",
+  "file": "assets/outgoing/outgoing-return.png",
+  "caption": "Returning a document to the focal person (Division Chief)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/outgoing/2/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "What needs revision",
+    "text": "Required. Explain what must be revised.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Return to focal person",
+    "text": "Sends the document back; its status becomes Returned / for revision.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "outgoing-sent": {
+  "id": "outgoing-sent",
+  "module": "outgoing",
+  "file": "assets/outgoing/outgoing-sent.png",
+  "caption": "Recording the communication sent",
+  "role": "LGMED Staff",
+  "page": "/app/outgoing/2/sent/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Date sent",
+    "text": "Required. The date the reply or transmittal was sent.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Subject / title",
+    "text": "Required. Filled in from the incoming document; change it if needed.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Sent to",
+    "text": "The addressee.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "File of the communication",
+    "text": "The communication as sent; it is filed in the Documents register with the incoming document.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Save communication details",
+    "text": "Records the communication; Cancel returns without saving.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "sync-home": {
+  "id": "sync-home",
+  "module": "datasync",
+  "file": "assets/datasync/sync-home.png",
+  "caption": "Data Sync - choosing the register and uploading the workbook",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/sync/?module=incoming",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Data Sync",
+    "text": "Sidebar entry (roles that may encode).",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Migration type",
+    "text": "Incoming keeps the register in step (new rows added, changed rows updated). Outgoing imports historical records once.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Columns read",
+    "text": "The column headings the sync recognises in the workbook.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Excel workbook",
+    "text": "Required. Choose the .xlsx file.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Upload and preview",
+    "text": "Reads every sheet and shows a preview. Nothing is saved yet.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "sync-preview": {
+  "id": "sync-preview",
+  "module": "datasync",
+  "file": "assets/datasync/sync-preview.png",
+  "caption": "The preview of an uploaded workbook (illustrative sample file)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/sync/?module=incoming",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Sheets",
+    "text": "Tick the sheets to include, then redraw the preview.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Commit sync",
+    "text": "Saves the previewed rows to the register.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Discard",
+    "text": "Throws the upload away; nothing is saved.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "lgus-list": {
+  "id": "lgus-list",
+  "module": "lgus",
+  "file": "assets/lgus/lgus-list.png",
+  "caption": "LGU Management - the directory of the 78 LGUs of Region XIII",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/lgus/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "LGU Management",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Export CSV",
+    "text": "Downloads the rows currently listed - with the search and filters applied - as a spreadsheet file. Every export is recorded in the audit trail.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Add LGU",
+    "text": "Adds an LGU to the directory.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Search box",
+    "text": "Type part of a name, title, code or other text, then press Enter or click Apply.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Compliance filter",
+    "text": "Compliant, Partially compliant, Non-compliant, Not yet assessed.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Row actions",
+    "text": "View (eye), Edit (pencil) and Delete (bin) for that record. Only the actions your role permits are shown.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Pagination",
+    "text": "Moves between pages of results. The number of rows per page is a system setting.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "lgus-detail": {
+  "id": "lgus-detail",
+  "module": "lgus",
+  "file": "assets/lgus/lgus-detail.png",
+  "caption": "An LGU profile",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/lgus/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "LGU Profile",
+    "text": "Type, province, income class and compliance status.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Monitoring History",
+    "text": "Monitoring activities recorded for the LGU.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "New record",
+    "text": "Records a monitoring activity.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Contact Information",
+    "text": "The LGU's contact person and details.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "lgus-new": {
+  "id": "lgus-new",
+  "module": "lgus",
+  "file": "assets/lgus/lgus-new.png",
+  "caption": "New LGU form",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/lgus/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "LGU name",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "LGU type",
+    "text": "Required. Province, City or Municipality.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Province",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Compliance status",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Active in the directory",
+    "text": "Untick to hide an LGU without deleting it.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Save",
+    "text": "Saves the LGU.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "services-list": {
+  "id": "services-list",
+  "module": "services",
+  "file": "assets/services/services-list.png",
+  "caption": "Frontline Services",
+  "role": "LGMED Staff",
+  "page": "/app/services/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Frontline Services",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Add Service",
+    "text": "Adds a service.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Publication filter",
+    "text": "Published or Not published on the public website.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "services-new": {
+  "id": "services-new",
+  "module": "services",
+  "file": "assets/services/services-new.png",
+  "caption": "New Frontline Service form",
+  "role": "LGMED Staff",
+  "page": "/app/services/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Service name",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Service type",
+    "text": "Required. Simple, Complex or Highly technical transaction.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Requirements",
+    "text": "What the client must bring.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Published on the public website",
+    "text": "Tick to list the service on the public website.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Save",
+    "text": "Saves the service.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-dashboard": {
+  "id": "updates-dashboard",
+  "module": "updates",
+  "file": "assets/updates/updates-dashboard.png",
+  "caption": "Updates & Accomplishments - the division dashboard",
+  "role": "LGMED Staff",
+  "page": "/app/updates/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Accomplishments",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Convocation view",
+    "text": "The presentation for the Monday convocation.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Public disclosure",
+    "text": "How much of the published record the public website shows (Chief / LGMED Staff).",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Add Update",
+    "text": "Contributes an entry to the Division's week.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Year",
+    "text": "Changes the year the statistics cover.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "This week",
+    "text": "The current reporting week and what it still lacks.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-new": {
+  "id": "updates-new",
+  "module": "updates",
+  "file": "assets/updates/updates-new.png",
+  "caption": "New Division Update form",
+  "role": "Encoder",
+  "page": "/app/updates/entries/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Reporting period",
+    "text": "Required. The week the entry belongs to.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Category",
+    "text": "Required. Activity, communication, technical assistance, report, POPS Plan accomplishment or other.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Activity type",
+    "text": "Required. Conducted, Facilitated, Participated in, Attended, Meeting, Training - or Not an activity.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Status",
+    "text": "Required. Completed, Ongoing, Pending or Upcoming.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Date",
+    "text": "Required. Must fall inside the reporting week, except for Upcoming items.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Save",
+    "text": "Saves the entry to the week.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-entry": {
+  "id": "updates-entry",
+  "module": "updates",
+  "file": "assets/updates/updates-entry.png",
+  "caption": "An entry and its means of verification",
+  "role": "Encoder",
+  "page": "/app/updates/entries/40/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Means of Verification",
+    "text": "Evidence filed for the entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Type of evidence",
+    "text": "Required. Photograph, official document, report, certificate, attendance sheet, letter or other.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "File",
+    "text": "Required. The evidence file.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Cleared for the public website",
+    "text": "Only cleared evidence on a published week reaches the public website.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "File the evidence",
+    "text": "Attaches the file to the entry.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-week": {
+  "id": "updates-week",
+  "module": "updates",
+  "file": "assets/updates/updates-week.png",
+  "caption": "A reporting week (open for contributions)",
+  "role": "Encoder",
+  "page": "/app/updates/weeks/3/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Convocation view",
+    "text": "Presentation view of the week.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Submit for review",
+    "text": "Hands the week to the Division Chief.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Add Update",
+    "text": "Adds an entry.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "The Division's Week",
+    "text": "Which of the seven parts of the week are recorded and which are still missing.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-review": {
+  "id": "updates-review",
+  "module": "updates",
+  "file": "assets/updates/updates-review.png",
+  "caption": "The Division Chief's review of a week",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/updates/weeks/2/review/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Remarks & Theme",
+    "text": "The week's theme and the Chief's remarks (Save remarks).",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Major Accomplishments to Present",
+    "text": "Tick what leads the Monday convocation (Save selection).",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Publish to the public website",
+    "text": "Publishes the cleared items of the week.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Reopen for contributions",
+    "text": "Returns the week to staff; withdraws it from the public website if it was published.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-convocation": {
+  "id": "updates-convocation",
+  "module": "updates",
+  "file": "assets/updates/updates-convocation.png",
+  "caption": "The Monday Convocation view",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/updates/convocation/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Change the selection",
+    "text": "Returns to the review page to choose what is presented.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Print",
+    "text": "Prints the presentation.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Division Statistics",
+    "text": "The week's figures, typed large to be read from the back of a room.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "updates-disclosure": {
+  "id": "updates-disclosure",
+  "module": "updates",
+  "file": "assets/updates/updates-disclosure.png",
+  "caption": "Public Disclosure Window",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/updates/public-disclosure/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "What the public website shows",
+    "text": "Most recent completed weeks, most recent months, a fixed date range, or every published week.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Week in progress",
+    "text": "Off by default: the running week is not shown publicly.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Showing Now",
+    "text": "The weeks the current setting puts on the public website.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Save",
+    "text": "Saves the setting.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "announcements-list": {
+  "id": "announcements-list",
+  "module": "announcements",
+  "file": "assets/announcements/announcements-list.png",
+  "caption": "Announcements",
+  "role": "LGMED Staff",
+  "page": "/app/announcements/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Announcements",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Add Announcement",
+    "text": "Writes a news item, advisory, issuance, activity or commendation.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Publication filter",
+    "text": "Published or Draft.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "announcements-new": {
+  "id": "announcements-new",
+  "module": "announcements",
+  "file": "assets/announcements/announcements-new.png",
+  "caption": "New Announcement form",
+  "role": "LGMED Staff",
+  "page": "/app/announcements/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Headline",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Category",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Date published",
+    "text": "Required. A future date keeps the item off the public site until that day.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Lead paragraph",
+    "text": "Required. The summary shown on the news feed.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Photograph",
+    "text": "Optional image for the item.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Published on the public website",
+    "text": "Untick to keep the item as a draft.",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Feature on the homepage",
+    "text": "Puts the item in the homepage's featured position.",
+    "found": true
+   },
+   {
+    "n": 8,
+    "label": "Save",
+    "text": "Saves the item.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-list": {
+  "id": "documents-list",
+  "module": "documents",
+  "file": "assets/documents/documents-list.png",
+  "caption": "Document Management - the register",
+  "role": "LGMED Staff",
+  "page": "/app/documents/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Document Management",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Register Document",
+    "text": "Registers a document.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Tabs",
+    "text": "Register, Monitoring, Files, and Retention & Archive.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "View",
+    "text": "Owned by me, Assigned to me, Not yet assigned, Overdue, Retention review due, Archived and more.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Status",
+    "text": "Draft, Received, For review, For assignment, Assigned, In progress, For approval, Completed, Archived, Cancelled.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-new": {
+  "id": "documents-new",
+  "module": "documents",
+  "file": "assets/documents/documents-new.png",
+  "caption": "Register Document form",
+  "role": "Encoder",
+  "page": "/app/documents/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Document title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Document type",
+    "text": "Required. The type decides the retention period.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Action due date",
+    "text": "Optional; overdue documents are flagged.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Owner",
+    "text": "Required. The person answerable for the document.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Office / division",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Document file",
+    "text": "The file (version 1).",
+    "found": true
+   },
+   {
+    "n": 7,
+    "label": "Save",
+    "text": "Registers the document and issues its control number.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-detail": {
+  "id": "documents-detail",
+  "module": "documents",
+  "file": "assets/documents/documents-detail.png",
+  "caption": "A document record",
+  "role": "LGMED Staff",
+  "page": "/app/documents/6/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Document Lifecycle",
+    "text": "Each stage from registration to completion; the current stage is highlighted.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Document File",
+    "text": "View or download the file, its version history, and upload a new version.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Review and Assignment",
+    "text": "Review notes, the focal person and the Chief's instructions.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Actions",
+    "text": "The next step for the document's current status (see Table).",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-assign": {
+  "id": "documents-assign",
+  "module": "documents",
+  "file": "assets/documents/documents-assign.png",
+  "caption": "Review and assignment of a document (Division Chief)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/documents/8/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Review and Assignment",
+    "text": "The Chief names the focal person and gives instructions.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Retention",
+    "text": "Record a retention decision: within period, for review, for disposal, or permanent preservation.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-monitoring": {
+  "id": "documents-monitoring",
+  "module": "documents",
+  "file": "assets/documents/documents-monitoring.png",
+  "caption": "Document Monitoring",
+  "role": "LGMED Staff",
+  "page": "/app/documents/monitoring/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Document counts",
+    "text": "Each figure is a link to the documents it counts.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Awaiting action",
+    "text": "Documents waiting at each stage.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Overdue documents",
+    "text": "Past their action due date.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-files": {
+  "id": "documents-files",
+  "module": "documents",
+  "file": "assets/documents/documents-files.png",
+  "caption": "Document Files - every stored file in one list",
+  "role": "LGMED Staff",
+  "page": "/app/documents/files/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Source",
+    "text": "Incoming document, Focal person's update, Outgoing communication, or Registered here.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Search",
+    "text": "Runs the search.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Download",
+    "text": "Downloads the file. Every download is recorded on the document's trail.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-retention": {
+  "id": "documents-retention",
+  "module": "documents",
+  "file": "assets/documents/documents-retention.png",
+  "caption": "Retention and Archive",
+  "role": "LGMED Staff",
+  "page": "/app/documents/retention/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Browse the archive",
+    "text": "Lists archived documents.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Retention review due",
+    "text": "Documents whose retention period has run out.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Retention schedule",
+    "text": "The retention period of each document type.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "documents-archive": {
+  "id": "documents-archive",
+  "module": "documents",
+  "file": "assets/documents/documents-archive.png",
+  "caption": "Archiving a completed document",
+  "role": "LGMED Staff",
+  "page": "/app/documents/17/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Reason for archiving",
+    "text": "Why the document is being archived.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Archive document",
+    "text": "Archives it. Nothing is deleted; access is restricted and it leaves the public website.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "analytics-page": {
+  "id": "analytics-page",
+  "module": "analytics",
+  "file": "assets/analytics/analytics-page.png",
+  "caption": "Analytics",
+  "role": "LGMED Staff",
+  "page": "/app/analytics/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Analytics",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Year",
+    "text": "The year analysed.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Export CSV",
+    "text": "Downloads the figures.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Print",
+    "text": "Prints the page.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Headline figures",
+    "text": "Coverage, trend and turnaround for the year.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "analytics-least": {
+  "id": "analytics-least",
+  "module": "analytics",
+  "file": "assets/analytics/analytics-least.png",
+  "caption": "Least-Monitored LGUs",
+  "role": "LGMED Staff",
+  "page": "/app/analytics/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Least-Monitored LGUs",
+    "text": "LGUs the Division has reached least, in the order to reach them.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Schedule monitoring",
+    "text": "Opens a new monitoring record.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "reports-list": {
+  "id": "reports-list",
+  "module": "reports",
+  "file": "assets/reports/reports-list.png",
+  "caption": "Reports",
+  "role": "LGMED Staff",
+  "page": "/app/reports/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Reports",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Add Report",
+    "text": "Adds a report.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Status",
+    "text": "Draft, Submitted, For review, Approved, Published, Returned.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "reports-new": {
+  "id": "reports-new",
+  "module": "reports",
+  "file": "assets/reports/reports-new.png",
+  "caption": "New Report form",
+  "role": "LGMED Staff",
+  "page": "/app/reports/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Report title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Reporting period",
+    "text": "Required. Monthly, Quarterly, Semestral, Annual or Special report.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Year",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "File",
+    "text": "The report file.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Status",
+    "text": "Required. Where the report stands in review.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Save",
+    "text": "Saves the report.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "reports-detail": {
+  "id": "reports-detail",
+  "module": "reports",
+  "file": "assets/reports/reports-detail.png",
+  "caption": "A report and its review workflow",
+  "role": "LGMED Staff",
+  "page": "/app/reports/9/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Review Workflow",
+    "text": "Draft, Submitted, For review, Approved, Published.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Report Summary",
+    "text": "Summary, file and any review remarks.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Edit",
+    "text": "Changes the report, including its status.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "calendar-month": {
+  "id": "calendar-month",
+  "module": "calendar",
+  "file": "assets/calendar/calendar-month.png",
+  "caption": "The Calendar (All employees, month view)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/calendar/?scope=all",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Calendar",
+    "text": "Sidebar entry.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Add Activity",
+    "text": "Opens the full activity form.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Scope",
+    "text": "My calendar, Assigned to me, Shared with me, All employees (supervisors).",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Period",
+    "text": "Month, Week, Upcoming, Overdue.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Month navigation",
+    "text": "Previous and next month.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Month grid",
+    "text": "Click anywhere in a day to see everything on it and add an activity for that day.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "calendar-day": {
+  "id": "calendar-day",
+  "module": "calendar",
+  "file": "assets/calendar/calendar-day.png",
+  "caption": "The day dialog - quick add for the selected day",
+  "role": "LGMED Staff",
+  "page": "/app/calendar/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Activity type",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Visibility",
+    "text": "Required. Private (only you and your supervisors), Assigned users, Team or Organization-wide.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Save activity",
+    "text": "Saves the activity on that day.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "calendar-new": {
+  "id": "calendar-new",
+  "module": "calendar",
+  "file": "assets/calendar/calendar-new.png",
+  "caption": "New Activity form",
+  "role": "LGMED Staff",
+  "page": "/app/calendar/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Assigned to",
+    "text": "The person doing it when that is not the owner.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Start date",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Visibility",
+    "text": "Required. Defaults to Private.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Show on the public calendar",
+    "text": "Allowed only for Organization-wide activities.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Save",
+    "text": "Saves the activity.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "calendar-detail": {
+  "id": "calendar-detail",
+  "module": "calendar",
+  "file": "assets/calendar/calendar-detail.png",
+  "caption": "An activity record",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/calendar/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Ownership",
+    "text": "Owner, assignee and section.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Report progress",
+    "text": "The owner or assignee updates the status and remarks, then clicks Save update.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Visibility",
+    "text": "Who may see the activity.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "calendar-monitor": {
+  "id": "calendar-monitor",
+  "module": "calendar",
+  "file": "assets/calendar/calendar-monitor.png",
+  "caption": "Activity Monitoring (Division Chief)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/calendar/monitor/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Activity Monitoring",
+    "text": "Sidebar entry for supervisors.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Workload by employee",
+    "text": "Open, upcoming, overdue, assigned and completed counts per employee.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "All employees' calendar",
+    "text": "Opens everyone's activities.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "publicsite-admin": {
+  "id": "publicsite-admin",
+  "module": "publicsite",
+  "file": "assets/publicsite/publicsite-admin.png",
+  "caption": "Public Website management",
+  "role": "LGMED Staff",
+  "page": "/app/settings/public-site/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Public Website",
+    "text": "Sidebar entry (Administrators and LGMED Staff).",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "What the public can see",
+    "text": "What is published right now, counted from the records. Manage opens the module.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Website text",
+    "text": "The homepage heading, mandate, office details and standing notices.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "publicsite-home": {
+  "id": "publicsite-home",
+  "module": "publicsite",
+  "file": "assets/publicsite/publicsite-home.png",
+  "caption": "The public website homepage",
+  "role": "Public visitor",
+  "page": "/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Public navigation",
+    "text": "Home, News, Accomplishments, Programs, Frontline Services, Statistics, Reports, Document Library, Calendar, About, Contact.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "users-list": {
+  "id": "users-list",
+  "module": "administration",
+  "file": "assets/administration/users-list.png",
+  "caption": "Users & Roles",
+  "role": "Administrator (Division Chief)",
+  "page": "/accounts/users/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Users & Roles",
+    "text": "Sidebar entry (Administrators).",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Roles & permissions",
+    "text": "The permission matrix.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Add Account",
+    "text": "Creates a user account.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Role filter",
+    "text": "Narrows the list by role.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "users-new": {
+  "id": "users-new",
+  "module": "administration",
+  "file": "assets/administration/users-new.png",
+  "caption": "New User Account form",
+  "role": "Administrator (Division Chief)",
+  "page": "/accounts/users/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Username",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Email address",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Initials for LGMED codes",
+    "text": "Used in LGMED control codes (e.g. middle initial included).",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Role",
+    "text": "Required. System Administrator, Administrator, LGMED Staff, Encoder or Viewer.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Active",
+    "text": "Untick to create the account deactivated.",
+    "found": true
+   },
+   {
+    "n": 6,
+    "label": "Save",
+    "text": "Creates the account.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "users-detail": {
+  "id": "users-detail",
+  "module": "administration",
+  "file": "assets/administration/users-detail.png",
+  "caption": "A user account",
+  "role": "Administrator (Division Chief)",
+  "page": "/accounts/users/3/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Reset password",
+    "text": "Sets a new password for the user.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Edit",
+    "text": "Changes the account details and role.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Deactivate",
+    "text": "Blocks sign-in. Accounts are never deleted, so their history stays attributable.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Full audit trail",
+    "text": "Everything this person did, in the audit log.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "users-roles": {
+  "id": "users-roles",
+  "module": "administration",
+  "file": "assets/administration/users-roles.png",
+  "caption": "Roles & Permissions - the permission matrix",
+  "role": "Administrator (Division Chief)",
+  "page": "/accounts/roles/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Permission Matrix",
+    "text": "Which role holds which permission, generated from the rules the system enforces.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "users-menu-permissions": {
+  "id": "users-menu-permissions",
+  "module": "administration",
+  "file": "assets/administration/users-menu-permissions.png",
+  "caption": "Menu Permissions (System Administrator only)",
+  "role": "System Administrator",
+  "page": "/accounts/menu-permissions/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Menu Permissions",
+    "text": "Sidebar entry for the System Administrator.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Modules by Role",
+    "text": "Tick or untick which modules each role is offered; Save role permissions.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Save role permissions",
+    "text": "Saves the matrix.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "settings-page": {
+  "id": "settings-page",
+  "module": "administration",
+  "file": "assets/administration/settings-page.png",
+  "caption": "System Settings",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/settings/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Preferences",
+    "text": "Records per page, session warning, system notice and the public website switch.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Save settings",
+    "text": "Saves the preferences.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Reference lists",
+    "text": "Program categories, document types, sections, disposal authorities, provinces. Add / Edit / Remove.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "audit-list": {
+  "id": "audit-list",
+  "module": "administration",
+  "file": "assets/administration/audit-list.png",
+  "caption": "Audit Logs",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/audit-logs/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Audit Logs",
+    "text": "Sidebar entry (Administrators).",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Date range",
+    "text": "From date and To date; click Apply dates.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Needing attention",
+    "text": "Failed sign-ins, refused access and similar.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Filters",
+    "text": "Action, Record type and Actor.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-dashboard": {
+  "id": "esira-dashboard",
+  "module": "esira",
+  "file": "assets/esira/esira-dashboard.png",
+  "caption": "e-SIRA dashboard",
+  "role": "Encoder",
+  "page": "/app/esira/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "e-SIRA",
+    "text": "LGMED Innovation Action, pinned at the foot of the sidebar.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "e-SIRA menu",
+    "text": "Dashboard, Documents, My Digital Certificate, My Signature Style (and, for administrators, Certificate Verification and Audit Trail).",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Upload / Scan Document",
+    "text": "Starts a new document.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "My certificates",
+    "text": "Your PNPKI certificate and signature image.",
+    "found": true
+   },
+   {
+    "n": 5,
+    "label": "Waiting on Me",
+    "text": "Documents whose next step is yours.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-upload": {
+  "id": "esira-upload",
+  "module": "esira",
+  "file": "assets/esira/esira-upload.png",
+  "caption": "Upload or Scan a Document",
+  "role": "Encoder",
+  "page": "/app/esira/documents/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Title",
+    "text": "Required.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "How is the document coming in?",
+    "text": "Upload a PDF, or Scan pages (images from a scanner or phone camera).",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "PDF file",
+    "text": "The PDF to be signed or routed.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Upload and prepare",
+    "text": "Uploads the file and opens the signing workspace.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-workspace": {
+  "id": "esira-workspace",
+  "module": "esira",
+  "file": "assets/esira/esira-workspace.png",
+  "caption": "The signing workspace - preview and signature boxes",
+  "role": "Encoder",
+  "page": "",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Zoom and pages",
+    "text": "Zoom, fit width and move between pages.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Signature Boxes",
+    "text": "Choose the signer for new boxes, then Add Signature Box and drag it into place.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Add Signature Box",
+    "text": "Places a box on the current page.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Route for signature",
+    "text": "Chooses who signs or approves, and in what order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-route": {
+  "id": "esira-route",
+  "module": "esira",
+  "file": "assets/esira/esira-route.png",
+  "caption": "Routing the document",
+  "role": "Encoder",
+  "page": "",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Recipient",
+    "text": "The person for this step.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Action required",
+    "text": "Signature, Approval, Review / initials, or For information / acknowledgement.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Add a step",
+    "text": "Adds another recipient; steps run in order.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Send on route",
+    "text": "Sends the document to the first recipient.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-route-filled": {
+  "id": "esira-route-filled",
+  "module": "esira",
+  "file": "assets/esira/esira-route-filled.png",
+  "caption": "A one-step route: the Division Chief is asked to approve",
+  "role": "Encoder",
+  "page": "",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Recipient",
+    "text": "Antonio Villanueva (Division Chief) is chosen.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Action required",
+    "text": "Approval.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Purpose / instructions",
+    "text": "What the recipient is asked to do.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Send on route",
+    "text": "Sends the document.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-act": {
+  "id": "esira-act",
+  "module": "esira",
+  "file": "assets/esira/esira-act.png",
+  "caption": "The recipient acts on a routed document (Division Chief)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/esira/documents/1/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Status",
+    "text": "Where the document stands and what is asked of you.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Approve",
+    "text": "Completes your step (Mark reviewed or Acknowledge for those step types).",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Reject and return",
+    "text": "Stops the route and returns the document to its owner.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "Routing History",
+    "text": "Every step: when it was routed, received and acted on.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-certificate": {
+  "id": "esira-certificate",
+  "module": "esira",
+  "file": "assets/esira/esira-certificate.png",
+  "caption": "My Digital Certificate",
+  "role": "LGMED Staff",
+  "page": "/app/esira/certificates/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Digital certificate",
+    "text": "Upload your DICT PNPKI .p12 file and its password.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Require password when signing",
+    "text": "Recommended. Asks for the password each time you sign.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Save certificate",
+    "text": "Registers the certificate. An administrator must verify it before you can sign.",
+    "found": true
+   },
+   {
+    "n": 4,
+    "label": "My Registered Certificates",
+    "text": "Your certificates and their verification status.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-styles": {
+  "id": "esira-styles",
+  "module": "esira",
+  "file": "assets/esira/esira-styles.png",
+  "caption": "My Signature Style",
+  "role": "LGMED Staff",
+  "page": "/app/esira/signature-styles/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Add custom style",
+    "text": "Adds a graphic style (up to 10).",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-verification": {
+  "id": "esira-verification",
+  "module": "esira",
+  "file": "assets/esira/esira-verification.png",
+  "caption": "PNPKI Certificate Verification (Administrators)",
+  "role": "Administrator (Division Chief)",
+  "page": "/app/esira/certificates/verification/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Awaiting Verification",
+    "text": "Certificates registered by employees. Compare name, e-mail and serial number with the PNPKI issuance record, then Verify.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Reviewed Certificates",
+    "text": "Verified or rejected certificates; a verified one can be revoked.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "esira-documents": {
+  "id": "esira-documents",
+  "module": "esira",
+  "file": "assets/esira/esira-documents.png",
+  "caption": "e-SIRA Documents",
+  "role": "Encoder",
+  "page": "/app/esira/documents/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Views",
+    "text": "Awaiting my signature, Waiting on me, Owned by me, Out for signature and more.",
+    "found": true
+   },
+   {
+    "n": 2,
+    "label": "Status",
+    "text": "Draft through Completed, Rejected or Cancelled.",
+    "found": true
+   },
+   {
+    "n": 3,
+    "label": "Records table",
+    "text": "One row per record. Underlined column headings sort the list; click again to reverse the order.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ },
+ "errors-403": {
+  "id": "errors-403",
+  "module": "errors",
+  "file": "assets/errors/errors-403.png",
+  "caption": "The page shown when your role does not permit an action",
+  "role": "Viewer",
+  "page": "/app/monitoring/new/",
+  "legend": [
+   {
+    "n": 1,
+    "label": "Access denied",
+    "text": "The action is not available to your role. Use the sidebar to return.",
+    "found": true
+   }
+  ],
+  "missing": [],
+  "source": "live capture"
+ }
+}

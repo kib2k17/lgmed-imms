@@ -1,0 +1,9 @@
+# Tools for building the user manual (not the application). Install in a
+# separate virtualenv - see docs/manual/README.md.
+playwright
+markdown
+beautifulsoup4
+pymupdf
+python-docx
+python-pptx
+pillow

@@ -1,0 +1,94 @@
+/* LGMED-iMMS System User Manual - print and screen styles (A4). */
+:root {
+  --navy: #0f2a5c; --blue: #1e40af; --ink: #0f172a; --text: #1e293b; --muted: #64748b;
+  --line: #cbd5e1; --soft: #f1f5f9; --accent: #ea580c;
+}
+@page { size: A4; }
+html { font-size: 10.2pt; }
+body { margin: 0; font-family: Inter, "Segoe UI", Arial, sans-serif; color: var(--text); line-height: 1.5; }
+p { margin: 0 0 6pt; orphans: 3; widows: 3; }
+code { font-family: Consolas, "Courier New", monospace; font-size: 0.9em; background: var(--soft);
+       padding: 0 3px; border-radius: 3px; }
+a { color: var(--blue); text-decoration: none; }
+
+/* ---- cover --------------------------------------------------------- */
+.cover { height: 250mm; display: flex; flex-direction: column; align-items: center; text-align: center;
+         padding-top: 6mm; page-break-after: always; break-after: page; }
+.cover .logo { height: 34mm; margin-bottom: 6mm; }
+.cover .dept { font-size: 12pt; margin: 0; color: var(--ink); }
+.cover .div { font-size: 12pt; font-weight: 700; color: var(--navy); margin-top: 2mm; }
+.cover .rule { width: 60%; height: 3px; background: var(--navy); margin: 14mm 0 12mm; }
+.cover .title { font-size: 34pt; letter-spacing: .04em; color: var(--navy); margin: 0 0 4mm; }
+.cover .subtitle { font-size: 14pt; color: var(--muted); font-style: italic; margin-bottom: 14mm; }
+.cover .system { font-size: 12.5pt; color: var(--ink); margin-bottom: 16mm; }
+.cover .system b { font-size: 20pt; color: var(--navy); }
+.cover table.meta { border-collapse: collapse; font-size: 10.5pt; margin-top: auto; }
+.cover table.meta th { text-align: right; color: var(--muted); font-weight: 600; padding: 2pt 10pt; }
+.cover table.meta td { text-align: left; padding: 2pt 10pt; }
+
+/* ---- front matter ---------------------------------------------------- */
+.front, .toc { page-break-after: always; break-after: page; }
+.fronth { font-size: 18pt; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 3pt; margin: 0 0 10pt; }
+.fronth3 { font-size: 12pt; color: var(--navy); margin: 14pt 0 6pt; }
+table.plain { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+table.plain th, table.plain td { border: 1px solid var(--line); padding: 4pt 6pt; vertical-align: top; text-align: left; }
+table.plain th { background: var(--soft); width: 26%; }
+table.plain thead th { width: auto; }
+table.sign td { height: 22pt; }
+.small { font-size: 8.5pt; color: var(--muted); margin-top: 14pt; }
+
+ol.toc { list-style: none; padding: 0; margin: 0; }
+ol.toc li a { display: flex; align-items: baseline; color: var(--ink); }
+ol.toc .dots { flex: 1; border-bottom: 1px dotted #94a3b8; margin: 0 4pt; transform: translateY(-3pt); }
+ol.toc .pg { min-width: 18pt; text-align: right; }
+li.toc-h1 { font-weight: 700; margin-top: 5pt; font-size: 10.5pt; }
+li.toc-h2 { padding-left: 14pt; font-size: 9.5pt; margin-top: 1pt; }
+
+/* ---- body ------------------------------------------------------------ */
+main h1 { font-size: 20pt; color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 4pt;
+          margin: 0 0 12pt; page-break-before: always; break-before: page; }
+main h2 { font-size: 14.5pt; color: var(--navy); margin: 18pt 0 8pt; page-break-after: avoid; break-after: avoid; }
+main h3 { font-size: 11.5pt; color: var(--ink); margin: 14pt 0 6pt; page-break-after: avoid; break-after: avoid; }
+main h3.procedure { background: #eff6ff; border-left: 4px solid var(--blue); padding: 4pt 8pt; color: var(--navy); }
+p.proc-label { margin-top: 6pt; }
+p.proc-label > strong:first-child { color: var(--navy); }
+ul, ol { margin: 0 0 8pt; padding-left: 18pt; }
+li { margin: 1.5pt 0; }
+
+main table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; font-size: 9pt; page-break-inside: auto; }
+main th, main td { border: 1px solid var(--line); padding: 3.5pt 5pt; vertical-align: top; text-align: left; }
+main thead th { background: var(--soft); color: var(--ink); }
+main tr { page-break-inside: avoid; break-inside: avoid; }
+
+/* callouts */
+blockquote { margin: 8pt 0; padding: 6pt 10pt; border-left: 4px solid #3b82f6; background: #eff6ff;
+             border-radius: 3px; page-break-inside: avoid; break-inside: avoid; }
+blockquote p { margin: 0; }
+blockquote.tip { border-color: #16a34a; background: #f0fdf4; }
+blockquote.important { border-color: #ea580c; background: #fff7ed; }
+blockquote.warning { border-color: #dc2626; background: #fef2f2; }
+blockquote.warning strong:first-child { color: #b91c1c; }
+strong.warn-inline { color: #b91c1c; }
+
+/* figures */
+figure { margin: 10pt 0 12pt; }
+figure img { display: block; margin: 0 auto; max-width: 100%; max-height: 205mm; width: auto;
+             border: 1px solid var(--line); border-radius: 3px; page-break-inside: avoid; break-inside: avoid; }
+figure.diagram img { border: none; max-width: 150mm; }
+figcaption { break-inside: avoid; page-break-inside: avoid; text-align: center; font-size: 8.8pt; color: var(--muted); margin: 4pt 0 6pt;
+             page-break-before: avoid; break-before: avoid; }
+figcaption b { color: var(--ink); }
+figcaption .role { display: block; font-size: 8pt; }
+table.legend { font-size: 8.6pt; margin-top: 2pt; page-break-before: avoid; break-before: avoid;
+                page-break-inside: avoid; break-inside: avoid; }
+table.legend td.n { width: 22pt; text-align: center; }
+table.legend th:first-child { width: 22pt; }
+table.legend th:nth-child(2) { width: 30%; }
+.badge { display: inline-block; width: 15pt; height: 15pt; line-height: 15pt; border-radius: 50%;
+         background: var(--accent); color: #fff; font-weight: 700; font-size: 8pt; }
+a.xref { color: var(--blue); }
+
+@media screen {
+  body { max-width: 190mm; margin: 0 auto; padding: 10mm; background: #fff; }
+  .cover, .front, .toc { border-bottom: 1px dashed var(--line); margin-bottom: 10mm; }
+}
