@@ -10,8 +10,6 @@ shell or a management command is refused on the same terms as one taken
 through a button.
 """
 
-import csv
-
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
@@ -24,6 +22,7 @@ from django.utils.text import slugify
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import TemplateView, View
 
+from core import csv_safe
 from core.files import serve_inline
 from core.mixins import CanReviewIncomingMixin, CapabilityRequiredMixin
 from core.views_base import (
@@ -572,9 +571,9 @@ class IncomingReportsView(CapabilityRequiredMixin, TemplateView):
         )
         response.write("﻿")
 
-        writer = csv.writer(response)
+        writer = csv_safe.writer(response)
         writer.writerow([spec["label"]])
-        writer.writerow(["LGMED-iMMS - Incoming Monitoring"])
+        writer.writerow(["LGMED-IMMS - Incoming Monitoring"])
         writer.writerow([
             "Generated", timezone.localtime().strftime("%d %B %Y, %I:%M %p")
         ])

@@ -191,7 +191,7 @@
 {% block extra_js %}
   <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
   <script id="dashboard-data" type="application/json">{{ charts_json|safe }}</script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.addEventListener("DOMContentLoaded", function () {
       var el = document.getElementById("dashboard-data");
       window.LGMED.initCharts(JSON.parse(el.textContent));

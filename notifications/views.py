@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET
 
 from administration.models import SystemSetting
 from core.middleware import mark_passive
+from core.redirects import safe_next
 from core.views_base import ModuleListView
 
 from .models import Category, Level, Notification
@@ -84,7 +85,7 @@ def open_notification(request, pk):
     """
     notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
     notification.mark_read()
-    return redirect(notification.url or "notifications:list")
+    return redirect(safe_next(request, notification.url, reverse("notifications:list")))
 
 
 @login_required
@@ -94,7 +95,9 @@ def dismiss_notification(request, pk):
     notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
     notification.dismiss()
     messages.success(request, "Notification dismissed.")
-    return redirect(request.META.get("HTTP_REFERER") or "notifications:list")
+    return redirect(safe_next(
+        request, request.META.get("HTTP_REFERER"), reverse("notifications:list")
+    ))
 
 
 @login_required
@@ -110,7 +113,9 @@ def mark_all_read(request):
         if count
         else "There were no unread notifications.",
     )
-    return redirect(request.META.get("HTTP_REFERER") or "notifications:list")
+    return redirect(safe_next(
+        request, request.META.get("HTTP_REFERER"), reverse("notifications:list")
+    ))
 
 
 @require_GET

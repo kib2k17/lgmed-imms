@@ -70,7 +70,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
   (function () {
     var radios = document.querySelectorAll('input[name="mode"]');
     var panels = document.querySelectorAll("[data-upload-mode]");

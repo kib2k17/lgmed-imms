@@ -15,7 +15,7 @@
 
 # 5. Accessing the System
 
-LGMED-iMMS has two parts:
+LGMED-IMMS has two parts:
 
 | Part | Address | Who uses it |
 |---|---|---|
@@ -46,7 +46,7 @@ LGMED-iMMS has two parts:
 
 ### Procedure 6.1: Sign in
 
-**Purpose:** Start a session in LGMED-iMMS.
+**Purpose:** Start a session in LGMED-IMMS.
 
 **Who can do this:** All roles.
 
@@ -56,7 +56,7 @@ LGMED-iMMS has two parts:
 2. Type your username in **Username** (marker 1).
 3. Type your password in **Password** (marker 2). Click the eye button to check what you typed. A message warns you if Caps Lock is on.
 4. Click **Sign in** (marker 4).
-5. If your account has two-step verification, the system asks for an **Authentication code**. Open your authenticator app and type the six-digit code it shows for LGMED-iMMS, then continue. If you no longer have your phone, use one of your **recovery codes** instead.
+5. If your account has two-step verification, the system asks for an **Authentication code**. Open your authenticator app and type the six-digit code it shows for LGMED-IMMS, then continue. If you no longer have your phone, use one of your **recovery codes** instead.
 6. The first time you sign in, read the **Data Privacy Notice** and accept it (Procedure 6.2).
 
 **Expected Result:** The **Dashboard** opens. If you were sent to the sign-in page from a link, the system takes you to the page you originally asked for.
@@ -78,7 +78,7 @@ LGMED-iMMS has two parts:
 **Steps:**
 
 1. Read the notice. It explains (1) what the system collects, (2) your obligations as a user, (3) the rights of data subjects and (4) monitoring and penalties. Scroll inside the notice to read every section.
-2. Tick **I have read and understood this notice, and I agree to use LGMED-iMMS in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173)** (marker 2).
+2. Tick **I have read and understood this notice, and I agree to use LGMED-IMMS in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173)** (marker 2).
 3. Click **I Agree and Continue** (marker 4).
 
 **Expected Result:** The notice closes and the system can be used. It is not shown again unless the notice is changed.

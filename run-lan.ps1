@@ -1,4 +1,4 @@
-# Put the LGMED-iMMS development server on this machine's office-network
+# Put the LGMED-IMMS development server on this machine's office-network
 # address, so colleagues on the same Wi-Fi can open it in their own browser.
 #
 #   .\run-lan.ps1              serve on this machine's address, port 8000
@@ -102,7 +102,7 @@ if (-not $primary -or $addresses -notcontains $primary) { $primary = $addresses[
 # apply there, which looks exactly like no rule at all. LocalSubnet keeps the
 # port shut to everything beyond this network either way, which is the part
 # that actually matters.
-$ruleName = "LGMED-iMMS dev server (TCP $Port)"
+$ruleName = "LGMED-IMMS dev server (TCP $Port)"
 $rule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
 
 # An existing rule from an earlier run may be scoped to the private profile and

@@ -12,7 +12,7 @@
   <a href="{% url 'documents:list' %}?view=archived" class="btn btn-secondary">
     {% icon "lock" "size-4" %}<span class="hidden sm:inline">Browse the archive</span>
   </a>
-  <button type="button" class="btn btn-secondary" onclick="window.print()">
+  <button type="button" class="btn btn-secondary" data-print>
     {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
   </button>
 {% endblock %}

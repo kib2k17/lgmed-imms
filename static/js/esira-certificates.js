@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS - e-SIRA "My Digital Certificate"
+   LGMED-IMMS - e-SIRA "My Digital Certificate"
    Vanilla JavaScript, no framework.
 
    - Drop zones: a file dragged onto the box is put into its file input, and

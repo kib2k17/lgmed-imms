@@ -1,5 +1,5 @@
 """
-The LGMED-iMMS sidebar is defined once, here.
+The LGMED-IMMS sidebar is defined once, here.
 
 Each entry declares the permission attribute (on the user model) that gates it.
 On top of that, the System Administrator may close a module to a role or to one

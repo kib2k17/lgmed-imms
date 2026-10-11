@@ -13,6 +13,8 @@ class AnnouncementModuleMixin:
     module_label = "Announcement"
     module_url_name = "announcements:list"
     list_label = "Announcements"
+    # Putting an item on the public website is an approver's decision.
+    approval_fields = ("is_published", "is_featured")
 
 
 class AnnouncementListView(AnnouncementModuleMixin, ModuleListView):

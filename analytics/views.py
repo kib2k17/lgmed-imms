@@ -1,5 +1,3 @@
-import csv
-import json
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
@@ -8,6 +6,8 @@ from django.views.generic import TemplateView
 
 from audit.models import Action
 from audit.recording import record
+from core import csv_safe
+from core.safe_json import script_json
 
 from . import metrics
 
@@ -47,8 +47,8 @@ class AnalyticsView(LoginRequiredMixin, TemplateView):
         )
         response.write("\ufeff")
 
-        writer = csv.writer(response)
-        writer.writerow([f"LGMED-iMMS analytics for {year}"])
+        writer = csv_safe.writer(response)
+        writer.writerow([f"LGMED-IMMS analytics for {year}"])
         writer.writerow([
             "Generated",
             timezone.localtime().strftime("%d %B %Y, %I:%M %p"),
@@ -92,6 +92,6 @@ class AnalyticsView(LoginRequiredMixin, TemplateView):
             "documents": metrics.document_summary(year),
             "charts": charts,
             "least_monitored": metrics.least_monitored(year),
-            "charts_json": json.dumps({c["id"]: c["data"] for c in charts}),
+            "charts_json": script_json({c["id"]: c["data"] for c in charts}),
         })
         return context

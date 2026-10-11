@@ -13,6 +13,8 @@ class ReportModuleMixin:
     module_label = "Report"
     module_url_name = "reports:list"
     list_label = "Reports"
+    # An encoder submits; approving and publishing are an approver's.
+    approval_choices = {"status": (ReportStatus.APPROVED, ReportStatus.PUBLISHED)}
 
 
 class ReportListView(ReportModuleMixin, ModuleListView):

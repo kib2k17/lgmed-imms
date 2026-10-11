@@ -6,7 +6,7 @@ from audit.models import Action
 from audit.recording import client_ip, record
 from core.forms_base import FILE_CLASS, TEXT_CLASS, GovModelForm
 
-from . import photos, recaptcha
+from . import photos, recaptcha, throttle
 from .emails import generate_temporary_password
 from .models import Role, User
 
@@ -71,6 +71,11 @@ class LoginForm(AuthenticationForm):
             "JavaScript and access to google.com - please enable it, reload "
             "the page and try again."
         ),
+        "throttled": (
+            "Too many unsuccessful sign-in attempts. For your security, "
+            "please wait {minutes} minute{plural} and try again. If you have "
+            "forgotten your password, contact the LGMED system administrator."
+        ),
         "recaptcha_refused": (
             "This sign-in was blocked by the automated-access check. Reload "
             "the page and try again. If it keeps happening, contact the "
@@ -86,8 +91,42 @@ class LoginForm(AuthenticationForm):
         so returning early here means a refused attempt never reaches the
         password hasher and cannot be used to probe for valid passwords.
         """
+        self._check_throttle()
         self._check_recaptcha()
-        return super().clean()
+        username = (self.data.get("username") or "").strip()[:150]
+        try:
+            cleaned = super().clean()
+        except forms.ValidationError:
+            if username:
+                throttle.register_failure(self.request, username)
+            raise
+        throttle.register_success(self.request, username)
+        return cleaned
+
+    def _check_throttle(self):
+        """
+        Refuse the attempt outright while this account or address has failed
+        too often - before reCAPTCHA and before the password hasher, so a
+        paused attempt cannot tell anyone whether its password was right.
+        """
+        username = (self.data.get("username") or "").strip()[:150]
+        wait = throttle.retry_after(self.request, username)
+        if not wait:
+            return
+        record(
+            Action.LOGIN_FAILED,
+            request=self.request,
+            detail=(
+                f"Sign-in for '{username}' " if username else "Sign-in "
+            ) + "refused: too many failed attempts (throttled)",
+        )
+        minutes = max(1, -(-wait // 60))
+        raise forms.ValidationError(
+            self.error_messages["throttled"].format(
+                minutes=minutes, plural="" if minutes == 1 else "s"
+            ),
+            code="throttled",
+        )
 
     def _check_recaptcha(self):
         if not recaptcha.is_enabled():
@@ -161,6 +200,29 @@ class UserForm(GovModelForm):
                     "You cannot change your own role or deactivate your own "
                     "account. Ask another administrator."
                 )
+        elif not self._acting_superadmin():
+            # Only a System Administrator makes another one. Otherwise an
+            # Administrator could promote a second account of their own and
+            # hold every key the System Administrator holds.
+            self.fields["role"].choices = [
+                choice for choice in self.fields["role"].choices
+                if choice[0] != Role.SUPERADMIN
+            ]
+
+    def _acting_superadmin(self):
+        return bool(self.acting_user is not None and self.acting_user.is_superadmin)
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+        if (
+            role == Role.SUPERADMIN
+            and not self._editing_self()
+            and not self._acting_superadmin()
+        ):
+            raise forms.ValidationError(
+                "Only a System Administrator can grant the System Administrator role."
+            )
+        return role
 
     def _editing_self(self):
         return (

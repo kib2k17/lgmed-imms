@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS service worker - served at /sw.js by core/pwa.py
+   LGMED-IMMS service worker - served at /sw.js by core/pwa.py
 
    What it keeps on the device, and what it never will:
 
@@ -201,7 +201,7 @@ self.addEventListener("push", function (event) {
     data = { body: event.data ? event.data.text() : "" };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "LGMED-iMMS", {
+    self.registration.showNotification(data.title || "LGMED-IMMS", {
       body: data.body || "You have a new notification.",
       icon: NOTIFICATION_ICON,
       badge: NOTIFICATION_ICON,

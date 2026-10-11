@@ -29,7 +29,7 @@ PASSWORD = "LgmedDemo!2026"
 
 
 class Command(BaseCommand):
-    help = "Create demonstration accounts, one for each LGMED-iMMS role."
+    help = "Create demonstration accounts, one for each LGMED-IMMS role."
 
     def add_arguments(self, parser):
         parser.add_argument(

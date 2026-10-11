@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS - supporting document upload
+   LGMED-IMMS - supporting document upload
    Vanilla JavaScript, no framework.
 
    What this does, and why it is worth the code:

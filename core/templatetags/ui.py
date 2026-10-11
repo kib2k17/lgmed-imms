@@ -1,5 +1,5 @@
 """
-Template helpers for the LGMED-iMMS design system.
+Template helpers for the LGMED-IMMS design system.
 
 Everything here is presentation-only. Authorization decisions are made in the
 views and models; these tags simply avoid offering an action a user cannot take.

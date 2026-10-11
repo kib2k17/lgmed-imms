@@ -1,5 +1,5 @@
 """
-Tests for the LGMED-iMMS shell and the shared module machinery.
+Tests for the LGMED-IMMS shell and the shared module machinery.
 
 These assert what a demonstration and an audit depend on: every route renders,
 the sidebar reflects the signed-in user's role, and authorization is enforced
@@ -179,7 +179,7 @@ class PublicSiteTests(TestCase):
         which silently blanked every identity value on this page.
         """
         response = self.client.get(reverse("accounts:login"))
-        self.assertContains(response, "LGMED-iMMS")
+        self.assertContains(response, "LGMED-IMMS")
         self.assertContains(response, "Department of the Interior and Local Government")
         self.assertContains(response, "RegionalOffice@caraga.dilg.gov.ph")
 
@@ -442,7 +442,7 @@ class SystemVersionTests(TestCase):
         from django.template.loader import render_to_string
 
         agency = {
-            "system_name": "LGMED-iMMS",
+            "system_name": "LGMED-IMMS",
             "system_full_name": "full name",
             "division": "division",
             "office_short": "office",

@@ -36,13 +36,36 @@ def get_request():
     return _current_request.get()
 
 
+def _valid_ip(value):
+    import ipaddress
+
+    try:
+        return str(ipaddress.ip_address((value or "").strip()))
+    except ValueError:
+        return None
+
+
 def client_ip(request):
+    """
+    The address the request came from, as far as this server can vouch for it.
+
+    X-Forwarded-For is written by whoever sends the request, so its first
+    entry is whatever an attacker likes - a fake address in the audit log, or
+    a fresh one on every attempt to slip past the sign-in throttle. It is read
+    only when settings.TRUST_X_FORWARDED_FOR says a proxy in front appends the
+    real peer, and then only its *last* entry: the one that proxy added.
+    """
     if request is None:
         return None
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR") or None
+    from django.conf import settings
+
+    if getattr(settings, "TRUST_X_FORWARDED_FOR", False):
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded:
+            address = _valid_ip(forwarded.split(",")[-1])
+            if address:
+                return address
+    return _valid_ip(request.META.get("REMOTE_ADDR"))
 
 
 def describe(value):

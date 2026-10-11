@@ -471,6 +471,20 @@ def mfa_regenerate_codes(request):
 # ---------------------------------------------------------------------------
 
 
+def _refuse_if_outranked(request, account):
+    """
+    An Administrator manages accounts, but not the System Administrator's.
+
+    Resetting a System Administrator's password and two-step verification is
+    a takeover of the account in two clicks; editing it, or deactivating it,
+    is the same thing done more slowly. Only another System Administrator may.
+    """
+    if account.is_superadmin and not request.user.is_superadmin:
+        raise PermissionDenied(
+            "Only a System Administrator can change a System Administrator's account."
+        )
+
+
 class UserModuleMixin(CanAdministerMixin):
     model = User
     module_key = "users"
@@ -581,6 +595,11 @@ class UserCreateView(UserModuleMixin, ModuleCreateView):
 class UserUpdateView(UserModuleMixin, ModuleUpdateView):
     form_class = UserForm
 
+    def get_object(self, queryset=None):
+        account = super().get_object(queryset)
+        _refuse_if_outranked(self.request, account)
+        return account
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["acting_user"] = self.request.user
@@ -601,6 +620,14 @@ class UserPasswordResetView(CanAdministerMixin, FormView):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.account
         return kwargs
+
+    def get(self, request, *args, **kwargs):
+        _refuse_if_outranked(request, self.account)
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        _refuse_if_outranked(request, self.account)
+        return super().post(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -653,6 +680,7 @@ class UserActivationView(CanAdministerMixin, FormView):
         account = get_object_or_404(User, pk=pk)
         if account.pk == request.user.pk:
             raise PermissionDenied("You cannot deactivate your own account.")
+        _refuse_if_outranked(request, account)
 
         account.is_active = not account.is_active
         account.save(update_fields=["is_active"])  # the signal records it
@@ -682,6 +710,7 @@ class UserMFAResetView(CanAdministerMixin, FormView):
             raise PermissionDenied(
                 "Manage your own two-step verification from My Profile."
             )
+        _refuse_if_outranked(request, account)
         if account.mfa_enabled:
             mfa.disable(account)
             record(

@@ -6,7 +6,7 @@ from programs.storage import protected_storage
 
 
 class Role(models.TextChoices):
-    """Authorization roles recognised by LGMED-iMMS."""
+    """Authorization roles recognised by LGMED-IMMS."""
 
     SUPERADMIN = "SUPERADMIN", "System Administrator"
     ADMIN = "ADMIN", "Administrator"
@@ -47,7 +47,7 @@ class Section(models.Model):
 
 class User(AbstractUser):
     """
-    LGMED-iMMS account.
+    LGMED-IMMS account.
 
     `role` drives both the navigation a user is offered and the permission
     checks enforced in the views. Frontend visibility is a usability layer

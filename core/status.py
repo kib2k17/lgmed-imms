@@ -1,5 +1,5 @@
 """
-The single vocabulary of record states used across LGMED-iMMS.
+The single vocabulary of record states used across LGMED-IMMS.
 
 Section 4 of the design system fixes four status colours; section 20 requires
 that status never be communicated by colour alone. Every badge therefore pairs

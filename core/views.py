@@ -1,5 +1,3 @@
-import json
-
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
@@ -8,6 +6,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from . import stats
+from .safe_json import script_json
 
 
 # ---------------------------------------------------------------------------
@@ -21,7 +20,7 @@ def dashboard(request):
     charts = stats.charts()
 
     context = {
-        "page_title": "LGMED-iMMS Dashboard",
+        "page_title": "LGMED-IMMS Dashboard",
         "page_subtitle": "Regional monitoring and evaluation overview",
         "breadcrumbs": [{"label": "Dashboard"}],
         "active_nav": "dashboard",
@@ -32,7 +31,7 @@ def dashboard(request):
         "pending_actions": stats.pending_actions(),
         "upcoming_activities": stats.upcoming_activities(request.user),
         # Series only - the accessible figure tables are rendered server side.
-        "charts_json": json.dumps({c["id"]: c["data"] for c in charts}),
+        "charts_json": script_json({c["id"]: c["data"] for c in charts}),
     }
     return render(request, "dashboard/dashboard.html", context)
 
@@ -80,7 +79,7 @@ def components(request):
     """Living reference of the design system's components."""
     context = {
         "page_title": "Design System",
-        "page_subtitle": "Reference implementation of LGMED-iMMS interface components",
+        "page_subtitle": "Reference implementation of LGMED-IMMS interface components",
         "breadcrumbs": [{"label": "Design System"}],
         "active_nav": "components",
         "demo_filters": [
@@ -540,7 +539,6 @@ def public_updates(request):
     lists - the weeks, the ways forward, what is coming - carry only what was
     cleared item by item.
     """
-    import json
 
     from updates.models import PublicDisclosure, public_periods
     from updates.stats import Scope, available_years
@@ -579,7 +577,7 @@ def public_updates(request):
             "cards": update_stats.headline_cards(figures),
             "figures": update_stats.breakdown_figures(figures),
             "charts": charts,
-            "charts_json": json.dumps({c["id"]: c["data"] for c in charts}),
+            "charts_json": script_json({c["id"]: c["data"] for c in charts}),
             "upcoming": update_stats.upcoming_activities(scope=scope),
             "ways_forward": update_stats.open_ways_forward(scope=scope),
             "page_obj": page,

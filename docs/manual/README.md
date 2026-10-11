@@ -1,4 +1,4 @@
-# LGMED-iMMS System User Manual — sources and build
+# LGMED-IMMS System User Manual — sources and build
 
 | File | What it is |
 |---|---|

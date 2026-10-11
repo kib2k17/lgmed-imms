@@ -22,7 +22,7 @@ ACTORS = {
 
 DIAGRAMS = {
     "overview": {
-        "title": "How work flows through LGMED-iMMS",
+        "title": "How work flows through LGMED-IMMS",
         "steps": [
             ("Encoder", "Records what arrived or what was done"),
             ("Division Chief", "Reviews, decides and assigns"),

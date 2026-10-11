@@ -37,7 +37,32 @@ def page_not_found(request, exception=None):
     )
 
 
+_PLAIN_500 = (
+    "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+    "<title>System error</title></head><body style=\"font-family:sans-serif;"
+    "max-width:40rem;margin:4rem auto;padding:0 1rem\"><h1>System error</h1>"
+    "<p>The system encountered an unexpected error. Please try again, or "
+    "contact ICT support if the problem persists.</p></body></html>"
+)
+
+
 def server_error(request):
+    """
+    The branded page when it can be drawn, a plain one when it cannot.
+
+    The branded page runs the context processors, which read the database;
+    when the database is what failed, rendering it fails too, and the visitor
+    would get whatever the server falls back to. Never any detail either way.
+    """
+    try:
+        return _branded_server_error(request)
+    except Exception:  # noqa: BLE001 - the last line of defence must not raise
+        from django.http import HttpResponseServerError
+
+        return HttpResponseServerError(_PLAIN_500)
+
+
+def _branded_server_error(request):
     return render(
         request,
         "errors/error.html",

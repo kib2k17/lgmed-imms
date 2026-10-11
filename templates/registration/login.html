@@ -149,7 +149,7 @@
     token is in - runs every handler in the usual order.
   {% endcomment %}
   {% if recaptcha_site_key %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function () {
       "use strict";
 

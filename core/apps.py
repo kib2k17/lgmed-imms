@@ -3,9 +3,15 @@ from django.contrib.staticfiles.apps import StaticFilesConfig as BaseStaticFiles
 
 
 class CoreConfig(AppConfig):
+    # Two AppConfig classes live in this module, so Django will not pick one
+    # for "core" by itself - without this, ready() below never runs.
+    default = True
     default_auto_field = "django.db.models.BigAutoField"
     name = "core"
-    verbose_name = "LGMED-iMMS Core"
+    verbose_name = "LGMED-IMMS Core"
+
+    def ready(self):
+        from . import checks  # noqa: F401 - registers the deployment checks
 
 
 class StaticFilesConfig(BaseStaticFilesConfig):

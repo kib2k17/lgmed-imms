@@ -1,4 +1,4 @@
-# Compile the LGMED-iMMS stylesheet.
+# Compile the LGMED-IMMS stylesheet.
 #   .\build-css.ps1          one-off production build (minified)
 #   .\build-css.ps1 -Watch   rebuild on every template change during development
 param([switch]$Watch)

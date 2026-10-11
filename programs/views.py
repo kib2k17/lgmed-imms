@@ -46,6 +46,7 @@ from core.mixins import (
     CanPublishPPAMixin,
     CanReviewPPAMixin,
 )
+from core.redirects import safe_next
 from core.views_base import ModuleContextMixin
 
 from .forms import (
@@ -807,7 +808,7 @@ class RecordActionMixin(RecordViewMixin, View):
             self.perform(record, request)
         except ValidationError as error:
             messages.error(request, "; ".join(error.messages))
-        return redirect(request.POST.get("next") or record_url(record))
+        return redirect(safe_next(request, request.POST.get("next"), record_url(record)))
 
     def perform(self, record, request):
         raise NotImplementedError
@@ -1742,9 +1743,9 @@ class DocumentPublishView(CanPublishPPAMixin, PPAContextMixin, DetailView):
                 request,
                 f"'{document.title}' is already on the public website.",
             )
-            return redirect(self.request.POST.get("next")
-                            or reverse("programs:document_review",
-                                       args=[document.pk]))
+            return redirect(safe_next(request, self.request.POST.get("next"),
+                            reverse("programs:document_review",
+                                       args=[document.pk])))
         was_withdrawn = document.status == DocumentStatus.WITHDRAWN
         try:
             document.publish(request.user)
@@ -1766,8 +1767,8 @@ class DocumentPublishView(CanPublishPPAMixin, PPAContextMixin, DetailView):
                 + ("back on" if was_withdrawn else "now on")
                 + f" the public website, under {document.authority.reference}.",
             )
-        return redirect(self.request.POST.get("next")
-                        or reverse("programs:document_review", args=[document.pk]))
+        return redirect(safe_next(request, self.request.POST.get("next"),
+                        reverse("programs:document_review", args=[document.pk])))
 
 
 class DocumentWithdrawView(CanPublishPPAMixin, PPAContextMixin, DetailView):
@@ -1807,5 +1808,5 @@ class DocumentWithdrawView(CanPublishPPAMixin, PPAContextMixin, DetailView):
                 "can publish it again from this page. The record it belongs "
                 "to is still published.",
             )
-        return redirect(self.request.POST.get("next")
-                        or reverse("programs:document_review", args=[document.pk]))
+        return redirect(safe_next(request, self.request.POST.get("next"),
+                        reverse("programs:document_review", args=[document.pk])))

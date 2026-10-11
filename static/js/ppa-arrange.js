@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS - arranging a record's photographs
+   LGMED-IMMS - arranging a record's photographs
    Vanilla JavaScript, no framework.
 
    The grid on this page is the gallery the public gets, in the same reading

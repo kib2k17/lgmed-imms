@@ -22,7 +22,7 @@ class ManifestTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/manifest+json")
         data = json.loads(response.content)
 
-        self.assertEqual(data["short_name"], "LGMED-iMMS")
+        self.assertEqual(data["short_name"], "LGMED-IMMS")
         self.assertEqual(data["start_url"], reverse("pwa_launch"))
         # Unchanged identity, so copies installed before the launch page was
         # added are still the same app.

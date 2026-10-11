@@ -13,9 +13,6 @@ Everything below reads from the period. No view in this module groups,
 filters or totals by employee.
 """
 
-import csv
-import json
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
@@ -26,7 +23,9 @@ from django.views.generic import FormView, TemplateView, UpdateView
 
 from audit.models import Action
 from audit.recording import record
+from core import csv_safe
 from core.mixins import CanApproveMixin, CanEncodeMixin
+from core.safe_json import script_json
 from core.views_base import (
     ModuleCreateView,
     ModuleDeleteView,
@@ -60,7 +59,6 @@ from .models import (
     WayForward,
     public_periods,
 )
-
 
 # ---------------------------------------------------------------------------
 # The division dashboard
@@ -100,7 +98,7 @@ class DivisionDashboardView(LoginRequiredMixin, TemplateView):
         )
         response.write("﻿")
 
-        writer = csv.writer(response)
+        writer = csv_safe.writer(response)
         writer.writerow([f"LGMED division accomplishments, {year}"])
         writer.writerow(
             ["Generated", timezone.localtime().strftime("%d %B %Y, %I:%M %p")]
@@ -148,7 +146,7 @@ class DivisionDashboardView(LoginRequiredMixin, TemplateView):
                 "cards": stats.headline_cards(figures),
                 "figures": stats.breakdown_figures(figures),
                 "charts": charts,
-                "charts_json": json.dumps({c["id"]: c["data"] for c in charts}),
+                "charts_json": script_json({c["id"]: c["data"] for c in charts}),
                 "current_period": ReportingPeriod.current(),
                 "upcoming": stats.upcoming_activities(),
                 "ways_forward": stats.open_ways_forward(),

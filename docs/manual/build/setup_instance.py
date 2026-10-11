@@ -119,7 +119,7 @@ def sample_files():
         "FOR: The Division Chief, LGMED",
         "SUBJECT: Request for validation of submitted documents (illustrative)",
         "",
-        "This file was generated to demonstrate uploading in LGMED-iMMS.",
+        "This file was generated to demonstrate uploading in LGMED-IMMS.",
         "It contains no real records.",
     ]))
     img = Image.new("RGB", (1200, 800), (226, 232, 240))

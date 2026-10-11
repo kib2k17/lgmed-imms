@@ -1,4 +1,4 @@
-# Put the LGMED-iMMS development server on a public HTTPS URL, so colleagues
+# Put the LGMED-IMMS development server on a public HTTPS URL, so colleagues
 # can click through a demo without being on this network.
 #
 #   .\run-cloudflare.ps1            tunnel to the server already running on :8000

@@ -44,7 +44,7 @@ These procedures work the same way in every module.
 
 # 12. Notifications and Alerts
 
-LGMED-iMMS tells you about work in four ways:
+LGMED-IMMS tells you about work in four ways:
 
 | Kind | Where you see it | Examples |
 |---|---|---|
@@ -178,7 +178,7 @@ No. Only the screen design and an offline notice are stored on the device.
 
 # 16. Security, Privacy, and Good Practices
 
-LGMED-iMMS holds personal information about local government officials, focal persons and DILG personnel. Every user is bound by the **Data Privacy Act of 2012 (Republic Act No. 10173)** and the notice accepted at first sign-in.
+LGMED-IMMS holds personal information about local government officials, focal persons and DILG personnel. Every user is bound by the **Data Privacy Act of 2012 (Republic Act No. 10173)** and the notice accepted at first sign-in.
 
 **Your account**
 
@@ -287,7 +287,7 @@ LGMED-iMMS holds personal information about local government officials, focal pe
 
 | Need | Contact |
 |---|---|
-| Account, password, two-step verification, access to a module | The LGMED-iMMS system administrator |
+| Account, password, two-step verification, access to a module | The LGMED-IMMS system administrator |
 | Correcting your account details | **My Profile › Request a correction** |
 | A suspected data breach or unauthorised access | The system administrator, immediately |
 | Technical installation, backups, configuration | Project `README.md` and `docs/` (technical staff) |

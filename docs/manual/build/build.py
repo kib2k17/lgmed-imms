@@ -1,5 +1,5 @@
 """
-Build the LGMED-iMMS System User Manual from its sources.
+Build the LGMED-IMMS System User Manual from its sources.
 
     python build.py            # Markdown, HTML, PDF, DOCX and PPTX
     python build.py pdf        # only some outputs: md html pdf docx pptx
@@ -37,7 +37,7 @@ OUT = MANUAL / "system-user-manual"
 
 TITLE = "SYSTEM USER MANUAL"
 SUBTITLE = "Comprehensive Guide to System Modules, Functions, and Procedures"
-SYSTEM = "LGMED-iMMS"
+SYSTEM = "LGMED-IMMS"
 SYSTEM_LONG = ("Local Government Monitoring and Evaluation Division - "
                "Information Management and Monitoring System")
 OFFICE = "Department of the Interior and Local Government\nRegional Office XIII - Caraga"
@@ -45,7 +45,7 @@ MANUAL_VERSION = "1.0"
 HISTORY = [
     ("1.0", "8 October 2026", "First edition, generated from the system as built "
      "(commit {commit}). Screenshots captured from the live application on "
-     "demonstration data.", "Documentation team / LGMED-iMMS"),
+     "demonstration data.", "Documentation team / LGMED-IMMS"),
 ]
 TOKEN = re.compile(r"\{\{(figure|diagram|ref):([a-z0-9-]+)\}\}")
 CALLOUTS = ("NOTE", "TIP", "IMPORTANT", "WARNING")
@@ -250,7 +250,7 @@ def build_html(figures, chapters, numbers, commit, toc_pages=None, embed=False):
     <tr><th>Document title</th><td>{TITLE} - {SUBTITLE}</td></tr>
     <tr><th>System</th><td>{SYSTEM} ({SYSTEM_LONG})</td></tr>
     <tr><th>Office</th><td>{OFFICE.replace(chr(10), ', ')}</td></tr>
-    <tr><th>Intended readers</th><td>All LGMED-iMMS users: System Administrators, Administrators (Division Chief), LGMED Staff, Encoders and Viewers</td></tr>
+    <tr><th>Intended readers</th><td>All LGMED-IMMS users: System Administrators, Administrators (Division Chief), LGMED Staff, Encoders and Viewers</td></tr>
     <tr><th>Basis</th><td>The application as built in the project repository (commit {commit}); every procedure was checked against the source code and the running system</td></tr>
     <tr><th>Figures</th><td>{nfig} annotated screenshots and workflow diagrams</td></tr>
   </table>
@@ -347,7 +347,7 @@ def decorate_pdf(pdf_path, toc, pages):
     doc.set_toc(bookmarks)
     doc.set_metadata({"title": f"{SYSTEM} {TITLE.title()}", "subject": SUBTITLE,
                       "author": "DILG Regional Office XIII - Caraga, LGMED",
-                      "keywords": "LGMED-iMMS, user manual, DILG Caraga"})
+                      "keywords": "LGMED-IMMS, user manual, DILG Caraga"})
     tmp = pdf_path.with_suffix(".tmp.pdf")
     doc.save(tmp, garbage=3, deflate=True)
     doc.close()

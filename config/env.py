@@ -61,6 +61,13 @@ def env_float(name: str, default: float) -> float:
         return default
 
 
+def env_int(name: str, default: int) -> int:
+    try:
+        return int(env(name, str(default)))
+    except ValueError:
+        return default
+
+
 def env_list(name: str, default: str = "") -> list[str]:
     """A comma-separated variable, split and cleaned of blanks."""
     return [part.strip() for part in env(name, default).split(",") if part.strip()]

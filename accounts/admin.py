@@ -14,13 +14,13 @@ class UserAdmin(DjangoUserAdmin):
     search_fields = ("username", "first_name", "last_name", "email", "position")
     fieldsets = DjangoUserAdmin.fieldsets + (
         (
-            "LGMED-iMMS profile",
+            "LGMED-IMMS profile",
             {"fields": ("role", "section", "position", "office", "contact_number")},
         ),
     )
     add_fieldsets = DjangoUserAdmin.add_fieldsets + (
         (
-            "LGMED-iMMS profile",
+            "LGMED-IMMS profile",
             {"fields": ("first_name", "last_name", "email", "role", "section", "position")},
         ),
     )

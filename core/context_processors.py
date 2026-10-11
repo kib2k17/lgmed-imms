@@ -1,7 +1,7 @@
 """
 Institutional identity and navigation, available to every template.
 
-All agency details are sourced from the LGMED-iMMS specification. Nothing here
+All agency details are sourced from the LGMED-IMMS specification. Nothing here
 is invented: if an official asset or detail is unavailable, the template falls
 back to a neutral placeholder rather than fabricating one.
 
@@ -20,7 +20,7 @@ from django.conf import settings
 from .navigation import build_public_nav, build_sidebar
 
 AGENCY = {
-    "system_name": "LGMED-iMMS",
+    "system_name": "LGMED-IMMS",
     "system_full_name": (
         "Local Government Monitoring and Evaluation Division - "
         "Information Management and Monitoring System"

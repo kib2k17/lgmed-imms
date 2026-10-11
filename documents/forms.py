@@ -11,10 +11,12 @@ and leaves a trail that cannot say which of them they meant.
 import os
 
 from django import forms
+from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 
 from accounts.models import Section
 from core.forms_base import GovModelForm
+from core.uploads import check_signature
 
 from .models import (
     ALLOWED_EXTENSIONS,
@@ -41,7 +43,9 @@ def validate_upload(uploaded):
     Shared by every form that takes a file, so the register cannot end up
     holding something the download view will not serve.
     """
-    if not uploaded:
+    # Only a file arriving now is judged. A record's existing file comes back
+    # unchanged on every edit and was accepted under the rules of its day.
+    if not uploaded or not isinstance(uploaded, UploadedFile):
         return uploaded
 
     extension = os.path.splitext(uploaded.name)[1].lstrip(".").lower()
@@ -56,7 +60,7 @@ def validate_upload(uploaded):
             f"This file is {uploaded.size / (1024 * 1024):.1f} MB. "
             f"The limit is {limit} MB."
         )
-    return uploaded
+    return check_signature(uploaded)
 
 
 class DocumentFileField(forms.FileField):

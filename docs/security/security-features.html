@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LGMED-IMMS Security Features</title>
+<!--
+  Source of security-features.png. Regenerate with:
+    msedge --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=2 --window-size=1800,1230 \
+      --screenshot=security-features.png security-features.html
+-->
+<style>
+  @font-face {
+    font-family: "Inter";
+    src: url("../../static/fonts/inter-latin-wght-normal.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+  :root {
+    --brand-50: #f1f6fc; --brand-100: #dde8f6; --brand-200: #bcd3ed;
+    --brand-500: #2a6ab8; --brand-600: #1e5498; --brand-700: #1c4677;
+    --brand-800: #17385e; --brand-900: #122a47; --brand-950: #0b1c30;
+    --gold: #f2b705; --red: #c8102e;
+    --ink: #13233a; --muted: #4a5b72; --line: #d5e0ee;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1800px; height: 1230px; overflow: hidden; }
+  body {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: #f6f9fd;
+  }
+
+  /* Header band ----------------------------------------------------------- */
+  header {
+    height: 190px;
+    background: linear-gradient(120deg, var(--brand-950) 0%, var(--brand-800) 70%, var(--brand-700) 100%);
+    color: #fff;
+    display: flex; align-items: center; gap: 32px;
+    padding: 0 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
+    background: linear-gradient(90deg, var(--brand-500) 0 33%, var(--gold) 33% 66%, var(--red) 66% 100%);
+  }
+  header .shieldmark { position: absolute; right: -40px; top: -60px; opacity: .07; }
+  header img { width: 112px; height: 112px; border-radius: 50%; background: #fff; padding: 4px; }
+  header .eyebrow { font-size: 17px; letter-spacing: .18em; text-transform: uppercase; color: var(--brand-200); font-weight: 600; }
+  header h1 { font-size: 50px; font-weight: 800; letter-spacing: -.02em; margin: 6px 0 4px; }
+  header p { font-size: 19px; color: var(--brand-100); }
+  header .tag {
+    margin-left: auto; text-align: right; font-size: 16px; color: var(--brand-200);
+    border-left: 2px solid rgba(255,255,255,.18); padding-left: 28px; line-height: 1.55;
+  }
+  header .tag b { color: #fff; font-size: 30px; display: block; font-weight: 800; }
+
+  /* Request path ---------------------------------------------------------- */
+  .path {
+    margin: 30px 64px 0;
+    display: flex; align-items: center;
+  }
+  .path .label { font-size: 14px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-right: 22px; white-space: nowrap; }
+  .step {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+    height: 54px; font-size: 16px; font-weight: 700; color: #fff;
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%, 18px 50%);
+    margin-left: -6px;
+  }
+  .step:first-of-type { clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%); margin-left: 0; }
+  .step .n { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.22); display: grid; place-items: center; font-size: 13px; }
+  .s0 { background: #6b7a90; }
+  .s1 { background: var(--brand-900); } .s2 { background: var(--brand-800); }
+  .s3 { background: var(--brand-700); } .s4 { background: var(--brand-600); }
+  .s5 { background: var(--brand-500); } .s6 { background: #b88a00; }
+
+  /* Cards ----------------------------------------------------------------- */
+  .grid {
+    margin: 26px 64px 0;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 18px;
+    padding: 24px 26px 22px; position: relative; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(18,42,71,.05), 0 8px 24px -12px rgba(18,42,71,.18);
+    height: 385px;
+  }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--accent); }
+  .card .head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .card .icon {
+    width: 58px; height: 58px; border-radius: 14px; flex: none;
+    background: var(--accent); display: grid; place-items: center;
+  }
+  .card .icon svg { width: 32px; height: 32px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .card .layer { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .card h2 { font-size: 25px; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }
+  .card ul { list-style: none; display: grid; gap: 10px; }
+  .card li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 15.5px; line-height: 1.38; color: var(--muted); }
+  .card li b { color: var(--ink); font-weight: 700; }
+  .card li::before {
+    content: ""; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%;
+    background: var(--tint) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e5498' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/12px no-repeat;
+  }
+  .stat {
+    position: absolute; right: 22px; top: 22px; text-align: right;
+    font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase;
+  }
+  .stat b { display: block; font-size: 30px; line-height: 1; color: var(--accent); font-weight: 800; letter-spacing: -.02em; text-transform: none; }
+  .c1 { --accent: var(--brand-900); --tint: var(--brand-100); }
+  .c2 { --accent: var(--brand-800); --tint: var(--brand-100); }
+  .c3 { --accent: var(--brand-700); --tint: var(--brand-100); }
+  .c4 { --accent: var(--brand-600); --tint: var(--brand-100); }
+  .c5 { --accent: var(--brand-500); --tint: var(--brand-100); }
+  .c6 { --accent: #b88a00; --tint: #fbefc4; }
+
+  footer {
+    position: absolute; left: 64px; right: 64px; bottom: 26px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 15px; color: var(--muted);
+  }
+  footer .pills { display: flex; gap: 10px; }
+  footer .pill { background: var(--brand-50); border: 1px solid var(--brand-200); color: var(--brand-800); font-weight: 700; border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="shieldmark" width="420" height="420" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z"/></svg>
+  <img src="../../static/img/dilg-logo.png" alt="">
+  <div>
+    <div class="eyebrow">DILG Regional Office XIII &ndash; Caraga &middot; LGMED</div>
+    <h1>LGMED-IMMS Security Features</h1>
+    <p>Defense in depth: every request passes six layers of protection before it reaches a record.</p>
+  </div>
+  <div class="tag"><b>6 layers</b>built into the system,<br>enforced on the server</div>
+</header>
+
+<div class="path">
+  <span class="label">Request path</span>
+  <div class="step s0">User</div>
+  <div class="step s1"><span class="n">1</span>Network</div>
+  <div class="step s2"><span class="n">2</span>Browser</div>
+  <div class="step s3"><span class="n">3</span>Sign-in</div>
+  <div class="step s4"><span class="n">4</span>Access</div>
+  <div class="step s5"><span class="n">5</span>Data &amp; Files</div>
+  <div class="step s6"><span class="n">6</span>Audit Trail</div>
+</div>
+
+<div class="grid">
+
+  <section class="card c1">
+    <div class="stat"><b>1 yr</b>HSTS</div>
+    <div class="head">
+      <div class="icon"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14.5v3"/></svg></div>
+      <div><div class="layer">Layer 1</div><h2>Network &amp; Transport</h2></div>
+    </div>
+    <ul>
+      <li><span><b>HTTPS only</b> &mdash; plain HTTP is redirected to an encrypted TLS connection</span></li>
+      <li><span><b>HSTS</b> tells browsers to never connect insecurely, for a full year</span></li>
+      <li><span><b>Secure, host-locked cookies</b> (<code>__Host-</code>) that a subdomain cannot plant</span></li>
+      <li><span><b>Firewall</b> exposes only ports 443/80; the app server and MySQL listen on the host alone</span></li>
+      <li><span><b>Dedicated database account</b> limited to the LGMED-IMMS schema</span></li>
+    </ul>
+  </section>
+
+  <section class="card c2">
+    <div class="stat"><b>CSP</b>nonce-based</div>
+    <div class="head">
+      <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 14l-2 2 2 2M15 14l2 2-2 2"/></svg></div>
+      <div><div class="layer">Layer 2</div><h2>Browser Protection</h2></div>
+    </div>
+    <ul>
+      <li><span><b>Content-Security-Policy</b> with a fresh nonce per page blocks injected scripts (XSS)</span></li>
+      <li><span><b>CSRF tokens</b> on every form stop forged requests from other sites</span></li>
+      <li><span><b>Clickjacking guard</b> &mdash; pages refuse to be framed by other websites</span></li>
+      <li><span><b>HttpOnly, SameSite cookies</b> that JavaScript cannot read</span></li>
+      <li><span><b>No-sniff, same-origin referrer &amp; opener</b> headers on every response</span></li>
+    </ul>
+  </section>
+
+  <section class="card c3">
+    <div class="stat"><b>2FA</b>TOTP</div>
+    <div class="head">
+      <div class="icon"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/><path d="M10 9.5l1.5 1.5 3-3"/></svg></div>
+      <div><div class="layer">Layer 3</div><h2>Secure Sign-in</h2></div>
+    </div>
+    <ul>
+      <li><span><b>reCAPTCHA v3</b> turns away automated logins before the password is checked</span></li>
+      <li><span><b>Strong passwords</b> &mdash; 12+ characters, not common, not numeric, not like the username</span></li>
+      <li><span><b>Login throttling</b> &mdash; 5 tries per account &amp; device, 30 per address in 15 min</span></li>
+      <li><span><b>Two-step verification</b> by authenticator app, with one-time recovery codes and lockout on repeated wrong codes</span></li>
+      <li><span><b>8-hour sessions</b> that end when the browser closes</span></li>
+    </ul>
+  </section>
+
+  <section class="card c4">
+    <div class="stat"><b>5</b>roles</div>
+    <div class="head">
+      <div class="icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 11l1.6 1.6L22 9.2"/></svg></div>
+      <div><div class="layer">Layer 4</div><h2>Access Control</h2></div>
+    </div>
+    <ul>
+      <li><span><b>Role-based permissions</b> &mdash; System Administrator, Administrator, LGMED Staff, Encoder, Viewer</span></li>
+      <li><span><b>Capability checks on the server</b> &mdash; view, encode, approve &amp; publish are enforced in every view</span></li>
+      <li><span><b>Menu Permissions</b> per role or per account; closed modules are refused by URL, not just hidden</span></li>
+      <li><span><b>Protected files</b> served only after the same access check as their record</span></li>
+      <li><span><b>One account per person</b>; no shared logins</span></li>
+    </ul>
+  </section>
+
+  <section class="card c5">
+    <div class="stat"><b>PNPKI</b>e-signatures</div>
+    <div class="head">
+      <div class="icon"><svg viewBox="0 0 24 24"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5"/><path d="M9 14.5l2 2 4-4"/></svg></div>
+      <div><div class="layer">Layer 5</div><h2>Data &amp; File Security</h2></div>
+    </div>
+    <ul>
+      <li><span><b>Upload validation</b> &mdash; a file's content must match its extension; disguised files are rejected</span></li>
+      <li><span><b>Sensitive-content screening</b> flags personal data, and a human reviews before anything is published</span></li>
+      <li><span><b>e-SIRA digital signing</b> against the DICT PNPKI chain; stored certificates are encrypted</span></li>
+      <li><span><b>Encrypted nightly backups</b> with SHA-256 checksums; keys kept offline, apart from data</span></li>
+      <li><span><b>Data Privacy Act (RA 10173)</b> notice acknowledged at every sign-in</span></li>
+    </ul>
+  </section>
+
+  <section class="card c6">
+    <div class="stat"><b>Append</b>only</div>
+    <div class="head">
+      <div class="icon"><svg viewBox="0 0 24 24"><path d="M5 3.5h14v17H5z"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/></svg></div>
+      <div><div class="layer">Layer 6</div><h2>Audit &amp; Accountability</h2></div>
+    </div>
+    <ul>
+      <li><span><b>Tamper-resistant audit log</b> &mdash; entries cannot be edited or deleted, even by admins</span></li>
+      <li><span><b>Sign-ins &amp; failed attempts</b>, with time and client address</span></li>
+      <li><span><b>Field-level change history</b> for every create, update and delete</span></li>
+      <li><span><b>Sensitive actions</b> &mdash; role changes, exports, access denied, 2FA on/off</span></li>
+      <li><span><b>Publication workflow</b> &mdash; who screened, approved, published or archived</span></li>
+    </ul>
+  </section>
+
+</div>
+
+<footer>
+  <span>LGMED-IMMS &middot; Local Government Monitoring and Evaluation Division &ndash; Information Management and Monitoring System</span>
+  <div class="pills"><span class="pill">RA 10173 Data Privacy Act</span><span class="pill">DICT PNPKI</span><span class="pill">Two-step verification</span></div>
+</footer>
+
+</body>
+</html>

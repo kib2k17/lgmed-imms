@@ -94,12 +94,12 @@
               {% endif %}
               <div class="flex flex-wrap justify-end gap-2">
                 {% if can_reject %}
-                  <button type="submit" class="btn btn-danger" onclick="document.getElementById('act-decision').value='reject'">
+                  <button type="submit" class="btn btn-danger" data-set-field="act-decision" data-set-value="reject">
                     {% icon "error" "size-4" %}Reject and return
                   </button>
                 {% endif %}
                 {% if can_act %}
-                  <button type="submit" class="btn btn-primary" onclick="document.getElementById('act-decision').value='complete'">
+                  <button type="submit" class="btn btn-primary" data-set-field="act-decision" data-set-value="complete">
                     {% icon "check" "size-4" %}{% if my_step.action == "APPROVE" %}Approve{% elif my_step.action == "REVIEW" %}Mark reviewed{% else %}Acknowledge{% endif %}
                   </button>
                 {% elif can_sign %}

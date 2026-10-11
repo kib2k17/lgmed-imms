@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS interface behaviour
+   LGMED-IMMS interface behaviour
    Vanilla JavaScript, no framework. Every control degrades to a usable state
    when scripting is unavailable.
    ========================================================================== */
@@ -1011,4 +1011,40 @@ window.LGMED.initCharts = function (data) {
       }, 0);
     });
   }
+})();
+
+/* --------------------------------------------------------------------------
+   Declarative actions
+   The Content-Security-Policy refuses inline event handlers (onclick=...),
+   so the few one-line behaviours the templates need are declared as data
+   attributes and handled here, once, for the whole page:
+     data-print                     print the page
+     data-autosubmit                submit the enclosing form when changed
+     data-set-field / -set-value    set a (hidden) field before the button
+                                    it sits on submits its form
+   -------------------------------------------------------------------------- */
+
+(function () {
+  "use strict";
+
+  document.addEventListener("click", function (event) {
+    var target = event.target.closest ? event.target.closest("[data-print], [data-set-field]") : null;
+    if (!target) return;
+    if (target.hasAttribute("data-print")) {
+      event.preventDefault();
+      window.print();
+      return;
+    }
+    var field = document.getElementById(target.getAttribute("data-set-field"));
+    if (field) field.value = target.getAttribute("data-set-value") || "";
+  });
+
+  document.addEventListener("change", function (event) {
+    var target = event.target;
+    // form.submit(), as the inline handler it replaces did: no submit
+    // listeners, no "saving" overlay - this is a filter, not a save.
+    if (target && target.hasAttribute && target.hasAttribute("data-autosubmit") && target.form) {
+      target.form.submit();
+    }
+  });
 })();

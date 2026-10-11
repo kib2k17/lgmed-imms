@@ -17,7 +17,7 @@ It also covers **My Profile**, **two-step verification**, and **Notifications**,
 
 # 3. System Overview
 
-LGMED-iMMS is a web application. It runs on a server in the office and is opened in a web browser; nothing needs to be installed on your computer. It can also be installed as an app on a computer or phone (see Section 7.9).
+LGMED-IMMS is a web application. It runs on a server in the office and is opened in a web browser; nothing needs to be installed on your computer. It can also be installed as an app on a computer or phone (see Section 7.9).
 
 ## 3.1 The modules at a glance
 

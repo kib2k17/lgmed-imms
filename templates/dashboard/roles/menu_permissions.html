@@ -140,7 +140,7 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.getElementById("account-picker").addEventListener("submit", function (event) {
       event.preventDefault();
       var target = document.getElementById("account-select").value;

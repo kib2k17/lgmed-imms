@@ -1,4 +1,5 @@
 from core.forms_base import GovModelForm
+from documents.forms import ACCEPT_ATTRIBUTE, FORMAT_HELP, validate_upload
 
 from .models import MonitoringActivity, MonitoringAttachment
 
@@ -37,3 +38,11 @@ class MonitoringAttachmentForm(GovModelForm):
     class Meta:
         model = MonitoringAttachment
         fields = ["title", "file"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["file"].help_text = FORMAT_HELP
+        self.fields["file"].widget.attrs["accept"] = ACCEPT_ATTRIBUTE
+
+    def clean_file(self):
+        return validate_upload(self.cleaned_data.get("file"))

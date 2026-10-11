@@ -5,7 +5,7 @@
   <form method="get" class="flex items-center gap-2">
     <label for="analytics-year" class="text-meta font-medium text-slate-600">Year</label>
     <select id="analytics-year" name="year" class="form-select w-28"
-            onchange="this.form.submit()">
+            data-autosubmit>
       {% for option in years %}
         <option value="{{ option }}" {% if option == year %}selected{% endif %}>{{ option }}</option>
       {% endfor %}
@@ -15,7 +15,7 @@
   <a href="?year={{ year }}&amp;export=csv" class="btn btn-secondary">
     {% icon "download" "size-4" %}<span class="hidden sm:inline">Export CSV</span>
   </a>
-  <button type="button" class="btn btn-secondary" onclick="window.print()">
+  <button type="button" class="btn btn-secondary" data-print>
     {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
   </button>
 {% endblock %}
@@ -158,7 +158,7 @@
   <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
   <script src="{% static 'js/analytics.js' %}"></script>
   <script id="analytics-data" type="application/json">{{ charts_json|safe }}</script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.addEventListener("DOMContentLoaded", function () {
       var el = document.getElementById("analytics-data");
       window.LGMED.initAnalytics(JSON.parse(el.textContent));

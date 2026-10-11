@@ -67,7 +67,7 @@ question comes up.
 | File | What is there now |
 |---|---|
 | `templates/public_base.html` | Solid blue masthead button, appears on every public page |
-| `templates/public/about.html` | Full-width secondary button in the "About LGMED-iMMS" sidebar card |
+| `templates/public/about.html` | Full-width secondary button in the "About LGMED-IMMS" sidebar card |
 | `templates/public/contact.html` | Primary button in the "LGMED personnel" card |
 | `templates/public/unavailable.html` | Inline text link on the maintenance page |
 
@@ -76,7 +76,7 @@ sits in the `ml-auto` flex container beside `#public-nav-toggle` — remove the
 anchor, leave the menu toggle and the container.
 
 On `about.html` and `contact.html`, the surrounding `<section>` cards carried
-explanatory copy addressed to staff ("Division staff can sign in to LGMED-iMMS
+explanatory copy addressed to staff ("Division staff can sign in to LGMED-IMMS
 to encode monitoring records…"). **Decided:** both cards were removed entirely.
 Each existed to carry its button; without it, About's card only restated the
 page and Contact's told staff to sign in with no way to. Office details,

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compile the LGMED-iMMS stylesheet. Pass --watch to rebuild on change.
+# Compile the LGMED-IMMS stylesheet. Pass --watch to rebuild on change.
 set -e
 cd "$(dirname "$0")"
 [ -x tools/tailwindcss.exe ] || { echo "tools/tailwindcss.exe not found - see README.md"; exit 1; }

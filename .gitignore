@@ -30,3 +30,24 @@ desktop.ini
 
 # Internal document storage - never served by a web server.
 protected/
+
+# Secrets and key material, wherever they end up. .env.example is the
+# placeholder template and IS committed.
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+# Database dumps and backups
+*.sql
+*.sql.gz
+*.dump
+backups/
+# Python tooling
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/

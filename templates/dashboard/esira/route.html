@@ -86,7 +86,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
   (function () {
     var rows = document.querySelector("[data-route-rows]");
     var template = document.querySelector("[data-route-template]");

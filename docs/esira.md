@@ -1,6 +1,6 @@
 # e-SIRA — Electronic Signature, Identification, Routing and Approval
 
-An LGMED Innovation Action module of LGMED-iMMS. Reached from the **LGMED
+An LGMED Innovation Action module of LGMED-IMMS. Reached from the **LGMED
 Innovation Action** button at the foot of the sidebar, at `/app/esira/`.
 
 Workflow: **Upload/Scan → Preview PDF → Place signature boxes → Choose signers

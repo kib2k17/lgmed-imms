@@ -1,5 +1,5 @@
 """
-Django settings for LGMED-iMMS.
+Django settings for LGMED-IMMS.
 
 Local Government Monitoring and Evaluation Division -
 Information Management and Monitoring System
@@ -7,9 +7,12 @@ DILG Regional Office XIII - Caraga
 """
 
 import os
+import sys
 from pathlib import Path
 
-from .env import env, env_bool, env_float, env_list, load_venv_env, local_ipv4_addresses
+from django.core.exceptions import ImproperlyConfigured
+
+from .env import env, env_bool, env_float, env_int, env_list, load_venv_env, local_ipv4_addresses
 from .version import system_version
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,29 +22,55 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # variables are never overwritten. See config/env.py.
 load_venv_env()
 
+# `manage.py test` builds its own throw-away database and never serves anyone,
+# so it is excused from the production requirements below. Nothing else is.
+RUNNING_TESTS = sys.argv[1:2] == ["test"]
+
 
 # ---------------------------------------------------------------------------
 # Core
 # ---------------------------------------------------------------------------
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-dev-only-key-replace-before-deployment",
-)
+# Off unless asked for. A server that starts without its environment - a
+# missing lgmed.env, a service unit that forgot EnvironmentFile= - must come up
+# as a production server that refuses to start, never as a debug server that
+# prints settings and source code to anyone who triggers an error. Development
+# machines set DJANGO_DEBUG=1 in <venv>/lgmed.env.
+DEBUG = env_bool("DJANGO_DEBUG", False)
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+_DEV_SECRET_KEY = "django-insecure-dev-only-key-replace-before-deployment"
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if not (DEBUG or RUNNING_TESTS):
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY is not set. A production server refuses to start "
+            "without one - see docs/security/PRODUCTION_DEPLOYMENT.md."
+        )
+    SECRET_KEY = _DEV_SECRET_KEY
+elif not DEBUG and (
+    SECRET_KEY == _DEV_SECRET_KEY
+    or SECRET_KEY.startswith("django-insecure")
+    or len(SECRET_KEY) < 50
+    or len(set(SECRET_KEY)) < 5
+):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is too weak for production: use at least 50 random "
+        "characters (see docs/security/PRODUCTION_DEPLOYMENT.md)."
+    )
 
-ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,192.168.1.132").split(",")
-    if h.strip()
-]
+# Names this server answers to. Development falls back to the loopback names;
+# production must say, because accepting any Host header is what lets a forged
+# one poison password-reset links and cached pages.
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
+if not ALLOWED_HOSTS and not RUNNING_TESTS:
+    raise ImproperlyConfigured(
+        "DJANGO_ALLOWED_HOSTS is not set. Name the server's own hostname(s), "
+        "comma-separated."
+    )
+if "*" in ALLOWED_HOSTS and not DEBUG:
+    raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS may not contain '*' in production.")
 
-CSRF_TRUSTED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
-    if o.strip()
-]
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 
 # The release the running code belongs to, shown in the footer of every page so
@@ -140,7 +169,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     # django.contrib.staticfiles, leaving out the Tailwind source (core/apps.py).
     "core.apps.StaticFilesConfig",
-    # LGMED-iMMS
+    # LGMED-IMMS
     "accounts",
     "core",
     "lgus",
@@ -164,6 +193,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Content-Security-Policy on every response, with a fresh nonce per
+    # request for the few inline scripts the templates carry. See SECURE_CSP.
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     # Django's own, except that it leaves the session's expiry alone for the
     # app's background notification checks. See core/middleware.py.
     "core.middleware.SessionMiddleware",
@@ -190,6 +222,8 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # {{ csp_nonce }} for inline <script nonce="...">.
+                "django.template.context_processors.csp",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.site_identity",
@@ -245,6 +279,41 @@ DATABASES = {
     }
 }
 
+# A database on another machine is reached over TLS: set MYSQL_SSL_CA to the
+# CA certificate that signed the MySQL server's certificate. A database on the
+# same host as the application (127.0.0.1 / a socket) does not need it.
+if env("MYSQL_SSL_CA"):
+    DATABASES["default"]["OPTIONS"]["ssl"] = {"ca": env("MYSQL_SSL_CA")}
+    DATABASES["default"]["OPTIONS"]["ssl_mode"] = "VERIFY_IDENTITY"
+
+if not (DEBUG or RUNNING_TESTS) and not DATABASES["default"]["PASSWORD"]:
+    raise ImproperlyConfigured(
+        "MYSQL_PASSWORD is not set. Production connects with a dedicated, "
+        "password-protected database account."
+    )
+
+# Shared state for the sign-in throttle (accounts/throttle.py) and the small
+# settings cache. In memory is right for the single server process the system
+# runs as; several processes must share one, or each keeps its own count of
+# failed sign-ins: set DJANGO_CACHE_LOCATION to a Redis URL (needs the `redis`
+# package), or to "database" and run `manage.py createcachetable`.
+_cache_location = env("DJANGO_CACHE_LOCATION")
+if _cache_location.startswith(("redis://", "rediss://")):
+    CACHES = {"default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": _cache_location,
+    }}
+elif _cache_location == "database":
+    CACHES = {"default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "lgmed_cache",
+    }}
+else:
+    CACHES = {"default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "lgmed-imms",
+    }}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
@@ -256,10 +325,32 @@ AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    # Twelve characters rather than Django's eight: these accounts hold
+    # personal data under RA 10173. Applies to passwords set from now on;
+    # existing passwords keep working until they are next changed.
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": env_int("LGMED_PASSWORD_MIN_LENGTH", 12)},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+# Failed sign-ins tolerated before the password step is paused
+# (accounts/throttle.py). Counted per account-and-address, per address and per
+# account, over a sliding window; the pause lifts on its own, so a stranger
+# cannot lock a colleague out for longer than LOGIN_THROTTLE_WINDOW.
+LOGIN_THROTTLE_WINDOW = env_int("LGMED_LOGIN_THROTTLE_WINDOW", 15 * 60)
+LOGIN_THROTTLE_PER_USER_IP = env_int("LGMED_LOGIN_THROTTLE_PER_USER_IP", 5)
+LOGIN_THROTTLE_PER_IP = env_int("LGMED_LOGIN_THROTTLE_PER_IP", 30)
+LOGIN_THROTTLE_PER_USER = env_int("LGMED_LOGIN_THROTTLE_PER_USER", 20)
+
+# Whether to believe X-Forwarded-For for the client's address (audit log,
+# sign-in throttle). Only behind a reverse proxy that *appends* the real peer
+# address, as Nginx's $proxy_add_x_forwarded_for does: the last entry is then
+# the one the proxy itself saw. Without a proxy the header is whatever the
+# client typed, so it is ignored.
+TRUST_X_FORWARDED_FOR = env_bool("DJANGO_TRUST_X_FORWARDED_FOR", False)
 
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:dashboard"
@@ -321,7 +412,7 @@ EMAIL_BACKEND = (
     else "django.core.mail.backends.console.EmailBackend"
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL") or (
-    f"LGMED-iMMS <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "LGMED-iMMS <noreply@localhost>"
+    f"LGMED-IMMS <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "LGMED-IMMS <noreply@localhost>"
 )
 
 # Who is told when an account is created: comma-separated addresses, e.g. the
@@ -356,9 +447,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Protected media
 # ---------------------------------------------------------------------------
 #
-# MEDIA_ROOT is a *public* directory: the development server serves it wholesale
-# (see config/urls.py) and in production the web server is configured to do the
-# same. Anything written there is one guessed URL away from the internet.
+# MEDIA_ROOT holds files the public website shows *and* internal papers, under
+# guessable paths. So no web server may map it: every /media/ request goes to
+# core/media.py, which traces the file to its record and checks who is asking.
+# Still, it is the less guarded of the two roots, and anything released to the
+# public is copied here.
 #
 # Internal documents - the supporting files staff upload against a programme,
 # project or activity before anyone has cleared them - must therefore not live
@@ -465,11 +558,89 @@ MESSAGE_TAGS = {
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+
+# Cookies. The session cookie is never readable from JavaScript; the CSRF
+# cookie is not either - the pages read the token from the form or the
+# csrfmiddlewaretoken input, never from document.cookie.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+# Prefixed names in production: a "__Host-" cookie is only accepted when set
+# over HTTPS, for the exact host and path "/", which stops a sibling
+# subdomain from planting a session or CSRF cookie of its own.
+if not DEBUG:
+    SESSION_COOKIE_NAME = "__Host-sessionid"
+    CSRF_COOKIE_NAME = "__Host-csrftoken"
+
+# Request limits. Uploads stream to disk past 2.5 MB, so this bounds the
+# non-file part of a request (form fields), not the files themselves - those
+# are capped by each form and by the reverse proxy's client_max_body_size.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+DATA_UPLOAD_MAX_NUMBER_FILES = 100
+# Uploaded files never become executable on the server.
+FILE_UPLOAD_PERMISSIONS = 0o640
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o750
+
+# Content-Security-Policy (Django's built-in middleware, above). Scripts run
+# only from this site, or inline when they carry the request's nonce; nothing
+# may frame the site but itself; forms post only here. Google is allowed for
+# reCAPTCHA on the sign-in page and nothing else. Inline style attributes stay
+# allowed - the templates use them for layout, and a style cannot run code.
+#
+# DJANGO_CSP_REPORT_ONLY=1 sends the same policy as report-only (the browser
+# logs violations in its console but blocks nothing) - for trying a change on
+# staging, never as the permanent setting.
+from django.utils.csp import CSP  # noqa: E402
+
+_GOOGLE = ["https://www.google.com", "https://www.gstatic.com", "https://recaptcha.google.com"]
+_CSP_POLICY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE, *_GOOGLE],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "img-src": [CSP.SELF, "data:", "blob:", *_GOOGLE],
+    "font-src": [CSP.SELF, "data:"],
+    "connect-src": [CSP.SELF, *_GOOGLE],
+    "frame-src": [CSP.SELF, *_GOOGLE],
+    "worker-src": [CSP.SELF, "blob:"],
+    "manifest-src": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "base-uri": [CSP.SELF],
+    "form-action": [CSP.SELF],
+    "frame-ancestors": [CSP.SELF],
+}
+if env_bool("DJANGO_CSP_REPORT_ONLY", False):
+    SECURE_CSP_REPORT_ONLY = _CSP_POLICY
+else:
+    SECURE_CSP = _CSP_POLICY
+
+# Logging. Errors go to the console (journald / the service's log file) in a
+# form an administrator can act on; nothing here writes request bodies,
+# passwords or cookies. Django's own error reporting already scrubs settings
+# and POST values whose names look sensitive.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": env("DJANGO_LOG_LEVEL", "INFO"), "propagate": False},
+        # A forged Host header is noise from scanners, not an incident.
+        "django.security.DisallowedHost": {"handlers": [], "propagate": False},
+    },
+}
 
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SSL_REDIRECT", True)
 
     # Behind Nginx (or any reverse proxy) terminating TLS and forwarding plain
     # HTTP, Django sees an insecure request, SECURE_SSL_REDIRECT sends it to
@@ -482,7 +653,16 @@ if not DEBUG:
     # the client's own value through - lets anyone claim their plain HTTP
     # request arrived over TLS. Set this only once the proxy is known to
     # overwrite the header on every request.
-    if os.environ.get("DJANGO_BEHIND_TLS_PROXY", "0") == "1":
+    if env_bool("DJANGO_BEHIND_TLS_PROXY", False):
         SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # A year, once HTTPS is known to work on every name the site answers to.
+    # Start lower (e.g. 3600) on a first deployment: a browser that has seen
+    # this header refuses plain HTTP to the site until it expires.
+    SECURE_HSTS_SECONDS = env_int("DJANGO_HSTS_SECONDS", 31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_HSTS_INCLUDE_SUBDOMAINS", True)
+    SECURE_HSTS_PRELOAD = env_bool("DJANGO_HSTS_PRELOAD", False)
+    # Preload is a commitment for the whole domain (dilg.gov.ph and every
+    # subdomain), made by the domain's owner - not something this application
+    # can decide. security.W021 is therefore expected and silenced.
+    if not SECURE_HSTS_PRELOAD:
+        SILENCED_SYSTEM_CHECKS = ["security.W021"]

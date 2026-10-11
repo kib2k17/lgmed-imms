@@ -1,4 +1,4 @@
-# LGMED-iMMS
+# LGMED-IMMS
 
 **Local Government Monitoring and Evaluation Division — Information Management
 and Monitoring System**
@@ -57,6 +57,10 @@ to start on anything older, 8.0 included. A server has to be reachable and
 the four connection settings written before step 2 will do anything - see
 *The database* below, which also covers installing MySQL if this machine has
 none.
+
+A development machine also needs `DJANGO_DEBUG=1` in `venv\lgmed.env`: the
+settings run in production mode when it is absent, and production mode
+refuses to start without the server's own secrets.
 
 ```powershell
 # 1. Dependencies (the virtualenv already exists in this working copy)
@@ -648,7 +652,7 @@ change is a template, a CSS class, or a plain `.js` file.
 
 ```
 config/                  Project settings and root URLconf
-accounts/                Custom user model with the five LGMED-iMMS roles
+accounts/                Custom user model with the five LGMED-IMMS roles
 core/                    The shared layer every module is built on
   views_base.py          Generic list / detail / form / delete views
   forms_base.py          GovModelForm: styling and sectioned fieldsets
@@ -1585,9 +1589,18 @@ page carries the site key and never the secret.
 
 ## Before deployment
 
-- Set `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=0` and `DJANGO_ALLOWED_HOSTS`.
-  With `DEBUG=0` the settings switch on secure cookies, HSTS and
-  `ManifestStaticFilesStorage`.
+The full procedure, checklist, backup and incident documents are in
+[docs/security/](docs/security/) - start with
+[PRODUCTION_DEPLOYMENT.md](docs/security/PRODUCTION_DEPLOYMENT.md). Every
+environment variable is listed, with placeholders, in [.env.example](.env.example).
+
+- `DJANGO_DEBUG` is **off unless set to 1**, so a development machine needs
+  `DJANGO_DEBUG=1` in `venv\lgmed.env`. A production server refuses to start
+  without a strong `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` and
+  `MYSQL_PASSWORD`. With DEBUG off the settings switch on secure cookies, HSTS
+  and `ManifestStaticFilesStorage`; the Content-Security-Policy is on always.
+- Never map `/media/` in the web server: it holds internal papers alongside
+  public ones, and `core/media.py` decides who may read each file.
 - Set the reCAPTCHA keys as real environment variables on the server, and
   register the production domain at <https://www.google.com/recaptcha/admin> -
   keys are per-domain, and one registered only for `localhost` verifies

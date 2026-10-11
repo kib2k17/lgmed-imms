@@ -237,7 +237,7 @@ class PublicSiteContent(SingletonModel):
     privacy_notice = models.TextField(
         default=(
             "Personal information collected through this website and through "
-            "LGMED-iMMS is processed in accordance with the Data Privacy Act "
+            "LGMED-IMMS is processed in accordance with the Data Privacy Act "
             "of 2012 (Republic Act No. 10173) and is used solely for the "
             "Division's monitoring, evaluation and service delivery functions. "
             "Enquiries regarding personal data may be directed to the office "

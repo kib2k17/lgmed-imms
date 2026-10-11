@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS installable app
+   LGMED-IMMS installable app
    Service worker registration, install prompt, connection status, update
    notice and device notifications. Loaded after app.js by base.html and the
    sign-in pages; every part does nothing where the browser lacks the feature,
@@ -475,7 +475,7 @@
       .reverse()
       .forEach(function (item) {
         registration.showNotification(item.title, {
-          body: "LGMED-iMMS",
+          body: "LGMED-IMMS",
           icon: config.iconUrl,
           badge: config.iconUrl,
           tag: "lgmed-notification-" + item.id,

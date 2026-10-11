@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>LGMED-iMMS System User Manual</title>
+<title>LGMED-IMMS System User Manual</title>
 <style>@font-face { font-family: Inter; src: url("file:///C:/Users/DILG13-LGMEDUser/Documents/DILG%20SYSTEMS/lgmedimms/static/fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
-/* LGMED-iMMS System User Manual - print and screen styles (A4). */
+/* LGMED-IMMS System User Manual - print and screen styles (A4). */
 :root {
   --navy: #0f2a5c; --blue: #1e40af; --ink: #0f172a; --text: #1e293b; --muted: #64748b;
   --line: #cbd5e1; --soft: #f1f5f9; --accent: #ea580c;
@@ -103,7 +103,7 @@ a.xref { color: var(--blue); }
   <div class="rule"></div>
   <h1 class="title">SYSTEM USER MANUAL</h1>
   <p class="subtitle">Comprehensive Guide to System Modules, Functions, and Procedures</p>
-  <p class="system"><b>LGMED-iMMS</b><br>Local Government Monitoring and Evaluation Division - Information Management and Monitoring System</p>
+  <p class="system"><b>LGMED-IMMS</b><br>Local Government Monitoring and Evaluation Division - Information Management and Monitoring System</p>
   <table class="meta">
     <tr><th>Manual version</th><td>1.0</td></tr>
     <tr><th>Date</th><td>8 October 2026</td></tr>
@@ -115,15 +115,15 @@ a.xref { color: var(--blue); }
   <h2 class="fronth">Document Control and Version History</h2>
   <table class="plain">
     <tr><th>Document title</th><td>SYSTEM USER MANUAL - Comprehensive Guide to System Modules, Functions, and Procedures</td></tr>
-    <tr><th>System</th><td>LGMED-iMMS (Local Government Monitoring and Evaluation Division - Information Management and Monitoring System)</td></tr>
+    <tr><th>System</th><td>LGMED-IMMS (Local Government Monitoring and Evaluation Division - Information Management and Monitoring System)</td></tr>
     <tr><th>Office</th><td>Department of the Interior and Local Government, Regional Office XIII - Caraga</td></tr>
-    <tr><th>Intended readers</th><td>All LGMED-iMMS users: System Administrators, Administrators (Division Chief), LGMED Staff, Encoders and Viewers</td></tr>
+    <tr><th>Intended readers</th><td>All LGMED-IMMS users: System Administrators, Administrators (Division Chief), LGMED Staff, Encoders and Viewers</td></tr>
     <tr><th>Basis</th><td>The application as built in the project repository (commit 3129cb5); every procedure was checked against the source code and the running system</td></tr>
     <tr><th>Figures</th><td>93 annotated screenshots and workflow diagrams</td></tr>
   </table>
   <h3 class="fronth3">Version history</h3>
   <table class="plain"><thead><tr><th>Version</th><th>Date</th><th>Description</th><th>Prepared by</th></tr></thead>
-  <tbody><tr><td>1.0</td><td>8 October 2026</td><td>First edition, generated from the system as built (commit 3129cb5). Screenshots captured from the live application on demonstration data.</td><td>Documentation team / LGMED-iMMS</td></tr></tbody></table>
+  <tbody><tr><td>1.0</td><td>8 October 2026</td><td>First edition, generated from the system as built (commit 3129cb5). Screenshots captured from the live application on demonstration data.</td><td>Documentation team / LGMED-IMMS</td></tr></tbody></table>
   <h3 class="fronth3">Review and approval</h3>
   <table class="plain sign"><thead><tr><th>Role</th><th>Name</th><th>Signature</th><th>Date</th></tr></thead>
   <tbody><tr><td>Prepared by</td><td></td><td></td><td></td></tr>
@@ -137,8 +137,8 @@ a.xref { color: var(--blue); }
   <h2 class="fronth">Table of Contents</h2>
   <ol class="toc"><li class="toc-h1"><a href="#1-introduction-and-purpose"><span class="t">1. Introduction and Purpose</span><span class="dots"></span><span class="pg">5</span></a></li><li class="toc-h2"><a href="#1-1-purpose-of-this-manual"><span class="t">1.1 Purpose of this manual</span><span class="dots"></span><span class="pg">5</span></a></li><li class="toc-h2"><a href="#1-2-how-to-use-this-manual"><span class="t">1.2 How to use this manual</span><span class="dots"></span><span class="pg">5</span></a></li><li class="toc-h1"><a href="#2-scope-of-the-manual"><span class="t">2. Scope of the Manual</span><span class="dots"></span><span class="pg">7</span></a></li><li class="toc-h1"><a href="#3-system-overview"><span class="t">3. System Overview</span><span class="dots"></span><span class="pg">8</span></a></li><li class="toc-h2"><a href="#3-1-the-modules-at-a-glance"><span class="t">3.1 The modules at a glance</span><span class="dots"></span><span class="pg">8</span></a></li><li class="toc-h2"><a href="#3-2-how-work-flows-through-the-division"><span class="t">3.2 How work flows through the Division</span><span class="dots"></span><span class="pg">9</span></a></li><li class="toc-h1"><a href="#4-system-requirements-and-supported-browsers"><span class="t">4. System Requirements and Supported Browsers</span><span class="dots"></span><span class="pg">10</span></a></li><li class="toc-h1"><a href="#5-accessing-the-system"><span class="t">5. Accessing the System</span><span class="dots"></span><span class="pg">11</span></a></li><li class="toc-h1"><a href="#6-logging-in-and-logging-out"><span class="t">6. Logging In and Logging Out</span><span class="dots"></span><span class="pg">12</span></a></li><li class="toc-h1"><a href="#7-user-interface-overview"><span class="t">7. User Interface Overview</span><span class="dots"></span><span class="pg">17</span></a></li><li class="toc-h2"><a href="#7-1-the-top-bar"><span class="t">7.1 The top bar</span><span class="dots"></span><span class="pg">18</span></a></li><li class="toc-h2"><a href="#7-2-the-sidebar"><span class="t">7.2 The sidebar</span><span class="dots"></span><span class="pg">19</span></a></li><li class="toc-h2"><a href="#7-3-the-page-header"><span class="t">7.3 The page header</span><span class="dots"></span><span class="pg">19</span></a></li><li class="toc-h2"><a href="#7-4-lists-of-records"><span class="t">7.4 Lists of records</span><span class="dots"></span><span class="pg">19</span></a></li><li class="toc-h2"><a href="#7-5-record-pages"><span class="t">7.5 Record pages</span><span class="dots"></span><span class="pg">19</span></a></li><li class="toc-h2"><a href="#7-6-forms"><span class="t">7.6 Forms</span><span class="dots"></span><span class="pg">20</span></a></li><li class="toc-h2"><a href="#7-7-status-labels"><span class="t">7.7 Status labels</span><span class="dots"></span><span class="pg">20</span></a></li><li class="toc-h2"><a href="#7-8-viewing-pdf-files"><span class="t">7.8 Viewing PDF files</span><span class="dots"></span><span class="pg">20</span></a></li><li class="toc-h2"><a href="#7-9-installing-the-system-as-an-app"><span class="t">7.9 Installing the system as an app</span><span class="dots"></span><span class="pg">20</span></a></li><li class="toc-h1"><a href="#8-dashboard-guide"><span class="t">8. Dashboard Guide</span><span class="dots"></span><span class="pg">22</span></a></li><li class="toc-h1"><a href="#9-user-roles-and-access-permissions"><span class="t">9. User Roles and Access Permissions</span><span class="dots"></span><span class="pg">25</span></a></li><li class="toc-h2"><a href="#9-1-the-five-roles"><span class="t">9.1 The five roles</span><span class="dots"></span><span class="pg">25</span></a></li><li class="toc-h2"><a href="#9-2-module-access-by-role"><span class="t">9.2 Module access by role</span><span class="dots"></span><span class="pg">25</span></a></li><li class="toc-h2"><a href="#9-3-key-permissions"><span class="t">9.3 Key permissions</span><span class="dots"></span><span class="pg">26</span></a></li><li class="toc-h1"><a href="#10-module-by-module-instructions"><span class="t">10. Module-by-Module Instructions</span><span class="dots"></span><span class="pg">28</span></a></li><li class="toc-h2"><a href="#10-1-my-profile-and-two-step-verification"><span class="t">10.1 My Profile and Two-Step Verification</span><span class="dots"></span><span class="pg">28</span></a></li><li class="toc-h2"><a href="#10-2-notifications"><span class="t">10.2 Notifications</span><span class="dots"></span><span class="pg">32</span></a></li><li class="toc-h2"><a href="#10-3-programs-projects-and-activities-ppas"><span class="t">10.3 Programs, Projects and Activities (PPAs)</span><span class="dots"></span><span class="pg">34</span></a></li><li class="toc-h2"><a href="#10-4-monitoring"><span class="t">10.4 Monitoring</span><span class="dots"></span><span class="pg">47</span></a></li><li class="toc-h2"><a href="#10-5-incoming-monitoring"><span class="t">10.5 Incoming Monitoring</span><span class="dots"></span><span class="pg">53</span></a></li><li class="toc-h2"><a href="#10-6-outgoing-monitoring"><span class="t">10.6 Outgoing Monitoring</span><span class="dots"></span><span class="pg">64</span></a></li><li class="toc-h2"><a href="#10-7-data-sync-spreadsheet-import"><span class="t">10.7 Data Sync (spreadsheet import)</span><span class="dots"></span><span class="pg">71</span></a></li><li class="toc-h2"><a href="#10-8-lgu-management"><span class="t">10.8 LGU Management</span><span class="dots"></span><span class="pg">74</span></a></li><li class="toc-h2"><a href="#10-9-frontline-services"><span class="t">10.9 Frontline Services</span><span class="dots"></span><span class="pg">79</span></a></li><li class="toc-h2"><a href="#10-10-updates-accomplishments"><span class="t">10.10 Updates &amp; Accomplishments</span><span class="dots"></span><span class="pg">82</span></a></li><li class="toc-h2"><a href="#10-11-announcements"><span class="t">10.11 Announcements</span><span class="dots"></span><span class="pg">94</span></a></li><li class="toc-h2"><a href="#10-12-document-management"><span class="t">10.12 Document Management</span><span class="dots"></span><span class="pg">98</span></a></li><li class="toc-h2"><a href="#10-13-analytics"><span class="t">10.13 Analytics</span><span class="dots"></span><span class="pg">113</span></a></li><li class="toc-h2"><a href="#10-14-reports"><span class="t">10.14 Reports</span><span class="dots"></span><span class="pg">115</span></a></li><li class="toc-h2"><a href="#10-15-calendar-and-activity-monitoring"><span class="t">10.15 Calendar and Activity Monitoring</span><span class="dots"></span><span class="pg">119</span></a></li><li class="toc-h2"><a href="#10-16-public-website"><span class="t">10.16 Public Website</span><span class="dots"></span><span class="pg">127</span></a></li><li class="toc-h2"><a href="#10-17-administration"><span class="t">10.17 Administration</span><span class="dots"></span><span class="pg">131</span></a></li><li class="toc-h2"><a href="#10-18-e-sira-electronic-signature-identification-routing-and"><span class="t">10.18 e-SIRA — Electronic Signature, Identification, Routing and Approval</span><span class="dots"></span><span class="pg">144</span></a></li><li class="toc-h1"><a href="#11-common-tasks-and-procedures"><span class="t">11. Common Tasks and Procedures</span><span class="dots"></span><span class="pg">158</span></a></li><li class="toc-h1"><a href="#12-notifications-and-alerts"><span class="t">12. Notifications and Alerts</span><span class="dots"></span><span class="pg">160</span></a></li><li class="toc-h1"><a href="#13-data-validation-and-error-handling"><span class="t">13. Data Validation and Error Handling</span><span class="dots"></span><span class="pg">161</span></a></li><li class="toc-h2"><a href="#13-1-form-validation"><span class="t">13.1 Form validation</span><span class="dots"></span><span class="pg">161</span></a></li><li class="toc-h2"><a href="#13-2-file-uploads"><span class="t">13.2 File uploads</span><span class="dots"></span><span class="pg">161</span></a></li><li class="toc-h2"><a href="#13-3-error-pages"><span class="t">13.3 Error pages</span><span class="dots"></span><span class="pg">162</span></a></li><li class="toc-h1"><a href="#14-frequently-asked-questions"><span class="t">14. Frequently Asked Questions</span><span class="dots"></span><span class="pg">164</span></a></li><li class="toc-h1"><a href="#15-troubleshooting-guide"><span class="t">15. Troubleshooting Guide</span><span class="dots"></span><span class="pg">165</span></a></li><li class="toc-h1"><a href="#16-security-privacy-and-good-practices"><span class="t">16. Security, Privacy, and Good Practices</span><span class="dots"></span><span class="pg">166</span></a></li><li class="toc-h1"><a href="#17-glossary-of-terms"><span class="t">17. Glossary of Terms</span><span class="dots"></span><span class="pg">167</span></a></li><li class="toc-h1"><a href="#18-appendices-and-reference-materials"><span class="t">18. Appendices and Reference Materials</span><span class="dots"></span><span class="pg">169</span></a></li><li class="toc-h2"><a href="#appendix-a-page-addresses"><span class="t">Appendix A. Page addresses</span><span class="dots"></span><span class="pg">169</span></a></li><li class="toc-h2"><a href="#appendix-b-status-reference"><span class="t">Appendix B. Status reference</span><span class="dots"></span><span class="pg">170</span></a></li><li class="toc-h2"><a href="#appendix-c-where-to-get-help"><span class="t">Appendix C. Where to get help</span><span class="dots"></span><span class="pg">170</span></a></li></ol>
 </section><main class="content"><h1 id="1-introduction-and-purpose">1. Introduction and Purpose</h1>
-<p>The <strong>Local Government Monitoring and Evaluation Division – Information Management and Monitoring System (LGMED-iMMS)</strong> is the internal information system of the Local Government Monitoring and Evaluation Division (LGMED), Department of the Interior and Local Government (DILG), Regional Office XIII – Caraga.</p>
-<p>LGMED-iMMS brings the Division's records into one place: programmes, projects and activities; monitoring of local government units (LGUs); incoming and outgoing correspondence; the document register; reports; the work calendar; the Division's weekly updates and accomplishments; announcements for the public website; and electronic signature and routing of documents (e-SIRA). Every action is recorded with the name of the person who performed it and the time it was performed.</p>
+<p>The <strong>Local Government Monitoring and Evaluation Division – Information Management and Monitoring System (LGMED-IMMS)</strong> is the internal information system of the Local Government Monitoring and Evaluation Division (LGMED), Department of the Interior and Local Government (DILG), Regional Office XIII – Caraga.</p>
+<p>LGMED-IMMS brings the Division's records into one place: programmes, projects and activities; monitoring of local government units (LGUs); incoming and outgoing correspondence; the document register; reports; the work calendar; the Division's weekly updates and accomplishments; announcements for the public website; and electronic signature and routing of documents (e-SIRA). Every action is recorded with the name of the person who performed it and the time it was performed.</p>
 <p>This manual explains, step by step, how to use each part of the system. It is written for first-time users and for staff who use only some modules. No technical knowledge is needed to follow it.</p>
 <h2 id="1-1-purpose-of-this-manual">1.1 Purpose of this manual</h2>
 <p>This manual is intended to:</p>
@@ -182,7 +182,7 @@ a.xref { color: var(--blue); }
 <p><strong>TIP:</strong> A shortcut or a better way of doing something.</p>
 <p><strong>IMPORTANT:</strong> Something you must do, or a rule the system enforces.</p>
 <p><strong>WARNING:</strong> An action that cannot be undone, or that could expose information. Read carefully before continuing.</p>
-<p><strong>NOTE:</strong> All screenshots in this manual were taken from the actual LGMED-iMMS application running on a separate documentation copy that holds only the system's own <strong>illustrative demonstration records</strong> (sample programmes, sample documents and fictitious staff names). No live office records appear in this manual. Names, numbers and dates in the screenshots will differ from what you see.</p>
+<p><strong>NOTE:</strong> All screenshots in this manual were taken from the actual LGMED-IMMS application running on a separate documentation copy that holds only the system's own <strong>illustrative demonstration records</strong> (sample programmes, sample documents and fictitious staff names). No live office records appear in this manual. Names, numbers and dates in the screenshots will differ from what you see.</p>
 </blockquote>
 <h1 id="2-scope-of-the-manual">2. Scope of the Manual</h1>
 <p>This manual covers the <strong>internal system</strong> used by DILG Caraga LGMED personnel after signing in (the pages under <code>/app/</code> and <code>/accounts/</code>), and briefly describes the <strong>public website</strong> that the system publishes to.</p>
@@ -216,7 +216,7 @@ a.xref { color: var(--blue); }
 <p>It also covers <strong>My Profile</strong>, <strong>two-step verification</strong>, and <strong>Notifications</strong>, which are reached from the top bar.</p>
 <p><strong>Not covered.</strong> Installing, configuring, backing up or deploying the system, the database, and the Django administration site (<code>/django-admin/</code>) are technical tasks for the system administrator and developer. They are described in the project's <code>README.md</code> and in <code>docs/</code>, not here.</p>
 <h1 id="3-system-overview">3. System Overview</h1>
-<p>LGMED-iMMS is a web application. It runs on a server in the office and is opened in a web browser; nothing needs to be installed on your computer. It can also be installed as an app on a computer or phone (see Section 7.9).</p>
+<p>LGMED-IMMS is a web application. It runs on a server in the office and is opened in a web browser; nothing needs to be installed on your computer. It can also be installed as an app on a computer or phone (see Section 7.9).</p>
 <h2 id="3-1-the-modules-at-a-glance">3.1 The modules at a glance</h2>
 <table>
 <thead>
@@ -309,7 +309,7 @@ a.xref { color: var(--blue); }
 </tbody>
 </table>
 <h2 id="3-2-how-work-flows-through-the-division">3.2 How work flows through the Division</h2>
-<figure class="diagram" id="fig-overview"><img alt="How work flows through LGMED-iMMS" src="assets/diagrams/overview.png"/><figcaption><b>Figure 1.</b> How work flows through LGMED-iMMS</figcaption></figure>
+<figure class="diagram" id="fig-overview"><img alt="How work flows through LGMED-IMMS" src="assets/diagrams/overview.png"/><figcaption><b>Figure 1.</b> How work flows through LGMED-IMMS</figcaption></figure>
 <p>The principle that runs through the whole system is that <strong>the encoder records and the Division Chief decides</strong>. Encoders can record a document but cannot name the focal person; contributors can file accomplishments but cannot select what is presented or published. Decisions are made on separate screens by the people authorised to make them, and every decision is recorded.</p>
 <h1 id="4-system-requirements-and-supported-browsers">4. System Requirements and Supported Browsers</h1>
 <table>
@@ -358,7 +358,7 @@ a.xref { color: var(--blue); }
 <p><strong>NOTE:</strong> The system can be installed as an app from the browser (account menu › <strong>Install app</strong>) where the browser supports it. Installation needs a secure (HTTPS) address. See Section 7.9.</p>
 </blockquote>
 <h1 id="5-accessing-the-system">5. Accessing the System</h1>
-<p>LGMED-iMMS has two parts:</p>
+<p>LGMED-IMMS has two parts:</p>
 <table>
 <thead>
 <tr>
@@ -395,7 +395,7 @@ a.xref { color: var(--blue); }
 <h1 id="6-logging-in-and-logging-out">6. Logging In and Logging Out</h1>
 <figure class="shot" id="fig-access-login"><img alt="The staff sign-in page (/staff or /accounts/login/)" src="assets/access/access-login.png"/><figcaption><b>Figure 2.</b> The staff sign-in page (/staff or /accounts/login/). <span class="role">Signed in as: Public visitor</span></figcaption><table class="legend"><thead><tr><th>No.</th><th>Element</th><th>Description</th></tr></thead><tbody><tr><td class="n"><span class="badge">1</span></td><td><b>Username</b></td><td>The username issued by the system administrator.</td></tr><tr><td class="n"><span class="badge">2</span></td><td><b>Password</b></td><td>Your password. The eye button shows or hides what you typed; a warning appears if Caps Lock is on.</td></tr><tr><td class="n"><span class="badge">3</span></td><td><b>Forgot password?</b></td><td>Opens an e-mail to the office asking for a password reset. Passwords are reset by an administrator.</td></tr><tr><td class="n"><span class="badge">4</span></td><td><b>Sign in</b></td><td>Submits your username and password.</td></tr></tbody></table></figure>
 <h3 class="procedure" id="procedure-6-1-sign-in">Procedure 6.1: Sign in</h3>
-<p class="proc-label"><strong>Purpose:</strong> Start a session in LGMED-iMMS.</p>
+<p class="proc-label"><strong>Purpose:</strong> Start a session in LGMED-IMMS.</p>
 <p class="proc-label"><strong>Who can do this:</strong> All roles.</p>
 <p class="proc-label"><strong>Steps:</strong></p>
 <ol>
@@ -403,7 +403,7 @@ a.xref { color: var(--blue); }
 <li>Type your username in <strong>Username</strong> (marker 1).</li>
 <li>Type your password in <strong>Password</strong> (marker 2). Click the eye button to check what you typed. A message warns you if Caps Lock is on.</li>
 <li>Click <strong>Sign in</strong> (marker 4).</li>
-<li>If your account has two-step verification, the system asks for an <strong>Authentication code</strong>. Open your authenticator app and type the six-digit code it shows for LGMED-iMMS, then continue. If you no longer have your phone, use one of your <strong>recovery codes</strong> instead.</li>
+<li>If your account has two-step verification, the system asks for an <strong>Authentication code</strong>. Open your authenticator app and type the six-digit code it shows for LGMED-IMMS, then continue. If you no longer have your phone, use one of your <strong>recovery codes</strong> instead.</li>
 <li>The first time you sign in, read the <strong>Data Privacy Notice</strong> and accept it (Procedure 6.2).</li>
 </ol>
 <p class="proc-label"><strong>Expected Result:</strong> The <strong>Dashboard</strong> opens. If you were sent to the sign-in page from a link, the system takes you to the page you originally asked for.</p>
@@ -413,14 +413,14 @@ a.xref { color: var(--blue); }
 <li><strong>Administrators must use two-step verification.</strong> If an Administrator account has not yet set it up, the system leads the user through setup at sign-in.</li>
 <li>If <strong>Forgot password?</strong> (marker 3) is clicked, an e-mail addressed to the office opens so you can request a reset. Passwords are reset by an administrator (Section 10.17).</li>
 </ul>
-<figure class="shot" id="fig-access-privacy"><img alt="The Data Privacy Notice shown at first sign-in" src="assets/access/access-privacy.png"/><figcaption><b>Figure 3.</b> The Data Privacy Notice shown at first sign-in. <span class="role">Signed in as: Viewer</span></figcaption><table class="legend"><thead><tr><th>No.</th><th>Element</th><th>Description</th></tr></thead><tbody><tr><td class="n"><span class="badge">1</span></td><td><b>Notice title</b></td><td>Data Privacy Act of 2012 (Republic Act No. 10173). Scroll to read all sections.</td></tr><tr><td class="n"><span class="badge">2</span></td><td><b>Agreement box</b></td><td>Tick to confirm you have read and agree to the notice.</td></tr><tr><td class="n"><span class="badge">3</span></td><td><b>Decline and sign out</b></td><td>Leaves the system without accepting. You cannot use LGMED-iMMS until you accept.</td></tr><tr><td class="n"><span class="badge">4</span></td><td><b>I Agree and Continue</b></td><td>Becomes available once the box is ticked; records your acceptance and opens the system.</td></tr></tbody></table></figure>
+<figure class="shot" id="fig-access-privacy"><img alt="The Data Privacy Notice shown at first sign-in" src="assets/access/access-privacy.png"/><figcaption><b>Figure 3.</b> The Data Privacy Notice shown at first sign-in. <span class="role">Signed in as: Viewer</span></figcaption><table class="legend"><thead><tr><th>No.</th><th>Element</th><th>Description</th></tr></thead><tbody><tr><td class="n"><span class="badge">1</span></td><td><b>Notice title</b></td><td>Data Privacy Act of 2012 (Republic Act No. 10173). Scroll to read all sections.</td></tr><tr><td class="n"><span class="badge">2</span></td><td><b>Agreement box</b></td><td>Tick to confirm you have read and agree to the notice.</td></tr><tr><td class="n"><span class="badge">3</span></td><td><b>Decline and sign out</b></td><td>Leaves the system without accepting. You cannot use LGMED-IMMS until you accept.</td></tr><tr><td class="n"><span class="badge">4</span></td><td><b>I Agree and Continue</b></td><td>Becomes available once the box is ticked; records your acceptance and opens the system.</td></tr></tbody></table></figure>
 <h3 class="procedure" id="procedure-6-2-accept-the-data-privacy-notice">Procedure 6.2: Accept the Data Privacy Notice</h3>
 <p class="proc-label"><strong>Purpose:</strong> Confirm that you understand your obligations under the Data Privacy Act of 2012 (Republic Act No. 10173) before using records that contain personal information.</p>
 <p class="proc-label"><strong>Who can do this:</strong> All roles, at first sign-in.</p>
 <p class="proc-label"><strong>Steps:</strong></p>
 <ol>
 <li>Read the notice. It explains (1) what the system collects, (2) your obligations as a user, (3) the rights of data subjects and (4) monitoring and penalties. Scroll inside the notice to read every section.</li>
-<li>Tick <strong>I have read and understood this notice, and I agree to use LGMED-iMMS in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173)</strong> (marker 2).</li>
+<li>Tick <strong>I have read and understood this notice, and I agree to use LGMED-IMMS in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173)</strong> (marker 2).</li>
 <li>Click <strong>I Agree and Continue</strong> (marker 4).</li>
 </ol>
 <p class="proc-label"><strong>Expected Result:</strong> The notice closes and the system can be used. It is not shown again unless the notice is changed.</p>
@@ -442,7 +442,7 @@ a.xref { color: var(--blue); }
 </ul>
 <h1 id="7-user-interface-overview">7. User Interface Overview</h1>
 <p>Every internal page has the same frame, so once you know one page you know where to find things on all of them.</p>
-<figure class="shot" id="fig-ui-layout"><img alt="Parts of the LGMED-iMMS screen (Dashboard, signed in as the Division Chief)" src="assets/interface/ui-layout.png"/><figcaption><b>Figure 5.</b> Parts of the LGMED-iMMS screen (Dashboard, signed in as the Division Chief). <span class="role">Signed in as: Administrator (Division Chief)</span></figcaption><table class="legend"><thead><tr><th>No.</th><th>Element</th><th>Description</th></tr></thead><tbody><tr><td class="n"><span class="badge">1</span></td><td><b>System banner</b></td><td>Confirms you are in the secure internal system, for authorised personnel only.</td></tr><tr><td class="n"><span class="badge">2</span></td><td><b>Search records</b></td><td>Quick search box in the top bar.</td></tr><tr><td class="n"><span class="badge">3</span></td><td><b>Notifications bell</b></td><td>The red badge counts your unread notifications. Click to see the latest.</td></tr><tr><td class="n"><span class="badge">4</span></td><td><b>Account menu</b></td><td>Profile, public website and Sign out.</td></tr><tr><td class="n"><span class="badge">5</span></td><td><b>Sidebar - Main</b></td><td>Operational modules. You only see the modules your role and menu permissions allow.</td></tr><tr><td class="n"><span class="badge">6</span></td><td><b>Current page</b></td><td>The highlighted item shows where you are.</td></tr><tr><td class="n"><span class="badge">7</span></td><td><b>LGMED Innovation Action</b></td><td>e-SIRA, pinned at the foot of the sidebar.</td></tr><tr><td class="n"><span class="badge">8</span></td><td><b>Breadcrumb</b></td><td>The path to the current page. Click an earlier part to go back.</td></tr><tr><td class="n"><span class="badge">9</span></td><td><b>Page title</b></td><td>The name of the page, with a short description beneath it.</td></tr><tr><td class="n"><span class="badge">10</span></td><td><b>Page actions</b></td><td>The main actions for the page, at the top right.</td></tr></tbody></table></figure>
+<figure class="shot" id="fig-ui-layout"><img alt="Parts of the LGMED-IMMS screen (Dashboard, signed in as the Division Chief)" src="assets/interface/ui-layout.png"/><figcaption><b>Figure 5.</b> Parts of the LGMED-IMMS screen (Dashboard, signed in as the Division Chief). <span class="role">Signed in as: Administrator (Division Chief)</span></figcaption><table class="legend"><thead><tr><th>No.</th><th>Element</th><th>Description</th></tr></thead><tbody><tr><td class="n"><span class="badge">1</span></td><td><b>System banner</b></td><td>Confirms you are in the secure internal system, for authorised personnel only.</td></tr><tr><td class="n"><span class="badge">2</span></td><td><b>Search records</b></td><td>Quick search box in the top bar.</td></tr><tr><td class="n"><span class="badge">3</span></td><td><b>Notifications bell</b></td><td>The red badge counts your unread notifications. Click to see the latest.</td></tr><tr><td class="n"><span class="badge">4</span></td><td><b>Account menu</b></td><td>Profile, public website and Sign out.</td></tr><tr><td class="n"><span class="badge">5</span></td><td><b>Sidebar - Main</b></td><td>Operational modules. You only see the modules your role and menu permissions allow.</td></tr><tr><td class="n"><span class="badge">6</span></td><td><b>Current page</b></td><td>The highlighted item shows where you are.</td></tr><tr><td class="n"><span class="badge">7</span></td><td><b>LGMED Innovation Action</b></td><td>e-SIRA, pinned at the foot of the sidebar.</td></tr><tr><td class="n"><span class="badge">8</span></td><td><b>Breadcrumb</b></td><td>The path to the current page. Click an earlier part to go back.</td></tr><tr><td class="n"><span class="badge">9</span></td><td><b>Page title</b></td><td>The name of the page, with a short description beneath it.</td></tr><tr><td class="n"><span class="badge">10</span></td><td><b>Page actions</b></td><td>The main actions for the page, at the top right.</td></tr></tbody></table></figure>
 <h2 id="7-1-the-top-bar">7.1 The top bar</h2>
 <ul>
 <li><strong>System banner</strong> (marker 1): <em>Department of the Interior and Local Government • Regional Office XIII – Caraga</em> on the left, <em>Secure internal system — for authorized personnel only</em> on the right.</li>
@@ -526,8 +526,8 @@ a.xref { color: var(--blue); }
 <h2 id="7-8-viewing-pdf-files">7.8 Viewing PDF files</h2>
 <p>PDF files open in the system's built-in viewer inside the page. Other files are downloaded. Files are never served from a public address: every view and download is checked against your access and, in Document Management, recorded on the document's trail.</p>
 <h2 id="7-9-installing-the-system-as-an-app">7.9 Installing the system as an app</h2>
-<p>Where the browser supports it (Chrome or Edge on Windows and Android; <em>Add to Home Screen</em> on iPhone/iPad), LGMED-iMMS can be installed as an app.</p>
-<h3 class="procedure" id="procedure-7-1-install-lgmed-imms-as-an-app">Procedure 7.1: Install LGMED-iMMS as an app</h3>
+<p>Where the browser supports it (Chrome or Edge on Windows and Android; <em>Add to Home Screen</em> on iPhone/iPad), LGMED-IMMS can be installed as an app.</p>
+<h3 class="procedure" id="procedure-7-1-install-lgmed-imms-as-an-app">Procedure 7.1: Install LGMED-IMMS as an app</h3>
 <p class="proc-label"><strong>Purpose:</strong> Open the system from its own icon, like a desktop or phone app.</p>
 <p class="proc-label"><strong>Who can do this:</strong> All roles.</p>
 <p class="proc-label"><strong>Steps:</strong></p>
@@ -537,7 +537,7 @@ a.xref { color: var(--blue); }
 <li>Click <strong>Install app</strong>. (On iPhone or iPad, follow the on-screen instructions to use <strong>Share › Add to Home Screen</strong>.)</li>
 <li>Confirm the installation in the browser's prompt.</li>
 </ol>
-<p class="proc-label"><strong>Expected Result:</strong> An LGMED-iMMS icon is added to the desktop, Start menu or home screen.</p>
+<p class="proc-label"><strong>Expected Result:</strong> An LGMED-IMMS icon is added to the desktop, Start menu or home screen.</p>
 <p class="proc-label"><strong>Important Notes:</strong> <strong>Install app</strong> only appears when the browser can install the system, which requires a secure (HTTPS) address. The app keeps only the screen design and an offline notice on the device — never your records. You still need to be online and signed in.</p>
 <h1 id="8-dashboard-guide">8. Dashboard Guide</h1>
 <p>The <strong>Dashboard</strong> is the first page after sign-in (<strong>Sidebar › Dashboard</strong>). Every figure, chart and list on it is calculated from the records at the moment the page opens; when there is nothing to count, the panel says so.</p>
@@ -2507,7 +2507,7 @@ a.xref { color: var(--blue); }
 </ol>
 <p class="proc-label"><strong>Important Notes:</strong> Only Administrators can delete. Deletion cannot be undone. Where the module offers <strong>Archive</strong>, <strong>Cancel</strong> or <strong>Deactivate</strong>, use that instead so the history is kept.</p>
 <h1 id="12-notifications-and-alerts">12. Notifications and Alerts</h1>
-<p>LGMED-iMMS tells you about work in four ways:</p>
+<p>LGMED-IMMS tells you about work in four ways:</p>
 <table>
 <thead>
 <tr>
@@ -2819,7 +2819,7 @@ No. Only the screen design and an offline notice are stored on the device.</p>
 </tbody>
 </table>
 <h1 id="16-security-privacy-and-good-practices">16. Security, Privacy, and Good Practices</h1>
-<p>LGMED-iMMS holds personal information about local government officials, focal persons and DILG personnel. Every user is bound by the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> and the notice accepted at first sign-in.</p>
+<p>LGMED-IMMS holds personal information about local government officials, focal persons and DILG personnel. Every user is bound by the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> and the notice accepted at first sign-in.</p>
 <p><strong>Your account</strong></p>
 <ul>
 <li>Never share your username, password, authentication codes or recovery codes. Nobody from the office will ask for them.</li>
@@ -3146,7 +3146,7 @@ No. Only the screen design and an offline notice are stored on the device.</p>
 <tbody>
 <tr>
 <td>Account, password, two-step verification, access to a module</td>
-<td>The LGMED-iMMS system administrator</td>
+<td>The LGMED-IMMS system administrator</td>
 </tr>
 <tr>
 <td>Correcting your account details</td>

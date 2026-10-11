@@ -71,9 +71,9 @@ PDF files open in the system's built-in viewer inside the page. Other files are 
 
 ## 7.9 Installing the system as an app
 
-Where the browser supports it (Chrome or Edge on Windows and Android; *Add to Home Screen* on iPhone/iPad), LGMED-iMMS can be installed as an app.
+Where the browser supports it (Chrome or Edge on Windows and Android; *Add to Home Screen* on iPhone/iPad), LGMED-IMMS can be installed as an app.
 
-### Procedure 7.1: Install LGMED-iMMS as an app
+### Procedure 7.1: Install LGMED-IMMS as an app
 
 **Purpose:** Open the system from its own icon, like a desktop or phone app.
 
@@ -86,6 +86,6 @@ Where the browser supports it (Chrome or Edge on Windows and Android; *Add to Ho
 3. Click **Install app**. (On iPhone or iPad, follow the on-screen instructions to use **Share › Add to Home Screen**.)
 4. Confirm the installation in the browser's prompt.
 
-**Expected Result:** An LGMED-iMMS icon is added to the desktop, Start menu or home screen.
+**Expected Result:** An LGMED-IMMS icon is added to the desktop, Start menu or home screen.
 
 **Important Notes:** **Install app** only appears when the browser can install the system, which requires a secure (HTTPS) address. The app keeps only the screen design and an offline notice on the device — never your records. You still need to be online and signed in.

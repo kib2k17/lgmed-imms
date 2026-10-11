@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS public website - photograph gallery
+   LGMED-IMMS public website - photograph gallery
    Vanilla JavaScript, no framework, no third-party lightbox.
 
    The grid on the page is already the whole feature: ordered tiles, each one

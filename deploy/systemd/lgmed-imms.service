@@ -1,0 +1,50 @@
+# LGMED-IMMS application server (TEMPLATE) - /etc/systemd/system/lgmed-imms.service
+#
+# Daphne serves both HTTP and the WebSocket the pages keep open
+# (core/consumers.py). It listens on loopback only; nginx is the only thing
+# that talks to it. Never expose `manage.py runserver` instead.
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lgmed-imms
+#   sudo systemctl status lgmed-imms ; journalctl -u lgmed-imms -f
+
+[Unit]
+Description=LGMED-IMMS (Daphne ASGI server)
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lgmed
+Group=lgmed
+WorkingDirectory=/srv/lgmed-imms/app
+# Secrets live outside the code checkout, readable by root and this service only.
+EnvironmentFile=/etc/lgmed-imms/lgmed.env
+ExecStart=/srv/lgmed-imms/venv/bin/daphne --bind 127.0.0.1 --port 8001 config.asgi:application
+Restart=on-failure
+RestartSec=5
+UMask=0027
+
+# --- Sandboxing: the service can write only where uploads are kept ---------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/lgmed-imms/app/media /srv/lgmed-imms/app/protected
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

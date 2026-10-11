@@ -1,6 +1,6 @@
 # Starting and stopping the demo tunnel
 
-**Purpose:** putting LGMED-iMMS on a public link so someone outside the office
+**Purpose:** putting LGMED-IMMS on a public link so someone outside the office
 can open it, and taking it back down afterwards.
 **Applies to:** the development machine this system runs on.
 **Tool:** Cloudflare Tunnel (`cloudflared`), driven by `run-cloudflare.ps1`.

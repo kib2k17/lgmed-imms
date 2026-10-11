@@ -69,7 +69,7 @@ FIGURES = [
      "markers": [
          ("dialog[open] h2", "Notice title", "Data Privacy Act of 2012 (Republic Act No. 10173). Scroll to read all sections."),
          ("dialog[open] input[type=checkbox]", "Agreement box", "Tick to confirm you have read and agree to the notice."),
-         ('dialog[open] >> role=button[name="Decline and sign out"]', "Decline and sign out", "Leaves the system without accepting. You cannot use LGMED-iMMS until you accept."),
+         ('dialog[open] >> role=button[name="Decline and sign out"]', "Decline and sign out", "Leaves the system without accepting. You cannot use LGMED-IMMS until you accept."),
          ('dialog[open] >> role=button[name="I Agree and Continue"]', "I Agree and Continue", "Becomes available once the box is ticked; records your acceptance and opens the system."),
      ]},
     {"id": "access-account-menu", "module": "access", "user": AD, "url": "/app/",
@@ -86,7 +86,7 @@ FIGURES = [
 
     # --------------------------------------------------------------- interface
     {"id": "ui-layout", "module": "interface", "user": AD, "url": "/app/",
-     "caption": "Parts of the LGMED-iMMS screen (Dashboard, signed in as the Division Chief)",
+     "caption": "Parts of the LGMED-IMMS screen (Dashboard, signed in as the Division Chief)",
      "markers": [
          ("text=Secure internal system", "System banner", "Confirms you are in the secure internal system, for authorised personnel only."),
          ("#global-search", "Search records", "Quick search box in the top bar."),

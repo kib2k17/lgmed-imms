@@ -14,7 +14,7 @@
 {% block page_actions %}
   <form method="get" class="flex items-center gap-2">
     <label for="updates-year" class="text-meta font-medium text-slate-600">Year</label>
-    <select id="updates-year" name="year" class="form-select w-28" onchange="this.form.submit()">
+    <select id="updates-year" name="year" class="form-select w-28" data-autosubmit>
       {% for option in years %}
         <option value="{{ option }}" {% if option == year %}selected{% endif %}>{{ option }}</option>
       {% endfor %}
@@ -250,7 +250,7 @@
   <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
   <script src="{% static 'js/updates.js' %}"></script>
   <script id="updates-data" type="application/json">{{ charts_json|safe }}</script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.addEventListener("DOMContentLoaded", function () {
       var el = document.getElementById("updates-data");
       window.LGMED.initUpdates(JSON.parse(el.textContent));

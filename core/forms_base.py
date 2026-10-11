@@ -49,8 +49,14 @@ class GovModelForm(forms.ModelForm):
     textarea_rows = 4
 
     def __init__(self, *args, **kwargs):
+        # A view's last word on which fields this person may set (see
+        # ModuleFormMixin.approval_fields). Applied before anything reads
+        # `self.errors`, for the reason prepare_fields() gives below.
+        restrict_fields = kwargs.pop("restrict_fields", None)
         super().__init__(*args, **kwargs)
         self.prepare_fields()
+        if restrict_fields is not None:
+            restrict_fields(self)
         for name, field in self.fields.items():
             widget = field.widget
             attrs = widget.attrs

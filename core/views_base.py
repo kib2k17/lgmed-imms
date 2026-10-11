@@ -1,17 +1,16 @@
 """
 Generic module views.
 
-Every LGMED-iMMS module presents the same shape of interface: a searchable,
+Every LGMED-IMMS module presents the same shape of interface: a searchable,
 filterable, sortable, paginated table; a record page; a sectioned form; and a
 confirmed delete. Building that once here means a new module is a model, a
 form and about forty lines of view code - and that search, sorting, export,
 pagination and permissions behave identically everywhere.
 """
 
-import csv
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
@@ -24,7 +23,22 @@ from django.views.generic import (
     UpdateView,
 )
 
+from . import csv_safe
 from .mixins import CanDeleteMixin, CanEncodeMixin
+
+
+def _filter_or_ignore(queryset, lookup):
+    """
+    Apply a filter from the query string, or skip it if the value cannot be one.
+
+    The values arrive from the address bar. "?document_type=abc" or
+    "?from=yesterday" is a mistyped link, not a server fault: the ORM refuses
+    it at once, and the list is shown unfiltered rather than as a 500.
+    """
+    try:
+        return queryset.filter(**lookup)
+    except (ValueError, TypeError, ValidationError):
+        return queryset
 
 
 class ModuleContextMixin:
@@ -131,10 +145,8 @@ class ModuleListView(LoginRequiredMixin, ModuleContextMixin, ListView):
                 continue
             # A repeated parameter means "any of these" - the filter selects
             # rather than narrowing to the last value the browser happened to send.
-            if len(values) == 1:
-                queryset = queryset.filter(**{param: values[0]})
-            else:
-                queryset = queryset.filter(**{f"{param}__in": values})
+            lookup = {param: values[0]} if len(values) == 1 else {f"{param}__in": values}
+            queryset = _filter_or_ignore(queryset, lookup)
         queryset = self.apply_extra_filters(queryset)
         return self.apply_date_range(queryset)
 
@@ -149,9 +161,9 @@ class ModuleListView(LoginRequiredMixin, ModuleContextMixin, ListView):
         start = self.request.GET.get("from", "").strip()
         end = self.request.GET.get("to", "").strip()
         if start:
-            queryset = queryset.filter(**{f"{self.date_field}__gte": start})
+            queryset = _filter_or_ignore(queryset, {f"{self.date_field}__gte": start})
         if end:
-            queryset = queryset.filter(**{f"{self.date_field}__lte": end})
+            queryset = _filter_or_ignore(queryset, {f"{self.date_field}__lte": end})
         return queryset
 
     def apply_sort(self, queryset):
@@ -180,7 +192,7 @@ class ModuleListView(LoginRequiredMixin, ModuleContextMixin, ListView):
         )
         response.write("﻿")  # BOM, so Excel opens UTF-8 correctly
 
-        writer = csv.writer(response)
+        writer = csv_safe.writer(response)
         columns = self.export_columns or [("ID", "pk")]
         writer.writerow([header for header, _ in columns])
 
@@ -285,6 +297,39 @@ class ModuleFormMixin(ModuleContextMixin):
     """Shared behaviour for the create and edit forms."""
 
     template_name = "dashboard/module_form.html"
+
+    # Approving and publishing are `can_approve`'s, not every encoder's
+    # (accounts/capabilities.py). A module names the form fields that publish
+    # (`approval_fields`, removed for everyone else, so the stored value is
+    # kept) and the choice values that approve (`approval_choices`, withheld
+    # from everyone else; a record already in one of them keeps it). Enforced
+    # on the form the server builds, so a hand-made POST carries no more
+    # weight than the page it pretends to come from.
+    approval_fields = ()
+    approval_choices = {}
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        restricted = self.approval_fields or self.approval_choices
+        if restricted and not getattr(self.request.user, "can_approve", False):
+            # Handed to GovModelForm, which applies it before the bound form
+            # is first validated - removing a field afterwards is too late.
+            kwargs["restrict_fields"] = self.restrict_to_non_approver
+        return kwargs
+
+    def restrict_to_non_approver(self, form):
+        for name in self.approval_fields:
+            form.fields.pop(name, None)
+        for name, reserved in self.approval_choices.items():
+            field = form.fields.get(name)
+            if field is None:
+                continue
+            current = getattr(form.instance, name, None) if form.instance.pk else None
+            if current in reserved:
+                field.disabled = True
+                field.help_text = "Set by an approver. Your changes keep it as it is."
+            else:
+                field.choices = [c for c in field.choices if c[0] not in reserved]
 
     def get_list_url(self):
         from django.urls import reverse

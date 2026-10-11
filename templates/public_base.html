@@ -86,7 +86,7 @@
   <script src="{% static 'js/app.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
   <script src="{% static 'js/pwa.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer
           data-sw-url="{% url 'pwa_service_worker' %}"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.addEventListener("DOMContentLoaded", function () {
       var toggle = document.getElementById("public-nav-toggle");
       var nav = document.getElementById("public-nav");

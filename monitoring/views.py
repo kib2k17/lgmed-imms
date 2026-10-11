@@ -23,6 +23,8 @@ class MonitoringModuleMixin:
     module_label = "Monitoring Activity"
     module_url_name = "monitoring:list"
     list_label = "Monitoring"
+    # Signing off a monitoring activity as completed is an approver's act.
+    approval_choices = {"status": (MonitoringStatus.COMPLETED,)}
 
 
 class MonitoringListView(MonitoringModuleMixin, ModuleListView):

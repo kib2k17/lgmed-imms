@@ -13,6 +13,8 @@ class ServiceModuleMixin:
     module_label = "Frontline Service"
     module_url_name = "services:list"
     list_label = "Frontline Services"
+    # Putting a service on the public website is an approver's decision.
+    approval_fields = ("is_published",)
 
 
 class ServiceListView(ServiceModuleMixin, ModuleListView):

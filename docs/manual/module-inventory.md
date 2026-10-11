@@ -1,4 +1,4 @@
-# LGMED-iMMS Module Inventory
+# LGMED-IMMS Module Inventory
 
 Companion to the *System User Manual* (`system-user-manual.pdf`). It lists every module and
 sub-module found in the repository, what it does, who may use it, where it lives, which

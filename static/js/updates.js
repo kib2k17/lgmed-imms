@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS division accomplishment charts
+   LGMED-IMMS division accomplishment charts
 
    Loaded only by the Updates & Accomplishments dashboard. Uses the palette and
    defaults declared in app.js, so this page reads as part of the same system

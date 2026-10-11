@@ -1,4 +1,4 @@
-# Documentation Progress Report — LGMED-iMMS System User Manual
+# Documentation Progress Report — LGMED-IMMS System User Manual
 
 **Edition:** 1.0 · **Date:** 8 October 2026 · **System build documented:** commit `3129cb5` (branch `main`)
 

@@ -30,7 +30,7 @@
             Reporting year
           </label>
           <select id="public-updates-year" name="year" class="form-select w-32"
-                  onchange="this.form.submit()">
+                  data-autosubmit>
             {% for option in years %}
               <option value="{{ option }}" {% if option == year %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
@@ -251,7 +251,7 @@
     <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
     <script src="{% static 'js/updates.js' %}"></script>
     <script id="public-updates-data" type="application/json">{{ charts_json|safe }}</script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
       document.addEventListener("DOMContentLoaded", function () {
         var el = document.getElementById("public-updates-data");
         window.LGMED.initUpdates(JSON.parse(el.textContent));

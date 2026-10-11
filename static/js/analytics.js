@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LGMED-iMMS analytics charts
+   LGMED-IMMS analytics charts
 
    Loaded only by the analytics page. Uses the palette and defaults declared in
    app.js, so the two pages read as one system rather than two.

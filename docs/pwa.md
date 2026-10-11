@@ -1,6 +1,6 @@
 # The installable app (PWA)
 
-LGMED-iMMS can be installed as an app on Windows, Android, iPhone/iPad and
+LGMED-IMMS can be installed as an app on Windows, Android, iPhone/iPad and
 desktop Chrome/Edge. It is the same system as the website: the same server, the
 same sign-in, the same role checks. Installing it adds an icon and a full-screen
 window. It does not create a second copy of the system or store its records on

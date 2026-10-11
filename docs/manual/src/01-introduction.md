@@ -1,8 +1,8 @@
 # 1. Introduction and Purpose
 
-The **Local Government Monitoring and Evaluation Division – Information Management and Monitoring System (LGMED-iMMS)** is the internal information system of the Local Government Monitoring and Evaluation Division (LGMED), Department of the Interior and Local Government (DILG), Regional Office XIII – Caraga.
+The **Local Government Monitoring and Evaluation Division – Information Management and Monitoring System (LGMED-IMMS)** is the internal information system of the Local Government Monitoring and Evaluation Division (LGMED), Department of the Interior and Local Government (DILG), Regional Office XIII – Caraga.
 
-LGMED-iMMS brings the Division's records into one place: programmes, projects and activities; monitoring of local government units (LGUs); incoming and outgoing correspondence; the document register; reports; the work calendar; the Division's weekly updates and accomplishments; announcements for the public website; and electronic signature and routing of documents (e-SIRA). Every action is recorded with the name of the person who performed it and the time it was performed.
+LGMED-IMMS brings the Division's records into one place: programmes, projects and activities; monitoring of local government units (LGUs); incoming and outgoing correspondence; the document register; reports; the work calendar; the Division's weekly updates and accomplishments; announcements for the public website; and electronic signature and routing of documents (e-SIRA). Every action is recorded with the name of the person who performed it and the time it was performed.
 
 This manual explains, step by step, how to use each part of the system. It is written for first-time users and for staff who use only some modules. No technical knowledge is needed to follow it.
 
@@ -35,4 +35,4 @@ Four kinds of notices are used:
 
 > **WARNING:** An action that cannot be undone, or that could expose information. Read carefully before continuing.
 
-> **NOTE:** All screenshots in this manual were taken from the actual LGMED-iMMS application running on a separate documentation copy that holds only the system's own **illustrative demonstration records** (sample programmes, sample documents and fictitious staff names). No live office records appear in this manual. Names, numbers and dates in the screenshots will differ from what you see.
+> **NOTE:** All screenshots in this manual were taken from the actual LGMED-IMMS application running on a separate documentation copy that holds only the system's own **illustrative demonstration records** (sample programmes, sample documents and fictitious staff names). No live office records appear in this manual. Names, numbers and dates in the screenshots will differ from what you see.

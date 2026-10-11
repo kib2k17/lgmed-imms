@@ -632,7 +632,7 @@ class Command(BaseCommand):
         safe = title.replace("(", "").replace(")", "").replace("\\", "")[:80]
         content = (
             f"BT /F1 12 Tf 60 760 Td ({safe}) Tj 0 -20 Td "
-            "(Illustrative document - LGMED-iMMS demonstration data.) Tj ET"
+            "(Illustrative document - LGMED-IMMS demonstration data.) Tj ET"
         ).encode("latin-1", "replace")
 
         objects = [

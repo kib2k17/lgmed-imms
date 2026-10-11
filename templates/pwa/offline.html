@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0b1c30">
-  <title>Offline &middot; {{ agency.system_name|default:"LGMED-iMMS" }}</title>
+  <title>Offline &middot; {{ agency.system_name|default:"LGMED-IMMS" }}</title>
   {% comment %}
    Kept on the device by the service worker (templates/pwa/service_worker.js)
    and shown in place of any page that cannot be reached. It is fetched
@@ -27,7 +27,7 @@
     <div class="w-full max-w-lg text-center">
       <img src="{% static 'img/dilg-logo.png' %}" alt="" width="64" height="64" class="mx-auto size-16">
       <p class="mt-5 text-meta font-semibold tracking-[0.08em] text-slate-500 uppercase">Offline mode</p>
-      <h1 class="mt-1.5 text-page-title font-bold tracking-tight text-slate-900">No connection to {{ agency.system_name|default:"LGMED-iMMS" }}</h1>
+      <h1 class="mt-1.5 text-page-title font-bold tracking-tight text-slate-900">No connection to {{ agency.system_name|default:"LGMED-IMMS" }}</h1>
       <p class="mt-3 text-[0.9375rem] leading-relaxed text-slate-600">
         This page needs the server, and the device cannot reach it right now.
         Records are never stored on this device, so nothing can be viewed or
@@ -45,7 +45,7 @@
     </div>
   </main>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function () {
       var status = document.querySelector("[data-offline-status]");
       function retry() {

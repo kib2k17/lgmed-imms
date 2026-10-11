@@ -1,10 +1,9 @@
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from core import pwa
+from core import media, pwa
 
 urlpatterns = [
     # The Django admin has a sign-in form of its own, which knows nothing of
@@ -64,11 +63,14 @@ urlpatterns = [
     path("offline/", pwa.offline, name="pwa_offline"),
     path("launch/", pwa.launch, name="pwa_launch"),
 
+    # Uploaded files, in development and production alike. Never mapped by
+    # the web server: every request is traced to its record and checked
+    # (core/media.py), because MEDIA_ROOT holds internal papers as well as
+    # what the public website shows.
+    path(f"{settings.MEDIA_URL.strip('/')}/<path:path>", media.serve, name="media"),
+
     path("", include("core.urls")),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 handler403 = "core.errors.permission_denied"
 handler404 = "core.errors.page_not_found"

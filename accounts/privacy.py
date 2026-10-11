@@ -1,7 +1,7 @@
 """
 The Data Privacy Act notice shown after every sign-in.
 
-LGMED-iMMS holds the personal information of LGU officials, focal persons and
+LGMED-IMMS holds the personal information of LGU officials, focal persons and
 DILG personnel, so everyone who signs in is reminded of their obligations under
 Republic Act No. 10173 before they touch a record. The notice is owed on every
 sign-in, not once per account: it is a reminder of a duty, and a duty agreed to

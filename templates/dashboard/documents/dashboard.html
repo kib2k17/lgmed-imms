@@ -5,7 +5,7 @@
   <a href="{% url 'documents:list' %}" class="btn btn-secondary">
     {% icon "documents" "size-4" %}<span class="hidden sm:inline">Open the register</span>
   </a>
-  <button type="button" class="btn btn-secondary" onclick="window.print()">
+  <button type="button" class="btn btn-secondary" data-print>
     {% icon "print" "size-4" %}<span class="hidden sm:inline">Print</span>
   </button>
   {% if user.can_encode %}

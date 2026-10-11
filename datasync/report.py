@@ -13,6 +13,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from core.csv_safe import neutralise
+
 from .models import NOT_IMPORTED
 
 
@@ -40,7 +42,9 @@ def build(batch):
         for column in columns:
             text = row.key if column.name == profile.key_column else values.get(column.name, "")
             cells.append(text)
-        sheet.append(cells)
+        # openpyxl stores any string starting with "=" as a formula. These
+        # cells are someone's spreadsheet read back, so they stay text.
+        sheet.append([neutralise(cell) for cell in cells])
 
     widths = [12, 7, 12, 60] + [28] * len(columns)
     for index, width in enumerate(widths, start=1):

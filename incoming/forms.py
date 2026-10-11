@@ -11,6 +11,7 @@ from django import forms
 from django.utils import timezone
 
 from core.forms_base import GovModelForm
+from documents.forms import ACCEPT_ATTRIBUTE, FORMAT_HELP, validate_upload
 
 from .models import FOCAL_STATUSES, IncomingDocument, IncomingUpdate, Priority
 
@@ -57,6 +58,11 @@ class IncomingDocumentForm(GovModelForm):
             is_active=True
         )
         self.fields["initial_remarks"].label = "Initial remarks"
+        self.fields["attachment"].help_text = FORMAT_HELP
+        self.fields["attachment"].widget.attrs["accept"] = ACCEPT_ATTRIBUTE
+
+    def clean_attachment(self):
+        return validate_upload(self.cleaned_data.get("attachment"))
 
     def clean_docket_number(self):
         return self.cleaned_data["docket_number"].strip()
@@ -143,8 +149,12 @@ class IncomingUpdateForm(GovModelForm):
         self.fields["action_taken"].widget.attrs["rows"] = 3
         self.fields["remarks"].widget.attrs["rows"] = 2
         self.fields["attachment"].help_text = (
-            "Supporting document for this action, if any."
+            "Supporting document for this action, if any. " + FORMAT_HELP
         )
+        self.fields["attachment"].widget.attrs["accept"] = ACCEPT_ATTRIBUTE
+
+    def clean_attachment(self):
+        return validate_upload(self.cleaned_data.get("attachment"))
 
 
 class ReturnForm(forms.Form):

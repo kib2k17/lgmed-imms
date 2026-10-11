@@ -97,7 +97,7 @@ def system_information():
     """
     database = django_settings.DATABASES["default"]
     return [
-        ("System", "LGMED-iMMS"),
+        ("System", "LGMED-IMMS"),
         ("Django version", django.get_version()),
         ("Database engine", database["ENGINE"].rsplit(".", 1)[-1]),
         ("Time zone", django_settings.TIME_ZONE),

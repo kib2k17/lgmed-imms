@@ -37,8 +37,18 @@ def serve_inline(fieldfile):
             "The file recorded here is not present in storage. Report this to "
             "the system administrator."
         )
+    from .media import INLINE_TYPES
+
     filename = os.path.basename(fieldfile.name)
     content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    # Only PDFs and pictures are shown in place. Anything else - above all an
+    # uploaded .html or .svg, which a browser would run as a page of this
+    # site - is handed over as a download instead.
+    if content_type not in INLINE_TYPES:
+        return FileResponse(
+            handle, as_attachment=True, filename=filename,
+            content_type="application/octet-stream",
+        )
     return FileResponse(
         handle, as_attachment=False, filename=filename, content_type=content_type
     )
