@@ -27,7 +27,7 @@ from core.views_base import (
 
 from core.context_processors import AGENCY
 
-from . import menu_access, mfa, photos, privacy, recaptcha, totp
+from . import menu_access, mfa, photos, privacy, recaptcha, sessions, totp
 from .capabilities import CAPABILITIES, role_matrix
 from .emails import (
     send_account_created_notice,
@@ -120,8 +120,32 @@ def profile(request, photo_form=None):
         ),
         "mfa_form": mfa_form,
         "photo_form": photo_form or ProfilePhotoForm(),
+        "signed_in_sessions": sessions.sessions_for(
+            request.user, request.session.session_key
+        ),
     }
     return render(request, "accounts/profile.html", context)
+
+
+@login_required
+@require_POST
+def sign_out_other_sessions(request):
+    """End every session of this account except the one making the request."""
+    ended = sessions.end_other_sessions(request.user, request.session.session_key)
+    if ended:
+        record(
+            Action.LOGOUT, target=request.user,
+            detail=f"Signed out of {ended} other session{'s' if ended != 1 else ''} "
+                   "from My Profile",
+        )
+        messages.success(
+            request,
+            f"Signed out of {ended} other device{'s' if ended != 1 else ''}. "
+            "If you did not recognise one, change your password too.",
+        )
+    else:
+        messages.info(request, "You are not signed in anywhere else.")
+    return redirect("accounts:profile")
 
 
 @never_cache

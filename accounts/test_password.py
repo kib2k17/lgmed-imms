@@ -223,3 +223,47 @@ class ThrottleCounterTests(TestCase):
         throttle.register_failure(self.request, "someone")
         throttle.register_failure(self.request, "someone")
         self.assertEqual(throttle.retry_after(self.request, "someone"), 0)
+
+
+@NO_RECAPTCHA
+class SignedInSessionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="roaming", password=PASSWORD, role=Role.ENCODER)
+
+    def sign_in(self, client, agent):
+        client.post(
+            reverse("accounts:login"), {"username": "roaming", "password": PASSWORD},
+            HTTP_USER_AGENT=agent, REMOTE_ADDR="10.0.0.7",
+        )
+
+    def test_profile_lists_each_device_and_signs_the_others_out(self):
+        laptop, phone = self.client, self.client_class()
+        self.sign_in(phone, "Mozilla/5.0 (Linux; Android 14) Chrome/130.0 Mobile")
+        self.sign_in(laptop, "Mozilla/5.0 (Windows NT 10.0) Chrome/130.0")
+
+        profile = laptop.get(reverse("accounts:profile"))
+        devices = profile.context["signed_in_sessions"]
+        self.assertEqual(len(devices), 2)
+        self.assertTrue(devices[0].current)
+        self.assertEqual(devices[0].browser, "Chrome on Windows")
+        self.assertEqual(devices[1].browser, "Chrome on Android")
+        self.assertEqual(devices[1].ip, "10.0.0.7")
+
+        laptop.post(reverse("accounts:sign_out_other_sessions"))
+        # The phone is signed out; the laptop is not.
+        self.assertTrue(phone.get(reverse("core:dashboard"))["Location"].startswith(
+            reverse("accounts:login")))
+        self.assertEqual(laptop.get(reverse("core:dashboard")).status_code, 200)
+        self.assertTrue(AuditEvent.objects.filter(
+            action=Action.LOGOUT, detail__startswith="Signed out of 1 other session").exists())
+
+    def test_someone_elses_sessions_are_not_listed_or_ended(self):
+        other = User.objects.create_user(username="other", password=PASSWORD, role=Role.ENCODER)
+        theirs = self.client_class()
+        theirs.post(reverse("accounts:login"), {"username": "other", "password": PASSWORD})
+        self.sign_in(self.client, "Firefox/130.0")
+        self.assertEqual(len(self.client.get(reverse("accounts:profile")).context["signed_in_sessions"]), 1)
+        self.client.post(reverse("accounts:sign_out_other_sessions"))
+        self.assertEqual(theirs.get(reverse("core:dashboard")).status_code, 200)
+        del other

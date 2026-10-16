@@ -860,7 +860,12 @@ class WorkflowActionView(CapabilityRequiredMixin, View):
     capability = "can_view"
 
     def get_document(self):
-        return get_object_or_404(Document, pk=self.kwargs["pk"])
+        document = get_object_or_404(Document, pk=self.kwargs["pk"])
+        # Every action starts from being allowed to see the document at all -
+        # an archivist may archive the register, not a confidential paper
+        # that is not theirs.
+        document.require_viewable_by(self.request.user)
+        return document
 
     def get(self, request, pk):
         return redirect("documents:detail", pk=pk)
@@ -1243,7 +1248,9 @@ class RetentionRegisterView(CapabilityRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         today = timezone.localdate()
-        base = Document.objects.select_related(
+        # Scoped like the register: a confidential document that is not this
+        # archivist's does not appear here by title either.
+        base = Document.objects.visible_to(self.request.user).select_related(
             "document_type", "owner", "disposal_authority"
         )
 

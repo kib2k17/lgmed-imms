@@ -102,6 +102,7 @@
       </td>
 
       <td data-label="Status">
+        {% if record.is_confidential %}<span class="mb-1 block">{% status_badge "critical" "Confidential" %}</span>{% endif %}
         {% status_badge record.display_status record.display_status_label %}
         {% if record.is_available_publicly %}
           <span class="mt-1 block text-meta text-slate-500">On public website</span>

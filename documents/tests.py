@@ -1142,3 +1142,82 @@ class ModelLevelUploadValidationTests(TestCase):
         report.file.name = "reports/2020/legacy.txt"     # accepted under older rules
         form = self.form({}, {}, instance=report)
         self.assertTrue(form.is_valid(), form.errors)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class ConfidentialDocumentTests(DocumentTestCase):
+    """
+    A confidential document is read only by its owner, its focal person,
+    whoever registered it, and Administrators - and is never published.
+    """
+
+    def setUp(self):
+        from .models import Classification
+
+        self.secret = self.make(
+            title="Personnel complaint", classification=Classification.CONFIDENTIAL,
+            file=pdf("complaint.pdf"), assigned_to=self.other,
+        )
+        self.open = self.make(title="Ordinary memorandum")
+
+    def visible(self, user):
+        return set(Document.objects.visible_to(user).values_list("title", flat=True))
+
+    def test_the_register_shows_it_only_to_those_entitled(self):
+        for user in (self.encoder, self.other, self.chief):           # owner, assignee, admin
+            self.assertIn("Personnel complaint", self.visible(user), user)
+        for user in (self.approver, self.viewer):                     # archivist, viewer
+            self.assertNotIn("Personnel complaint", self.visible(user), user)
+            self.assertIn("Ordinary memorandum", self.visible(user), user)
+
+    def test_its_page_and_file_are_refused_to_others(self):
+        self.client.force_login(self.approver)
+        list_page = self.client.get(reverse("documents:list"))
+        self.assertNotContains(list_page, "Personnel complaint")
+        self.assertEqual(self.client.get(self.secret.get_absolute_url()).status_code, 403)
+        self.assertEqual(
+            self.client.get(reverse("documents:download", args=[self.secret.pk])).status_code, 403,
+        )
+        # Nor through the media gateway, by its stored path.
+        self.assertEqual(self.client.get("/media/" + self.secret.file.name).status_code, 404)
+
+    def test_its_owner_opens_it_and_sees_it_marked(self):
+        self.client.force_login(self.encoder)
+        response = self.client.get(self.secret.get_absolute_url())
+        self.assertContains(response, "Confidential")
+        download = self.client.get(reverse("documents:download", args=[self.secret.pk]))
+        self.assertEqual(download.status_code, 200)
+        close_response(download)
+
+    def test_others_cannot_act_on_it(self):
+        self.client.force_login(self.approver)
+        self.assertEqual(
+            self.client.get(reverse("documents:update", args=[self.secret.pk])).status_code, 403,
+        )
+        self.assertFalse(self.secret.may_be_edited_by(self.approver))
+        response = self.client.post(reverse("documents:start", args=[self.secret.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_the_retention_register_leaves_it_out_for_others(self):
+        self.client.force_login(self.approver)
+        response = self.client.get(reverse("documents:retention"))
+        self.assertNotContains(response, "Personnel complaint")
+
+    def test_it_is_never_public(self):
+        from .forms import DocumentForm
+        from .models import Classification
+
+        Document.objects.filter(pk=self.secret.pk).update(
+            status=DocumentStatus.COMPLETED, is_public=True,
+        )
+        self.assertFalse(Document.objects.public().filter(pk=self.secret.pk).exists())
+        self.secret.refresh_from_db()
+        self.assertFalse(self.secret.is_available_publicly)
+
+        form = DocumentForm(instance=self.secret, user=self.encoder, data={
+            "title": self.secret.title, "document_type": self.memo.pk, "year": 2026,
+            "owner": self.encoder.pk, "classification": Classification.CONFIDENTIAL,
+            "is_public": "on",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("is_public", form.errors)

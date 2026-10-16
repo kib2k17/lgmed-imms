@@ -228,6 +228,21 @@ CLOSED_STATUSES = (
 PUBLIC_STATUSES = (DocumentStatus.COMPLETED,)
 
 
+class Classification(models.TextChoices):
+    """
+    Who in the office may read a document.
+
+    Internal is the register as it has always been: every signed-in account
+    reads it. Confidential narrows it to the people answerable for the
+    document - its owner, its focal person, whoever registered it - and the
+    Administrators who run the register. Nothing confidential reaches the
+    public website.
+    """
+
+    INTERNAL = "INTERNAL", "Internal"
+    CONFIDENTIAL = "CONFIDENTIAL", "Confidential"
+
+
 class RetentionDisposition(models.TextChoices):
     """The records officer's decision about a document's long-term fate."""
 
@@ -300,8 +315,10 @@ class DocumentQuerySet(models.QuerySet):
         return self.exclude(status=DocumentStatus.ARCHIVED)
 
     def public(self):
-        """Documents cleared for the public website."""
-        return self.filter(is_public=True, status__in=PUBLIC_STATUSES)
+        """Documents cleared for the public website. Never a confidential one."""
+        return self.filter(is_public=True, status__in=PUBLIC_STATUSES).exclude(
+            classification=Classification.CONFIDENTIAL
+        )
 
     def owned_by(self, user):
         return self.filter(owner=user)
@@ -359,14 +376,18 @@ class DocumentQuerySet(models.QuerySet):
         and so may the document's own owner and focal person - restricting a
         record from the person answerable for it helps nobody.
         """
-        if getattr(user, "can_archive_documents", False):
-            return self
         if not getattr(user, "is_authenticated", False):
             return self.none()
-        return self.exclude(
-            Q(status=DocumentStatus.ARCHIVED)
-            & ~Q(Q(owner=user) | Q(assigned_to=user) | Q(created_by=user))
-        )
+        responsible = Q(owner=user) | Q(assigned_to=user) | Q(created_by=user)
+        queryset = self
+        # Confidential: the people answerable for it and the Administrators.
+        if not getattr(user, "can_administer", False):
+            queryset = queryset.exclude(
+                Q(classification=Classification.CONFIDENTIAL) & ~responsible
+            )
+        if getattr(user, "can_archive_documents", False):
+            return queryset
+        return queryset.exclude(Q(status=DocumentStatus.ARCHIVED) & ~responsible)
 
 
 class Document(TimeStampedModel):
@@ -512,6 +533,16 @@ class Document(TimeStampedModel):
     approved_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
+    classification = models.CharField(
+        max_length=20,
+        choices=Classification.choices,
+        default=Classification.INTERNAL,
+        db_index=True,
+        help_text=(
+            "Confidential: only the owner, the focal person, whoever registered "
+            "it and Administrators may open it, and it is never published."
+        ),
+    )
     is_public = models.BooleanField(
         "Available on the public website",
         default=False,
@@ -737,8 +768,14 @@ class Document(TimeStampedModel):
         return self.get_status_display()
 
     @property
+    def is_confidential(self):
+        return self.classification == Classification.CONFIDENTIAL
+
+    @property
     def is_available_publicly(self):
-        return self.is_public and self.status in PUBLIC_STATUSES
+        return (
+            self.is_public and self.status in PUBLIC_STATUSES and not self.is_confidential
+        )
 
     # -- retention ----------------------------------------------------------
 
@@ -819,6 +856,12 @@ class Document(TimeStampedModel):
         """
         if not getattr(user, "is_authenticated", False):
             return False
+        if (
+            self.is_confidential
+            and not getattr(user, "can_administer", False)
+            and not self.is_responsible(user)
+        ):
+            return False
         if not self.is_archived:
             return bool(getattr(user, "can_view", False))
         return bool(
@@ -841,6 +884,8 @@ class Document(TimeStampedModel):
         if not getattr(user, "can_encode", False):
             return False
         if self.is_archived or self.is_disposed or self.is_synced:
+            return False
+        if not self.may_be_viewed_by(user):        # confidential, not theirs
             return False
         if getattr(user, "can_archive_documents", False):
             return True
@@ -883,6 +928,9 @@ class Document(TimeStampedModel):
     def require_viewable_by(self, user):
         if not self.may_be_viewed_by(user):
             raise PermissionDenied(
+                "This document is confidential. Ask its owner or an "
+                "administrator for access."
+                if self.is_confidential else
                 "This document is archived. Ask the records officer for access."
             )
 

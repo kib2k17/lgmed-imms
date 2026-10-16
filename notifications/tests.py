@@ -382,3 +382,62 @@ class BulkNotificationTests(TestCase):
         self.client.force_login(self.me)
         response = self.client.get(reverse("notifications:list"))
         self.assertContains(response, 'form="bulk-notifications"', count=2)
+
+
+class WeeklySummaryTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import Role, User
+
+        cls.chief = User.objects.create_user(
+            username="chief", password="pw", role=Role.ADMIN, email="chief@example.com",
+        )
+        cls.no_email = User.objects.create_user(username="admin2", password="pw", role=Role.ADMIN)
+        cls.staff = User.objects.create_user(
+            username="staff", password="pw", role=Role.ENCODER, email="staff@example.com",
+        )
+
+    def run_command(self, *args):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("send_weekly_summary", *args, stdout=out)
+        return out.getvalue()
+
+    def test_the_chief_receives_it_once_a_week(self):
+        from django.core import mail
+
+        self.run_command()
+        self.assertEqual([m.to for m in mail.outbox], [["chief@example.com"]])
+        body = mail.outbox[0].body
+        self.assertIn("REQUIRES ATTENTION", body)
+        self.assertIn("/app/", body)                         # the dashboard link
+        # Later runs that week send nothing more.
+        self.assertIn("Nothing to send", self.run_command())
+        self.assertEqual(len(mail.outbox), 1)
+        # And it is on the bell, too.
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.chief, title="Weekly summary sent to your email").exists())
+
+    def test_force_sends_again(self):
+        from django.core import mail
+
+        self.run_command()
+        self.run_command("--force")
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(Notification.objects.filter(
+            recipient=self.chief, title="Weekly summary sent to your email").count(), 1)
+
+    def test_a_failed_send_is_tried_again_next_run(self):
+        from unittest.mock import patch
+
+        from django.core import mail
+
+        with patch("django.core.mail.EmailMultiAlternatives.send", side_effect=OSError("down")), \
+                self.assertLogs("notifications.management.commands.send_weekly_summary", "ERROR"):
+            self.run_command()
+        self.assertFalse(Notification.objects.filter(recipient=self.chief).exists())
+        self.run_command()
+        self.assertEqual(len(mail.outbox), 1)

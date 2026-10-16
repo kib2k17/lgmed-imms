@@ -63,7 +63,10 @@
       <section class="card" aria-labelledby="progress-heading">
         <div class="card-header">
           <h2 id="progress-heading" class="card-title">Document Lifecycle</h2>
-          {% status_badge record.display_status record.display_status_label %}
+          <span class="flex flex-wrap items-center gap-1.5">
+            {% if record.is_confidential %}{% status_badge "critical" "Confidential" %}{% endif %}
+            {% status_badge record.display_status record.display_status_label %}
+          </span>
         </div>
         <div class="card-body">
           <ol class="flex flex-wrap gap-x-2 gap-y-3">
@@ -466,9 +469,11 @@
               <dd class="mt-1 text-sm text-slate-900">{{ record.assignee_label }}</dd>
             </div>
             <div>
-              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Public availability</dt>
+              <dt class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Who may read it</dt>
               <dd class="mt-1 text-sm text-slate-900">
-                {% if record.is_available_publicly %}Published on the public website{% else %}Internal only{% endif %}
+                {% if record.is_confidential %}Confidential &mdash; its owner, focal person, whoever registered it, and Administrators
+                {% elif record.is_available_publicly %}Published on the public website
+                {% else %}Internal &mdash; every signed-in account{% endif %}
               </dd>
             </div>
           </dl>

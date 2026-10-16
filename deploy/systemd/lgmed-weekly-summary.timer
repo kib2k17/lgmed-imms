@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily check for the LGMED-IMMS weekly summary (sent Mondays)
+
+[Timer]
+# 07:00 every day: the command sends once per week, on the first run of the
+# week - Monday morning, or the next morning the server is up.
+OnCalendar=*-*-* 07:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

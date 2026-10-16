@@ -496,7 +496,24 @@ class ModuleDeleteView(CanDeleteMixin, ModuleContextMixin, DeleteView):
         return context
 
     def form_valid(self, form):
+        from django.db.models import ProtectedError, RestrictedError
+        from django.shortcuts import redirect
+
         label = str(self.object)
-        response = super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except (ProtectedError, RestrictedError) as error:
+            # Other records still depend on this one - an LGU with monitoring
+            # records, say. Said plainly instead of failing with a server error.
+            blocking = sorted({
+                obj._meta.verbose_name_plural for obj in error.args[1]
+            }) if len(error.args) > 1 else []
+            messages.error(
+                self.request,
+                f"{label} cannot be deleted because other records still refer to it"
+                + (f" ({', '.join(blocking)})" if blocking else "")
+                + ". Remove or reassign those first.",
+            )
+            return redirect(self.object.get_absolute_url())
         messages.success(self.request, f"{label} was deleted.")
         return response

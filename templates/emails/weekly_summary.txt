@@ -1,0 +1,23 @@
+{% autoescape off %}Good day, {{ user.get_display_name }}!
+
+Here is the LGMED-IMMS summary for the week of {{ today|date:"j F Y" }}.
+
+REQUIRES ATTENTION
+{% for item in pending %}  {{ item.count }}  {{ item.label }} ({{ item.detail }})
+{% empty %}  Nothing is awaiting action.
+{% endfor %}
+{% if overdue %}OVERDUE INCOMING DOCUMENTS (oldest first)
+{% for document in overdue %}  {{ document.tracking_number }} - due {{ document.due_date|date:"j M Y" }} - {{ document.assigned_to.get_display_name|default:"not assigned" }}
+     {{ document.subject|truncatechars:90 }}
+{% endfor %}  All overdue: {{ incoming_url }}
+{% endif %}{% if schedule %}
+MMIA AND DTR FOR {{ schedule.period_label|upper }} (due {{ schedule.deadline|date:"j M Y, g:i A" }})
+{% if missing %}{% for name in missing %}  - {{ name }}
+{% endfor %}  Details: {{ submissions_url }}
+{% else %}  Everyone has submitted.
+{% endif %}{% endif %}
+Open the dashboard: {{ dashboard_url }}
+
+This summary is sent once a week. It lists counts and reference numbers only;
+the documents themselves stay behind the sign-in.
+{% endautoescape %}

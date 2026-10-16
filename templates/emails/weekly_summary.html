@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>LGMED-IMMS weekly summary</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr><td style="background:#1e3a8a;padding:20px 24px;color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:.85;">LGMED-IMMS &middot; Weekly summary</div>
+          <div style="font-size:20px;font-weight:bold;margin-top:4px;">Week of {{ today|date:"j F Y" }}</div>
+        </td></tr>
+        <tr><td style="padding:24px;font-size:14px;line-height:1.6;">
+          <p style="margin:0 0 16px;">Good day, <strong>{{ user.get_display_name }}</strong>!</p>
+
+          <h2 style="margin:0 0 8px;font-size:15px;">Requires attention</h2>
+          {% if pending %}
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e2e8f0;border-radius:6px;font-size:14px;">
+              {% for item in pending %}
+                <tr>
+                  <td style="padding:8px 12px;width:48px;font-weight:bold;font-size:16px;border-bottom:1px solid #e2e8f0;">{{ item.count }}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">{{ item.label }}<br><span style="color:#64748b;font-size:12px;">{{ item.detail }}</span></td>
+                </tr>
+              {% endfor %}
+            </table>
+          {% else %}
+            <p style="margin:0;color:#475569;">Nothing is awaiting action.</p>
+          {% endif %}
+
+          {% if overdue %}
+            <h2 style="margin:20px 0 8px;font-size:15px;">Overdue incoming documents</h2>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-size:13px;">
+              {% for document in overdue %}
+                <tr><td style="padding:6px 0;border-bottom:1px solid #f1f5f9;">
+                  <strong>{{ document.tracking_number }}</strong> &middot; due {{ document.due_date|date:"j M Y" }} &middot; {{ document.assigned_to.get_display_name|default:"not assigned" }}<br>
+                  <span style="color:#475569;">{{ document.subject|truncatechars:90 }}</span>
+                </td></tr>
+              {% endfor %}
+            </table>
+            <p style="margin:8px 0 0;font-size:13px;"><a href="{{ incoming_url }}" style="color:#1e3a8a;">See every overdue document</a></p>
+          {% endif %}
+
+          {% if schedule %}
+            <h2 style="margin:20px 0 8px;font-size:15px;">MMIA and DTR for {{ schedule.period_label }}</h2>
+            <p style="margin:0 0 6px;color:#475569;font-size:13px;">Due {{ schedule.deadline|date:"j M Y, g:i A" }}</p>
+            {% if missing %}
+              <p style="margin:0;font-size:13px;">Still to submit: {{ missing|join:", " }}</p>
+              <p style="margin:8px 0 0;font-size:13px;"><a href="{{ submissions_url }}" style="color:#1e3a8a;">Open Monthly Submissions</a></p>
+            {% else %}
+              <p style="margin:0;font-size:13px;">Everyone has submitted.</p>
+            {% endif %}
+          {% endif %}
+
+          <p style="margin:24px 0 0;text-align:center;">
+            <a href="{{ dashboard_url }}" style="display:inline-block;background:#1e3a8a;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:bold;">Open the dashboard</a>
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">
+          Sent once a week. Counts and reference numbers only; the documents stay behind the sign-in.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# The Division Chief's weekly summary email (notifications/management/commands/
+# send_weekly_summary.py). Run daily by lgmed-weekly-summary.timer; the command
+# itself sends each recipient one summary per ISO week, so the first run of
+# the week sends it and a failed send is retried the next morning.
+#
+#   sudo cp deploy/systemd/lgmed-weekly-summary.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lgmed-weekly-summary.timer
+
+[Unit]
+Description=LGMED-IMMS weekly summary to the Division Chief
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=lgmed
+Group=lgmed
+WorkingDirectory=/srv/lgmed-imms/app
+EnvironmentFile=/etc/lgmed-imms/lgmed.env
+ExecStart=/srv/lgmed-imms/venv/bin/python manage.py send_weekly_summary
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

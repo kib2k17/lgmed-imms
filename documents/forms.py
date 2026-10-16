@@ -23,6 +23,7 @@ from .upload_rules import (  # noqa: F401
     validate_upload,
 )
 from .models import (
+    Classification,
     DisposalAuthority,
     Document,
     DocumentStatus,
@@ -62,7 +63,7 @@ class DocumentForm(GovModelForm):
             "title", "document_type", "reference_number", "subject", "sender",
             "date_received", "date_created", "due_date", "year",
             "owner", "unit", "office",
-            "file", "description", "remarks", "is_public",
+            "file", "description", "remarks", "classification", "is_public",
         ]
         widgets = {
             "date_received": forms.DateInput(),
@@ -75,7 +76,7 @@ class DocumentForm(GovModelForm):
          ["title", "document_type", "reference_number", "subject", "sender"]),
         ("Dates", ["date_received", "date_created", "due_date", "year"]),
         ("Ownership and Unit", ["owner", "unit", "office"]),
-        ("File and Details", ["file", "description", "remarks", "is_public"]),
+        ("File and Details", ["file", "description", "remarks", "classification", "is_public"]),
     ]
     wide_fields = ("title", "subject", "file")
 
@@ -109,6 +110,8 @@ class DocumentForm(GovModelForm):
             "Left blank, taken from the date received or the date of the document."
         )
         self.fields["reference_number"].required = False
+        self.fields["classification"].required = False
+        self.fields["classification"].choices = Classification.choices
 
         if not registered:
             # A document cannot be published at the moment it is registered -
@@ -118,6 +121,11 @@ class DocumentForm(GovModelForm):
             if self.user is not None:
                 self.fields["owner"].initial = self.user.pk
                 self.fields["date_received"].initial = timezone.localdate()
+
+    def clean_classification(self):
+        # Optional on the form: a document left unmarked is Internal, as every
+        # document registered before the choice existed is.
+        return self.cleaned_data.get("classification") or Classification.INTERNAL
 
     def clean_year(self):
         """Fall back to the document's own dates rather than demanding a year."""
@@ -135,6 +143,12 @@ class DocumentForm(GovModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("is_public") and cleaned.get("classification") == Classification.CONFIDENTIAL:
+            self.add_error(
+                "is_public",
+                "A confidential document is never published. Mark it Internal "
+                "first if it is meant for the public.",
+            )
         if cleaned.get("is_public") and self.instance.status != DocumentStatus.COMPLETED:
             self.add_error(
                 "is_public",

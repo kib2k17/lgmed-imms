@@ -41,7 +41,9 @@ class LGUListView(LGUModuleMixin, ModuleListView):
         ("Contact number", "contact_number"),
         ("Email", "email"),
         ("Compliance", "get_compliance_status_display"),
-        ("Latest monitoring", "latest_monitoring_date"),
+        # The list's own annotation, not `latest_monitoring_date`, which asks
+        # the database again for every exported row.
+        ("Latest monitoring", "last_monitored"),
     )
 
     @property

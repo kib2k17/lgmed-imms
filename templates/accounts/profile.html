@@ -140,6 +140,41 @@
     </div>
   </section>
 
+  <section class="card mt-4" aria-labelledby="sessions-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="sessions-heading" class="card-title">Where You Are Signed In</h2>
+        <p class="mt-0.5 text-meta text-slate-500">Every browser currently signed in to your account</p>
+      </div>
+      {% if signed_in_sessions|length > 1 %}
+        <form method="post" action="{% url 'accounts:sign_out_other_sessions' %}"
+              data-confirm-submit="Sign out of every other device? They will need your password to sign in again.">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-secondary btn-sm">
+            {% icon "logout" "size-3.5" %}Sign out other devices
+          </button>
+        </form>
+      {% endif %}
+    </div>
+    <ul class="divide-y divide-slate-100">
+      {% for session in signed_in_sessions %}
+        <li class="flex items-start gap-3 px-4 py-3 sm:px-5">
+          <span aria-hidden="true" class="mt-0.5 text-slate-400">{% icon "monitor" "size-4" %}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium text-slate-900">
+              {{ session.browser }}
+              {% if session.current %}<span class="ml-1 text-meta font-semibold text-green-700">This device</span>{% endif %}
+            </span>
+            <span class="block text-meta text-slate-500">
+              {% if session.ip %}{{ session.ip }} &middot; {% endif %}
+              {% if session.since %}signed in {{ session.since|date:"j M Y, g:i A" }}{% else %}signed in before this list existed{% endif %}
+            </span>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
   <section class="card mt-4" aria-labelledby="mfa-heading">
     <div class="card-header">
       <div>
