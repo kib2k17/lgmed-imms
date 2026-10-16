@@ -64,6 +64,14 @@ NAV_SECTIONS = [
              "title": "Updates & Accomplishments",
              "icon": "check-circle", "url_name": "updates:dashboard",
              "namespace": "updates"},
+            # Staff upload their MMIA and DTR here; the Division Chief sets
+            # the deadline and monitors compliance. One entry for both: the
+            # module shows each role its own side of the same page.
+            {"key": "monthly_submissions", "label": "Monthly Submissions",
+             "title": "Monthly Accomplishment (MMIA) & DTR Submission",
+             "icon": "calendar-check", "url_name": "submissions:home",
+             "namespace": "submissions",
+             "requires": "can_use_monthly_submissions"},
             {"key": "announcements", "label": "Announcements", "icon": "announcements",
              "url_name": "announcements:list", "namespace": "announcements"},
             {"key": "documents", "label": "Document Management",

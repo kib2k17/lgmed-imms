@@ -334,6 +334,39 @@ class User(AbstractUser):
         """
         return self.is_active and self.can_administer
 
+    # -- monthly MMIA and DTR submissions -------------------------------
+    #
+    # Two sides. Staff upload their own Monthly Monitoring Individual
+    # Accomplishments and Daily Time Record; the Division Chief sets the
+    # deadline and monitors everyone's compliance. The submitting roles are a
+    # setting rather than a hard-coded list, because who keeps a DTR is an
+    # office policy, not a property of the software.
+
+    @property
+    def must_submit_monthly(self):
+        """Required to upload an MMIA and a DTR every reporting month."""
+        from django.conf import settings
+
+        return (
+            self.is_active
+            and not self.is_superadmin
+            and self.role in settings.MONTHLY_SUBMISSION_SUBMITTER_ROLES
+        )
+
+    @property
+    def can_manage_monthly_submissions(self):
+        """
+        Set and extend the monthly deadline, monitor every staff member's
+        submission, open their files and send reminders. The Division Chief
+        and designated administrators.
+        """
+        return self.is_active and (self.is_superadmin or self.role == Role.ADMIN)
+
+    @property
+    def can_use_monthly_submissions(self):
+        """Open the Monthly Submissions module at all."""
+        return self.must_submit_monthly or self.can_manage_monthly_submissions
+
     # -- organisational scope -----------------------------------------
 
     @property

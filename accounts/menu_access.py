@@ -37,6 +37,7 @@ MANAGED_MODULES = (
     "lgus",
     "services",
     "updates",
+    "monthly_submissions",
     "announcements",
     "documents",
     "analytics",

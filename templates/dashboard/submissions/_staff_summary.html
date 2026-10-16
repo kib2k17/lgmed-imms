@@ -1,0 +1,85 @@
+{% load ui %}
+{% comment %}
+ The four figures and the progress bar at the top of a staff member's page.
+ Re-rendered by UploadView and swapped in by monthly-submissions.js after an
+ upload, so the status changes without a page reload.
+{% endcomment %}
+<h2 class="sr-only">Submission summary for {{ schedule.period_label }}</h2>
+<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="card p-4">
+    <p class="flex items-center gap-1.5 text-meta font-semibold tracking-wide text-slate-500 uppercase">
+      {% icon "calendar" "size-3.5" %}Reporting Month
+    </p>
+    <p class="mt-1.5 text-xl font-bold text-slate-900">{{ schedule.period_label }}</p>
+  </div>
+
+  <div class="card p-4">
+    <p class="flex items-center gap-1.5 text-meta font-semibold tracking-wide text-slate-500 uppercase">
+      {% icon "clock" "size-3.5" %}Submission Deadline
+    </p>
+    <p class="mt-1.5 text-xl font-bold text-slate-900">{{ schedule.deadline|date:"F j, Y" }}</p>
+    <p class="text-meta text-slate-500">{{ schedule.deadline|date:"g:i A" }} PST</p>
+  </div>
+
+  <div class="card p-4">
+    <p class="flex items-center gap-1.5 text-meta font-semibold tracking-wide text-slate-500 uppercase">
+      {% icon "check-circle" "size-3.5" %}Submission Status
+    </p>
+    <p class="mt-2" data-status-badge="{{ standing.status }}">{% status_badge standing.status standing.label %}</p>
+    {% if standing.is_complete and submission.completed_at %}
+      <p class="mt-1.5 text-meta text-slate-500">Completed {{ submission.completed_at|date:"M j, Y g:i A" }}</p>
+    {% elif standing.missing and standing.submitted %}
+      <p class="mt-1.5 text-meta text-slate-500">Missing: {{ standing.missing_labels|join:", " }}</p>
+    {% endif %}
+  </div>
+
+  <div class="card p-4 {% if is_open and days_remaining <= 1 and not standing.is_complete %}border-red-200 bg-red-50/40{% elif is_open and days_remaining <= 3 and not standing.is_complete %}border-amber-200 bg-amber-50/40{% endif %}">
+    <p class="flex items-center gap-1.5 text-meta font-semibold tracking-wide text-slate-500 uppercase">
+      {% icon "clock" "size-3.5" %}Days Remaining
+    </p>
+    {% if is_open %}
+      <p class="mt-1.5 text-xl font-bold {% if days_remaining <= 1 %}text-red-700{% elif days_remaining <= 3 %}text-amber-700{% else %}text-slate-900{% endif %}">
+        {% if days_remaining == 0 %}Due Today{% else %}{{ days_remaining }} Day{{ days_remaining|pluralize }} Remaining{% endif %}
+      </p>
+      <p class="text-meta text-slate-500 tabular" data-countdown="{{ schedule.deadline|date:'c' }}" aria-live="off"></p>
+    {% else %}
+      <p class="mt-1.5 text-xl font-bold text-red-700">Deadline Passed</p>
+      <p class="text-meta text-slate-500">Closed {{ schedule.deadline|date:"M j, Y g:i A" }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-3 p-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <p class="text-sm font-semibold text-slate-900">
+      <span data-progress-count>{{ standing.uploaded_count }}</span> of 2 Documents Submitted
+    </p>
+    <p class="text-sm font-semibold tabular {% if standing.is_complete %}text-green-700{% else %}text-slate-600{% endif %}">{{ standing.percent }}%</p>
+  </div>
+  <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100" role="progressbar"
+       aria-label="Documents submitted" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ standing.percent }}">
+    <div class="h-full rounded-full transition-[width] duration-500 {% if standing.is_complete %}bg-green-600{% elif standing.status == 'overdue' %}bg-red-600{% else %}bg-amber-500{% endif %}"
+         style="width: {{ standing.percent }}%"></div>
+  </div>
+  <p class="mt-2 text-meta text-slate-500">
+    MMIA: <span class="font-semibold {% if 'mmia' in standing.submitted %}text-green-700{% else %}text-slate-700{% endif %}">{% if 'mmia' in standing.submitted %}Submitted{% else %}Pending{% endif %}</span>
+    &middot;
+    DTR: <span class="font-semibold {% if 'dtr' in standing.submitted %}text-green-700{% else %}text-slate-700{% endif %}">{% if 'dtr' in standing.submitted %}Submitted{% else %}Pending{% endif %}</span>
+  </p>
+</div>
+
+{% if not is_open and not standing.is_complete %}
+  <div role="alert" class="mt-3 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+    <span class="mt-0.5 shrink-0 text-red-700">{% icon "lock" "size-5" %}</span>
+    <div>
+      <p class="font-semibold">Submission Deadline Has Passed</p>
+      <p class="mt-0.5">The prescribed submission period has ended. Please coordinate with your Division Chief if you need to submit or update your documents.</p>
+      {% if standing.missing %}<p class="mt-1 text-meta">Outstanding: {{ standing.missing_titles|join:"; " }}</p>{% endif %}
+    </div>
+  </div>
+{% elif not is_open and standing.is_complete %}
+  <div role="status" class="mt-3 flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3.5 text-sm text-slate-700">
+    <span class="mt-0.5 shrink-0 text-slate-500">{% icon "lock" "size-5" %}</span>
+    <p>The submission period for {{ schedule.period_label }} has ended. Your documents remain on record below.</p>
+  </div>
+{% endif %}

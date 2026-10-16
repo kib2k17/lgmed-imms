@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static ui %}
+
+{% block page_actions %}
+  <button type="button" class="btn btn-primary" data-dialog-open="schedule-dialog">
+    {% icon "calendar-check" "size-4" %}Set Submission Deadline
+  </button>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/submissions/_tabs.html" with tab="deadlines" %}
+
+  <div class="mb-4 flex items-start gap-3 rounded-md border border-brand-200 bg-brand-50/60 p-3.5 text-sm text-slate-800">
+    <span class="mt-0.5 shrink-0 text-brand-700">{% icon "info" "size-5" %}</span>
+    <p>One deadline per reporting month, covering both the MMIA and the DTR. Staff are emailed and notified when a deadline is set or changed, then reminded automatically before it falls due. Extending a deadline that has passed reopens uploads until the new one.</p>
+  </div>
+
+  <section class="card" aria-labelledby="schedules-heading">
+    <div class="card-header">
+      <h2 id="schedules-heading" class="card-title">Reporting Months</h2>
+    </div>
+    {% if items %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Reporting Month</th>
+              <th scope="col">Deadline</th>
+              <th scope="col">Period</th>
+              <th scope="col" class="hidden md:table-cell">Compliance</th>
+              <th scope="col" class="hidden lg:table-cell">Set By</th>
+              <th scope="col" class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr>
+                <td class="font-medium text-slate-900">{{ item.schedule.period_label }}</td>
+                <td class="whitespace-nowrap">{{ item.schedule.deadline|date:"M j, Y" }}<span class="block text-meta text-slate-500">{{ item.schedule.deadline|date:"g:i A" }} PST</span></td>
+                <td>
+                  {% if item.is_open %}
+                    {% if item.days == 0 %}{% status_badge "due_soon" "Open - due today" %}{% else %}{% status_badge "active" "Open" %}<span class="block text-meta text-slate-500">{{ item.days }} day{{ item.days|pluralize }} left</span>{% endif %}
+                  {% else %}
+                    {% status_badge "closed" "Closed" %}
+                  {% endif %}
+                </td>
+                <td class="hidden md:table-cell">
+                  <span class="text-sm font-semibold text-slate-900 tabular">{{ item.summary.completed }} / {{ item.summary.total }}</span>
+                  <span class="text-meta text-slate-500">({{ item.summary.percent }}%)</span>
+                  <div class="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-green-600" style="width: {{ item.summary.percent }}%"></div></div>
+                </td>
+                <td class="hidden lg:table-cell">{{ item.schedule.updated_by|default:item.schedule.created_by|default:"&mdash;" }}</td>
+                <td class="text-right">
+                  <div class="flex flex-wrap justify-end gap-1.5">
+                    <a href="{% url 'submissions:home' %}?year={{ item.schedule.reporting_year }}&amp;month={{ item.schedule.reporting_month }}" class="btn btn-secondary btn-sm">
+                      {% icon "monitoring" "size-3.5" %}Monitor
+                    </a>
+                    <a href="{% url 'submissions:schedule_update' item.schedule.pk %}" class="btn btn-secondary btn-sm">
+                      {% icon "edit" "size-3.5" %}{% if item.is_open %}Change{% else %}Extend{% endif %}<span class="sr-only"> {{ item.schedule.period_label }} deadline</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="calendar-check" title="No deadlines set yet" message="Use Set Submission Deadline to open the first reporting month." %}
+    {% endif %}
+  </section>
+
+  <section class="card mt-4" aria-labelledby="deadline-trail-heading">
+    <div class="card-header"><h2 id="deadline-trail-heading" class="card-title">Deadline Audit Trail</h2></div>
+    {% if trail %}
+      <ul class="divide-y divide-slate-100">
+        {% for entry in trail %}
+          <li class="flex items-start justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
+            <div class="min-w-0">
+              <p class="text-slate-800"><span class="font-medium">{{ entry.get_action_display }}</span> &middot; {{ entry.user_label }}</p>
+              <p class="text-meta text-slate-500">{{ entry.details }}</p>
+            </div>
+            <time class="shrink-0 text-meta text-slate-500" datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:"M j, Y g:i A" }}</time>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="px-5 py-6 text-center text-sm text-slate-400">No deadline changes recorded yet.</p>
+    {% endif %}
+  </section>
+
+  {% include "dashboard/submissions/_schedule_dialog.html" %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/monthly-submissions.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

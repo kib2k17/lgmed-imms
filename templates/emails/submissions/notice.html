@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr><td style="background:#1e3a8a;padding:20px 24px;color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:.85;">{{ agency.department }} &middot; {{ agency.office_short }}</div>
+          <div style="font-size:19px;font-weight:bold;margin-top:4px;">Monthly MMIA and DTR Submission</div>
+        </td></tr>
+        <tr><td style="padding:24px;font-size:14px;line-height:1.6;">
+          <p style="margin:0 0 12px;">{{ greeting }}</p>
+          {% for paragraph in paragraphs %}<p style="margin:0 0 14px;">{{ paragraph }}</p>{% endfor %}
+
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e2e8f0;border-radius:6px;font-size:14px;margin:4px 0 16px;">
+            {% for label, value in facts %}
+              <tr><td style="padding:10px 14px;color:#64748b;width:42%;{% if not forloop.last or statuses %}border-bottom:1px solid #e2e8f0;{% endif %}">{{ label }}</td>
+                  <td style="padding:10px 14px;font-weight:bold;{% if not forloop.last or statuses %}border-bottom:1px solid #e2e8f0;{% endif %}">{{ value }}</td></tr>
+            {% endfor %}
+            {% for label, value in statuses %}
+              <tr><td style="padding:10px 14px;color:#64748b;{% if not forloop.last %}border-bottom:1px solid #e2e8f0;{% endif %}">{{ label }}</td>
+                  <td style="padding:10px 14px;font-weight:bold;color:{% if value == 'Submitted' %}#15803d{% else %}#b91c1c{% endif %};{% if not forloop.last %}border-bottom:1px solid #e2e8f0;{% endif %}">{{ value }}</td></tr>
+            {% endfor %}
+          </table>
+
+          {% for paragraph in after_facts %}<p style="margin:0 0 14px;">{{ paragraph }}</p>{% endfor %}
+
+          {% if required_documents %}
+            <p style="margin:0 0 6px;font-weight:bold;">Required Documents:</p>
+            <ol style="margin:0 0 16px;padding-left:22px;">
+              <li>Monthly Monitoring Individual Accomplishments (MMIA)</li>
+              <li>Daily Time Record (DTR)</li>
+            </ol>
+          {% endif %}
+
+          {% if announcement %}
+            <div style="margin:0 0 16px;padding:12px 14px;background:#eff6ff;border-left:4px solid #1e3a8a;border-radius:4px;font-size:13px;">
+              <div style="font-weight:bold;margin-bottom:4px;">Announcement from the Division Chief</div>
+              {{ announcement|linebreaksbr }}
+            </div>
+          {% endif %}
+
+          {% for line in closing %}<p style="margin:0 0 10px;">{{ line }}</p>{% endfor %}
+
+          {% if link %}
+            <p style="margin:20px 0;text-align:center;">
+              <a href="{{ link }}" style="display:inline-block;background:#1e3a8a;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:bold;">{{ button_label }}</a>
+            </p>
+            <p style="margin:0 0 12px;font-size:12px;color:#64748b;">You will be asked to sign in. The link opens your own submissions only.</p>
+          {% endif %}
+
+          <p style="margin:16px 0 0;font-size:13px;">{% for line in sign_off %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
+        </td></tr>
+        <tr><td style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">
+          <em>This is an automated system-generated notification. Please do not reply.</em>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

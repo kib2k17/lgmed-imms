@@ -1,0 +1,31 @@
+# LGMED-IMMS Monthly Submissions reminders (TEMPLATE)
+# /etc/systemd/system/lgmed-submission-reminders.service
+#
+# Run by lgmed-submission-reminders.timer. Queues the MMIA/DTR deadline
+# reminders and overdue notices that are due, then sends every queued email,
+# retrying any that failed. Safe to run as often as the timer likes: each
+# email has a unique key, so nothing is sent twice.
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lgmed-submission-reminders.timer
+#   systemctl list-timers lgmed-submission-reminders.timer
+#   journalctl -u lgmed-submission-reminders
+
+[Unit]
+Description=LGMED-IMMS monthly MMIA/DTR submission reminders
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=lgmed
+Group=lgmed
+WorkingDirectory=/srv/lgmed-imms/app
+EnvironmentFile=/etc/lgmed-imms/lgmed.env
+ExecStart=/srv/lgmed-imms/venv/bin/python manage.py send_submission_reminders
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/lgmed-imms/app/protected

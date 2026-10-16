@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LGMED-IMMS AI Assistant Proposal</title>
+<style>
+:root {
+  --navy: #0f2a5c; --blue: #1e40af; --ink: #0f172a; --text: #1e293b; --muted: #64748b;
+  --line: #cbd5e1; --soft: #f1f5f9; --accent: #ea580c; --green: #16a34a;
+}
+@page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+html { font-size: 10.4pt; }
+body { margin: 0; font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--text); line-height: 1.5; }
+p { margin: 0 0 6pt; orphans: 3; widows: 3; }
+a { color: var(--blue); text-decoration: none; }
+code { font-family: Consolas, monospace; font-size: .9em; background: var(--soft); padding: 0 3px; border-radius: 3px; }
+
+/* cover */
+.cover { height: 255mm; display: flex; flex-direction: column; align-items: center; text-align: center; break-after: page; }
+.cover .logo { height: 32mm; margin: 4mm 0 6mm; }
+.cover .dept { font-size: 12pt; margin: 0; color: var(--ink); }
+.cover .div { font-size: 12pt; font-weight: 700; color: var(--navy); margin-top: 2mm; }
+.cover .rule { width: 60%; height: 3px; background: var(--navy); margin: 14mm 0 12mm; }
+.cover .kicker { font-size: 11pt; letter-spacing: .18em; color: var(--accent); font-weight: 700; margin-bottom: 3mm; }
+.cover .title { font-size: 30pt; color: var(--navy); margin: 0 0 4mm; line-height: 1.15; }
+.cover .subtitle { font-size: 13.5pt; color: var(--muted); font-style: italic; margin-bottom: 14mm; max-width: 140mm; }
+.cover table.meta { border-collapse: collapse; font-size: 10.5pt; margin-top: auto; }
+.cover table.meta th { text-align: right; color: var(--muted); font-weight: 600; padding: 2pt 10pt; }
+.cover table.meta td { text-align: left; padding: 2pt 10pt; }
+
+/* contents */
+.toc { break-after: page; }
+.toc ol { padding-left: 16pt; }
+.toc li { margin: 3pt 0; font-size: 10.5pt; }
+
+/* body */
+h1 { font-size: 19pt; color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 4pt; margin: 0 0 12pt; break-before: page; }
+h1.first { break-before: auto; }
+h2 { font-size: 13.5pt; color: var(--navy); margin: 16pt 0 7pt; break-after: avoid; }
+h3 { font-size: 11pt; color: var(--ink); margin: 12pt 0 5pt; break-after: avoid; }
+ul, ol { margin: 0 0 8pt; padding-left: 18pt; }
+li { margin: 1.5pt 0; }
+table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; font-size: 9.2pt; }
+th, td { border: 1px solid var(--line); padding: 4pt 6pt; vertical-align: top; text-align: left; }
+thead th { background: var(--soft); color: var(--ink); }
+tr { break-inside: avoid; }
+td.rec { background: #f0fdf4; }
+blockquote { margin: 8pt 0; padding: 6pt 10pt; border-left: 4px solid #3b82f6; background: #eff6ff; border-radius: 3px; break-inside: avoid; }
+blockquote p { margin: 0 0 3pt; } blockquote p:last-child { margin: 0; }
+blockquote.tip { border-color: var(--green); background: #f0fdf4; }
+blockquote.important { border-color: var(--accent); background: #fff7ed; }
+blockquote.warning { border-color: #dc2626; background: #fef2f2; }
+.summary { border: 2px solid var(--navy); border-radius: 4px; padding: 8pt 12pt; margin: 8pt 0 12pt; background: #f8fafc; break-inside: avoid; }
+.summary h3 { margin-top: 0; color: var(--navy); }
+.chat { border: 1px solid var(--line); border-radius: 6px; padding: 8pt 10pt; margin: 8pt 0 12pt; break-inside: avoid; background: #fff; }
+.msg { margin: 0 0 6pt; padding: 5pt 8pt; border-radius: 6px; max-width: 85%; font-size: 9.6pt; }
+.msg.user { background: var(--navy); color: #fff; margin-left: auto; }
+.msg.bot { background: var(--soft); color: var(--ink); }
+.msg .src { display: block; font-size: 8.4pt; color: var(--muted); margin-top: 3pt; }
+.who { font-size: 8pt; color: var(--muted); margin: 0 0 2pt; }
+.who.r { text-align: right; }
+figure { margin: 8pt 0 12pt; break-inside: avoid; }
+figcaption { text-align: center; font-size: 8.8pt; color: var(--muted); margin-top: 4pt; }
+figcaption b { color: var(--ink); }
+.tier { border: 1px solid var(--line); border-radius: 4px; padding: 7pt 10pt; margin: 0 0 9pt; break-inside: avoid; }
+.tier h3 { margin: 0 0 4pt; }
+.tier .tag { display: inline-block; font-size: 8pt; font-weight: 700; padding: 1pt 6pt; border-radius: 3px; background: var(--soft); color: var(--navy); margin-left: 4pt; vertical-align: middle; }
+.tier .tag.rec { background: #dcfce7; color: #166534; }
+.tier table { margin: 4pt 0 4pt; }
+.tier table th { width: 28%; background: var(--soft); }
+.small { font-size: 8.6pt; color: var(--muted); }
+table.sign td { height: 26pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="cover">
+  <img class="logo" src="../../static/img/dilg-logo.png" alt="DILG seal">
+  <p class="dept">Department of the Interior and Local Government<br>Regional Office XIII &mdash; Caraga</p>
+  <p class="div">Local Government Monitoring and Evaluation Division</p>
+  <div class="rule"></div>
+  <div class="kicker">PROPOSAL</div>
+  <h1 class="title" style="border:none;break-before:auto;padding:0">An AI Assistant for LGMED-IMMS</h1>
+  <p class="subtitle">Adding a built-in assistant, powered by a large language model (LLM), that answers the public's questions from the information the Division has already published</p>
+  <table class="meta">
+    <tr><th>System</th><td>LGMED-IMMS (Information Management and Monitoring System)</td></tr>
+    <tr><th>Document</th><td>Proposal and briefing manual for the LGMED team</td></tr>
+    <tr><th>Version</th><td>1.0 &mdash; for discussion</td></tr>
+    <tr><th>Date</th><td>October 2026</td></tr>
+    <tr><th>Prepared by</th><td>&nbsp;</td></tr>
+  </table>
+</section>
+
+<!-- ============================== CONTENTS ============================== -->
+<section class="toc">
+  <h1 class="first">Contents</h1>
+  <ol>
+    <li>Summary</li>
+    <li>What an LLM is, in plain terms</li>
+    <li>What the assistant will do</li>
+    <li>How it works</li>
+    <li>What it may and may not answer from</li>
+    <li>Three ways to run it</li>
+    <li>Hardware</li>
+    <li>Data privacy and safeguards</li>
+    <li>Costs</li>
+    <li>Implementation plan</li>
+    <li>Risks and how we handle them</li>
+    <li>Decisions needed from the team</li>
+    <li>Glossary</li>
+  </ol>
+</section>
+
+<!-- ============================== 1 SUMMARY ============================== -->
+<h1>1. Summary</h1>
+
+<div class="summary">
+  <h3>The proposal in one paragraph</h3>
+  <p>We add an <b>AI Assistant</b> to the public website of LGMED-IMMS. A visitor (a citizen, an LGU staff member, a partner agency) types a question in their own words, such as <i>&ldquo;What programs does LGMED run in Agusan del Sur?&rdquo;</i> or <i>&ldquo;Paano mag-request ng dokumento?&rdquo;</i> The assistant looks through the information the Division <b>has already published</b> on the site (announcements, programs, frontline services, accomplishments, statistics, reports, documents and the calendar) and replies straight away in plain language, with links to the pages it used.</p>
+</div>
+
+<h2>Why do this</h2>
+<ul>
+  <li><b>Visitors find answers faster.</b> They don't have to know which page to open; they just ask.</li>
+  <li><b>Fewer routine enquiries.</b> Questions like &ldquo;what are your office hours&rdquo;, &ldquo;what are the requirements for&hellip;&rdquo; and &ldquo;when is the next activity&rdquo; are answered without a staff member having to reply.</li>
+  <li><b>Answers come from our own records.</b> The assistant only uses what the Division has approved for publication, and every answer links to its source, so anyone can check it.</li>
+  <li><b>Always up to date.</b> When a record is published or changed in IMMS, the assistant uses the new version. Nobody has to re-train or re-teach it.</li>
+  <li><b>It builds on what we have.</b> The public website and its data already exist in IMMS. The assistant is a new feature on top of them, not a new system.</li>
+</ul>
+
+<h2>What we recommend</h2>
+<ol>
+  <li>Start with a <b>public assistant that answers only from published information</b>.</li>
+  <li>Run it on a <b>hosted AI service</b> first (Option A in Section 6). This needs no new hardware, gives the best answer quality, and is cheap at the volume we expect. Because the assistant only reads information that is <i>already public</i>, sending it to an outside service exposes nothing new.</li>
+  <li>Build it so the AI engine can be <b>swapped</b>. If the team later wants an assistant for <i>internal</i> records, which must stay in the office, we buy a local AI workstation (Section 7) and switch to it without rebuilding.</li>
+  <li>Run a <b>four-week staff-only pilot</b> before the assistant goes public.</li>
+</ol>
+
+<!-- ============================== 2 WHAT IS AN LLM ============================== -->
+<h1>2. What an LLM is, in plain terms</h1>
+
+<p>A <b>large language model (LLM)</b> is the technology behind tools such as ChatGPT, Claude and Gemini. It has read a very large amount of text and learned how language works, so it can understand a question written in ordinary words and write a clear answer.</p>
+
+<p>On its own, an LLM knows a lot about the world in general but <b>nothing about our Division</b>: not our programs, our LGUs, our announcements or our schedule. If you ask it about them without giving it our information, it may guess, and a guess can sound confident and still be wrong. That is called a <b>&ldquo;hallucination&rdquo;</b>.</p>
+
+<h2>How we make it answer from our data</h2>
+<p>We do <b>not</b> re-train the model on our data. That is expensive, slow, and would leave it out of date the moment a record changes. We use a method called <b>retrieval-augmented generation (RAG)</b>:</p>
+<ol>
+  <li>When a question comes in, IMMS first <b>searches our published records</b> for the passages most likely to answer it.</li>
+  <li>IMMS hands those passages to the LLM together with the question and a strict instruction: <i>&ldquo;Answer only from these passages. If they do not contain the answer, say so and point the person to the contact page.&rdquo;</i></li>
+  <li>The LLM writes the answer and IMMS attaches links to the pages it used.</li>
+</ol>
+
+<blockquote class="tip"><p><b>An easy way to explain it:</b> the LLM is like a capable new staff member who writes and speaks well but has never worked at LGMED. RAG is handing them the right folder before each question and telling them to answer only from what is in it.</p></blockquote>
+
+<!-- ============================== 3 WHAT IT WILL DO ============================== -->
+<h1>3. What the assistant will do</h1>
+
+<h2>For the public (Phase 1 &mdash; this proposal)</h2>
+<p>A chat button appears on every page of the public website. A visitor clicks it, types a question, and gets an answer in a few seconds. The visitor does not need an account.</p>
+
+<h3>Example conversation</h3>
+<div class="chat">
+  <p class="who r">Visitor</p>
+  <div class="msg user">What programs does LGMED have for barangays?</div>
+  <p class="who">LGMED AI Assistant</p>
+  <div class="msg bot">LGMED currently publishes three programs that involve barangays:
+    <br>&bull; <b>[Program A]</b> &mdash; assessment of barangay governance performance&hellip;
+    <br>&bull; <b>[Program B]</b> &mdash; &hellip;
+    <br>&bull; <b>[Program C]</b> &mdash; &hellip;
+    <br>For the latest schedule of activities, see the Calendar.
+    <span class="src">Sources: Programs &rsaquo; [Program A] &middot; Programs &rsaquo; [Program B] &middot; Calendar</span></div>
+  <p class="who r">Visitor</p>
+  <div class="msg user">Kailan ang susunod na activity sa Surigao del Norte?</div>
+  <p class="who">LGMED AI Assistant</p>
+  <div class="msg bot">Ang susunod na nakatakdang activity sa Surigao del Norte ay ang <b>[Activity]</b> sa <b>[petsa]</b>, sa <b>[lugar]</b>.
+    <span class="src">Source: Calendar &rsaquo; [Activity]</span></div>
+  <p class="who r">Visitor</p>
+  <div class="msg user">What is the rating of my mayor?</div>
+  <p class="who">LGMED AI Assistant</p>
+  <div class="msg bot">I can't find that in the information LGMED has published. For questions about assessment results, please contact the Division directly.
+    <span class="src">Source: Contact &rsaquo; LGMED, DILG Caraga</span></div>
+</div>
+<p class="small">The names in square brackets are placeholders. In the live assistant they are filled in from the actual published records.</p>
+
+<h2>Typical questions it can answer</h2>
+<table>
+  <thead><tr><th style="width:30%">Kind of question</th><th>Example</th><th style="width:26%">Answered from</th></tr></thead>
+  <tbody>
+    <tr><td>Programs and projects</td><td>&ldquo;What is [program]? Which LGUs are covered?&rdquo;</td><td>Programs pages</td></tr>
+    <tr><td>Frontline services</td><td>&ldquo;What are the requirements for [service]? How long does it take?&rdquo;</td><td>Services page</td></tr>
+    <tr><td>News and advisories</td><td>&ldquo;Are there new announcements this week?&rdquo;</td><td>Announcements</td></tr>
+    <tr><td>Schedule</td><td>&ldquo;Is there an activity in Butuan this month?&rdquo;</td><td>Calendar</td></tr>
+    <tr><td>Accomplishments</td><td>&ldquo;What did LGMED accomplish last week?&rdquo;</td><td>Accomplishments</td></tr>
+    <tr><td>Figures</td><td>&ldquo;How many LGUs are in Caraga?&rdquo;</td><td>Statistics</td></tr>
+    <tr><td>Documents and reports</td><td>&ldquo;Where can I download the [report/memo]?&rdquo;</td><td>Documents, Reports</td></tr>
+    <tr><td>The office</td><td>&ldquo;What are your office hours? Who do I contact?&rdquo;</td><td>About, Contact</td></tr>
+  </tbody>
+</table>
+
+<h2>Languages</h2>
+<p>The assistant answers in the language the visitor uses: <b>English, Filipino, and Cebuano/Bisaya</b>. Hosted models handle all three well. Smaller local models are noticeably weaker in Filipino and Cebuano (see Section 6).</p>
+
+<h2>Later phases (for a separate decision)</h2>
+<ul>
+  <li><b>Staff assistant (inside IMMS, signed-in users only):</b> summarise an incoming document, draft a routing note, draft the weekly accomplishment narrative, or ask &ldquo;which LGUs have not yet submitted&nbsp;X?&rdquo;. A person always reviews and approves what it drafts.</li>
+  <li>Because this works with <b>internal, unpublished records</b>, it has stricter privacy requirements and is the main reason to consider local hardware (Section 7).</li>
+</ul>
+
+<!-- ============================== 4 HOW IT WORKS ============================== -->
+<h1>4. How it works</h1>
+
+<figure>
+<svg viewBox="0 0 680 370" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f2a5c"/></marker>
+  </defs>
+  <!-- visitor -->
+  <rect x="10" y="40" width="130" height="70" rx="8" fill="#eff6ff" stroke="#1e40af"/>
+  <text x="75" y="68" text-anchor="middle" font-weight="700" fill="#0f2a5c">Visitor</text>
+  <text x="75" y="86" text-anchor="middle" fill="#334155">types a question on</text>
+  <text x="75" y="100" text-anchor="middle" fill="#334155">the public website</text>
+  <!-- IMMS -->
+  <rect x="200" y="20" width="260" height="330" rx="10" fill="#f8fafc" stroke="#0f2a5c" stroke-width="1.5"/>
+  <text x="330" y="42" text-anchor="middle" font-weight="700" fill="#0f2a5c" font-size="13">LGMED-IMMS (our server)</text>
+  <rect x="220" y="58" width="220" height="56" rx="6" fill="#fff" stroke="#94a3b8"/>
+  <text x="330" y="80" text-anchor="middle" font-weight="700" fill="#0f172a">1. Search</text>
+  <text x="330" y="97" text-anchor="middle" fill="#334155">find the most relevant passages</text>
+  <rect x="220" y="140" width="220" height="56" rx="6" fill="#fff" stroke="#94a3b8"/>
+  <text x="330" y="162" text-anchor="middle" font-weight="700" fill="#0f172a">2. Prepare</text>
+  <text x="330" y="179" text-anchor="middle" fill="#334155">question + passages + rules</text>
+  <rect x="220" y="222" width="220" height="56" rx="6" fill="#fff" stroke="#94a3b8"/>
+  <text x="330" y="244" text-anchor="middle" font-weight="700" fill="#0f172a">4. Check and reply</text>
+  <text x="330" y="261" text-anchor="middle" fill="#334155">add source links, log, send</text>
+  <rect x="220" y="296" width="220" height="40" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="330" y="314" text-anchor="middle" font-weight="700" fill="#166534">Step 1 searches published records only</text>
+  <text x="330" y="328" text-anchor="middle" fill="#166534" font-size="10.5">programs · services · news · calendar · reports …</text>
+  <!-- LLM -->
+  <rect x="530" y="130" width="140" height="80" rx="8" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="600" y="158" text-anchor="middle" font-weight="700" fill="#9a3412">3. LLM</text>
+  <text x="600" y="176" text-anchor="middle" fill="#334155">writes the answer</text>
+  <text x="600" y="192" text-anchor="middle" fill="#334155">from the passages</text>
+  <text x="600" y="232" text-anchor="middle" fill="#64748b" font-size="10.5">hosted service</text>
+  <text x="600" y="246" text-anchor="middle" fill="#64748b" font-size="10.5">or local workstation</text>
+  <!-- arrows -->
+  <path d="M140,75 L218,85" stroke="#0f2a5c" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M330,114 L330,138" stroke="#0f2a5c" stroke-width="1.6" marker-end="url(#a)"/>
+  
+  <path d="M440,168 L528,168" stroke="#0f2a5c" stroke-width="1.6" marker-end="url(#a)"/>
+  <path d="M600,210 L600,250 M600,262 L600,262" stroke="none"/>
+  <path d="M530,195 C490,215 470,240 442,248" stroke="#0f2a5c" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M220,250 C170,250 120,180 85,112" stroke="#0f2a5c" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="14" y="215" fill="#0f2a5c" font-size="11">answer + links</text>
+</svg>
+<figcaption><b>Figure 1.</b> How one question is answered. Only published records go into step 1; internal modules are never searched.</figcaption>
+</figure>
+
+<h2>Step by step</h2>
+<ol>
+  <li><b>Indexing (automatic, in the background).</b> Whenever a record is published, changed or unpublished in IMMS, it is cut into short passages and stored in a search index. Unpublishing a record removes it from the index straight away.</li>
+  <li><b>Search.</b> When a question arrives, IMMS finds the handful of passages that best match its <i>meaning</i>, not just its words, so &ldquo;requirements&rdquo; also finds &ldquo;documents needed&rdquo;.</li>
+  <li><b>Prepare.</b> IMMS sends the LLM the question, those passages and fixed rules: answer only from the passages, never invent figures, names or dates, reply in the visitor's language, and keep it short.</li>
+  <li><b>Answer.</b> The LLM writes the reply. IMMS adds links to the source pages, records the exchange in a log (Section 8), and shows the answer to the visitor.</li>
+</ol>
+
+<h2>Where it fits in IMMS</h2>
+<table>
+  <thead><tr><th style="width:30%">Part</th><th>What is added</th></tr></thead>
+  <tbody>
+    <tr><td>New module <code>assistant</code></td><td>The indexing, search and answering logic, plus a settings page for administrators.</td></tr>
+    <tr><td>Public website</td><td>A chat button and window on every public page.</td></tr>
+    <tr><td>Public Website settings</td><td>Switch the assistant on or off, edit its welcome message and disclaimer, and choose which kinds of records it may use.</td></tr>
+    <tr><td>Audit / Analytics</td><td>A log of questions, plus a report on what people ask most and which questions it could not answer, so the Division knows what information to publish next.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== 5 DATA SCOPE ============================== -->
+<h1>5. What it may and may not answer from</h1>
+
+<p>This is the most important safeguard. The public assistant reads <b>exactly what an anonymous visitor can already see on the website</b>, and nothing more.</p>
+
+<table>
+  <thead><tr><th style="width:50%">&#10004; It uses</th><th>&#10008; It never uses</th></tr></thead>
+  <tbody>
+    <tr><td>Published announcements, news and advisories</td><td>Incoming and Outgoing correspondence</td></tr>
+    <tr><td>Public program, project and activity pages</td><td>Unpublished drafts of any record</td></tr>
+    <tr><td>Frontline services (requirements, steps, fees, timelines)</td><td>Documents not marked public</td></tr>
+    <tr><td>Published weekly accomplishments</td><td>e-SIRA documents and signatures</td></tr>
+    <tr><td>Public statistics, reports and documents</td><td>User accounts, roles, personal data</td></tr>
+    <tr><td>Public calendar entries</td><td>Monitoring records not marked public</td></tr>
+    <tr><td>About, mandate, contact details, office hours</td><td>Audit logs, notifications, system settings</td></tr>
+  </tbody>
+</table>
+
+<blockquote class="important"><p><b>IMPORTANT:</b> The assistant does not get its own permission to see more. It reads through the same &ldquo;is this published?&rdquo; checks the public pages use. If a record would not appear on the website, the assistant cannot see it.</p></blockquote>
+
+<!-- ============================== 6 OPTIONS ============================== -->
+<h1>6. Three ways to run it</h1>
+
+<p>The &ldquo;brain&rdquo; (the LLM in step 3) can run in one of three places. Everything else (search, rules, logs, the chat window) stays inside IMMS in every option.</p>
+
+<table>
+  <thead><tr><th style="width:19%"></th><th>A. Hosted AI service</th><th>B. Local AI workstation</th><th>C. Hybrid</th></tr></thead>
+  <tbody>
+    <tr><th>What it is</th><td>IMMS sends the question and passages to a provider (e.g. Anthropic Claude, OpenAI, Google Gemini) over the internet</td><td>An open model (e.g. Llama, Qwen, Gemma) runs on a computer in our office</td><td>Hosted for the public assistant; local for a future staff assistant</td></tr>
+    <tr><th>Answer quality</th><td>Best, including Filipino and Cebuano</td><td>Good in English; weaker in Filipino and Cebuano; depends on the hardware</td><td>Best for the public; good for staff</td></tr>
+    <tr><th>Speed</th><td>2&ndash;6 seconds</td><td>3&ndash;20 seconds, depending on hardware and how many people ask at once</td><td>&mdash;</td></tr>
+    <tr><th>Up-front cost</th><td>None</td><td>Workstation purchase (Section 7)</td><td>Workstation, only when the staff phase is approved</td></tr>
+    <tr><th>Running cost</th><td>Pay per use; can be capped</td><td>Electricity; no per-use fee</td><td>Both, but small</td></tr>
+    <tr><th>Internet needed</th><td>Yes</td><td>No</td><td>Public part: yes</td></tr>
+    <tr><th>Where data goes</th><td>Published passages and visitor questions go to the provider</td><td>Nothing leaves the office</td><td>Only public data leaves</td></tr>
+    <tr><th>Maintenance</th><td>Very little</td><td>We update the models and drivers and look after the machine</td><td>Some</td></tr>
+    <tr><th>Time to pilot</th><td>About 3&ndash;4 weeks</td><td>About 5&ndash;7 weeks (includes procurement)</td><td>Phase 1 as A</td></tr>
+    <tr><th>Recommendation</th><td class="rec"><b>Start here</b> for the public assistant</td><td>When internal records are involved</td><td class="rec"><b>Long-term setup</b></td></tr>
+  </tbody>
+</table>
+
+<blockquote class="tip"><p><b>Why hosted is acceptable for the public assistant:</b> the passages it sends are already on our public website for anyone to read. The real privacy item is the <b>visitor's question</b>, which may contain a name or a personal concern. Section 8 covers how we handle that.</p></blockquote>
+
+<!-- ============================== 7 HARDWARE ============================== -->
+<h1>7. Hardware</h1>
+
+<h2>If we use a hosted service (Option A)</h2>
+<p><b>No new hardware is needed.</b> The computer that already runs IMMS handles the search and the chat. The heavy work happens at the provider. The only requirement is a stable internet connection on the server.</p>
+
+<h2>If we run the model ourselves (Option B or C)</h2>
+<p>An LLM runs mainly on the <b>graphics card (GPU)</b>, and the most important number is the GPU's <b>memory (VRAM)</b>: it limits how large, and therefore how capable, a model the machine can run. An ordinary office PC without a dedicated graphics card can technically run a small model, but too slowly for a public website.</p>
+
+<div class="tier">
+  <h3>Tier 1 &mdash; Pilot / demonstration <span class="tag">TRY IT OUT</span></h3>
+  <table>
+    <tr><th>Form</th><td>A gaming or creator <b>laptop</b>, or a mid-range desktop</td></tr>
+    <tr><th>GPU</th><td>NVIDIA GeForce RTX 4060 / 5060 class, <b>8 GB VRAM</b> (laptop: RTX 4070 / 5070 Laptop, 8 GB)</td></tr>
+    <tr><th>Processor</th><td>Intel Core i7 / AMD Ryzen 7 (recent generation)</td></tr>
+    <tr><th>Memory (RAM)</th><td>32 GB</td></tr>
+    <tr><th>Storage</th><td>1 TB NVMe SSD</td></tr>
+    <tr><th>Runs</th><td>Small models (7&ndash;8 billion parameters), fine for testing in English, for 1&ndash;3 users at a time</td></tr>
+    <tr><th>Indicative price</th><td>&#8369;75,000 &ndash; &#8369;110,000</td></tr>
+  </table>
+  <p class="small">Good for proving the idea and demonstrating it to management. A laptop is <b>not</b> suitable as the always-on public server: it runs hot under constant load and wears out faster.</p>
+</div>
+
+<div class="tier">
+  <h3>Tier 2 &mdash; Office AI workstation <span class="tag rec">RECOMMENDED FOR LOCAL</span></h3>
+  <table>
+    <tr><th>Form</th><td><b>Desktop workstation</b> (tower), always on, in the server area</td></tr>
+    <tr><th>GPU</th><td>NVIDIA GeForce RTX 4090 (24 GB) or RTX 5090 (32 GB); acceptable lower option: RTX 4070 Ti Super / 5070 Ti (16 GB)</td></tr>
+    <tr><th>Processor</th><td>Intel Core i9 / Ultra 9, or AMD Ryzen 9</td></tr>
+    <tr><th>Memory (RAM)</th><td>64 GB</td></tr>
+    <tr><th>Storage</th><td>2 TB NVMe SSD (models are 5&ndash;40 GB each)</td></tr>
+    <tr><th>Power</th><td>1000 W 80+ Gold power supply, plus a <b>UPS</b> (1500 VA or higher)</td></tr>
+    <tr><th>Runs</th><td>Medium models (14&ndash;32 billion parameters) with good quality, for several users at once; handles the future staff assistant too</td></tr>
+    <tr><th>Indicative price</th><td>&#8369;180,000 &ndash; &#8369;320,000 (the GPU is about half of the cost)</td></tr>
+  </table>
+</div>
+
+<div class="tier">
+  <h3>Tier 2 alternative &mdash; Apple Mac Studio / Mac mini <span class="tag">QUIET, LOW POWER</span></h3>
+  <table>
+    <tr><th>Configuration</th><td>Apple M-series Max/Pro chip with <b>64 GB or more unified memory</b>, 1 TB SSD</td></tr>
+    <tr><th>Runs</th><td>Similar models to Tier 2, somewhat slower when many people ask at once, but silent and uses far less electricity</td></tr>
+    <tr><th>Indicative price</th><td>&#8369;150,000 &ndash; &#8369;260,000</td></tr>
+  </table>
+  <p class="small">A good choice if there is no cooled server room. Check with ICT that macOS is acceptable for office equipment.</p>
+</div>
+
+<div class="tier">
+  <h3>Tier 3 &mdash; Server-grade <span class="tag">ONLY IF SCALED REGION-WIDE</span></h3>
+  <table>
+    <tr><th>Configuration</th><td>Rack server with a professional GPU (e.g. NVIDIA RTX PRO / L-series, 48 GB or more), 128 GB RAM, redundant power</td></tr>
+    <tr><th>When</th><td>Only if the assistant is offered to all DILG Caraga divisions or provincial offices, with heavy daily use</td></tr>
+    <tr><th>Indicative price</th><td>&#8369;600,000 and up</td></tr>
+  </table>
+</div>
+
+<blockquote class="important"><p><b>About the prices:</b> these are indicative Philippine market ranges as of late 2026, for planning only. GPU prices change often. Final amounts must come from a canvass or PhilGEPS procurement following the usual rules, and ICT should confirm the specifications before purchase.</p></blockquote>
+
+<h2>Electricity (local options)</h2>
+<p>A Tier 2 desktop draws about 100&ndash;150 W when idle and up to 600&ndash;700 W while answering. Left on all day with light use, plan for roughly <b>150&ndash;250 kWh a month</b>. A Mac Studio uses a fraction of that.</p>
+
+<!-- ============================== 8 PRIVACY ============================== -->
+<h1>8. Data privacy and safeguards</h1>
+
+<h2>Data Privacy Act (RA 10173)</h2>
+<ul>
+  <li><b>Consult the Data Protection Officer (DPO)</b> before the pilot and before going public. A short privacy impact assessment is recommended.</li>
+  <li><b>Tell visitors.</b> The chat window shows a short notice: they are talking to an AI, the answer may be wrong, they should not type personal information, and questions are logged to improve the service. It links to the site's existing Privacy statement, which gets a new paragraph about the assistant.</li>
+  <li><b>Keep only what we need.</b> Logs keep the question, answer, sources used and time. IP addresses are kept only briefly, for abuse prevention. Logs are deleted after a set period (proposed: 90 days).</li>
+  <li><b>Hosted provider terms.</b> Use a business/API account whose terms say our data is <b>not used to train</b> the provider's models, with the shortest available retention.</li>
+</ul>
+
+<h2>Built-in safeguards</h2>
+<table>
+  <thead><tr><th style="width:32%">Safeguard</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td>Published records only</td><td>The assistant cannot see internal modules (Section 5).</td></tr>
+    <tr><td>Answers must cite sources</td><td>Every answer links to its pages. If nothing relevant is found, it says so and points to the Contact page instead of guessing.</td></tr>
+    <tr><td>Fixed rules</td><td>It never gives legal rulings, never comments on politics or individual officials, never makes promises on behalf of the Division, and refuses unrelated tasks.</td></tr>
+    <tr><td>Disclaimer</td><td>&ldquo;This is an AI assistant. Official information is on the linked pages and in issued documents.&rdquo;</td></tr>
+    <tr><td>Personal data filter</td><td>Obvious personal details (mobile numbers, email addresses) in questions are masked before they are logged or sent out.</td></tr>
+    <tr><td>Abuse protection</td><td>A limit on questions per visitor per hour, a maximum question length, and reCAPTCHA (IMMS already supports it for sign-in) if abuse appears.</td></tr>
+    <tr><td>Spending cap</td><td>(Hosted) A monthly budget limit at the provider. When it is reached, the assistant turns itself off and shows the Contact page.</td></tr>
+    <tr><td>Kill switch</td><td>An administrator can turn the assistant off instantly from Public Website settings.</td></tr>
+    <tr><td>Human review</td><td>A staff member reviews a sample of conversations each week and flags wrong answers. These usually show missing or unclear published information, which is fixed at the source.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== 9 COSTS ============================== -->
+<h1>9. Costs</h1>
+
+<h2>Option A &mdash; Hosted</h2>
+<ul>
+  <li><b>Hardware:</b> none.</li>
+  <li><b>Usage:</b> providers charge by the amount of text processed. Each question costs a small fraction of a peso to a few pesos, depending on the model chosen and how long the answers are. The monthly total depends on how many questions visitors ask.</li>
+  <li><b>How we control it:</b> during the pilot we record the real cost per question, then set a monthly cap at the provider. A smaller, cheaper model from the same provider is usually enough for this kind of question-and-answer.</li>
+  <li><b>Payment:</b> providers bill by credit card or invoice in US dollars. Finance should confirm how this can be procured (for example, as a subscription service).</li>
+</ul>
+
+<h2>Option B &mdash; Local</h2>
+<table>
+  <thead><tr><th>Item</th><th>Amount</th></tr></thead>
+  <tbody>
+    <tr><td>Tier 2 workstation and UPS</td><td>&#8369;180,000 &ndash; &#8369;320,000 (one time)</td></tr>
+    <tr><td>Electricity</td><td>About 150&ndash;250 kWh a month</td></tr>
+    <tr><td>Software (open models, Ollama or vLLM)</td><td>Free (open-source licences; check each model's licence terms)</td></tr>
+    <tr><td>Staff time</td><td>A few hours a month for updates and monitoring</td></tr>
+  </tbody>
+</table>
+
+<h2>Development</h2>
+<p>Built in-house as a new IMMS module, using the existing codebase, the public website and its publishing rules. No outside developer or licence is required.</p>
+
+<!-- ============================== 10 PLAN ============================== -->
+<h1>10. Implementation plan</h1>
+
+<table>
+  <thead><tr><th style="width:22%">Phase</th><th style="width:14%">Duration</th><th>Work</th><th style="width:22%">Done when</th></tr></thead>
+  <tbody>
+    <tr><td><b>0. Approval</b></td><td>1&ndash;2 weeks</td><td>The team discusses this proposal; the Division Chief decides; the DPO is consulted; the hosted account or hardware purchase is arranged.</td><td>Signed approval, DPO advice on file</td></tr>
+    <tr><td><b>1. Build</b></td><td>2&ndash;3 weeks</td><td>Assistant module, indexing of published records, chat window, settings, logs, safeguards.</td><td>Works on a test copy of the site</td></tr>
+    <tr><td><b>2. Staff pilot</b></td><td>4 weeks</td><td>Only signed-in LGMED staff can use it. Staff ask real questions, mark answers right or wrong, and fill gaps in published content.</td><td>90% or more of the test questions answered correctly or correctly referred</td></tr>
+    <tr><td><b>3. Public beta</b></td><td>4&ndash;8 weeks</td><td>Switched on for the public with a &ldquo;Beta&rdquo; label. Weekly review of the logs and costs.</td><td>Stable costs, no serious incidents</td></tr>
+    <tr><td><b>4. Regular service</b></td><td>Ongoing</td><td>The Beta label is removed. A monthly report goes to the Chief: most-asked questions, unanswered questions, cost.</td><td>&mdash;</td></tr>
+    <tr><td><b>5. Staff assistant</b> (optional)</td><td>Separate proposal</td><td>The internal assistant for drafting and summarising, on local hardware.</td><td>&mdash;</td></tr>
+  </tbody>
+</table>
+
+<h2>How we will measure success</h2>
+<ul>
+  <li><b>Accuracy:</b> share of reviewed answers that are correct, or correctly say &ldquo;I don't know&rdquo;. Target: 90% or more.</li>
+  <li><b>Usefulness:</b> the &ldquo;Was this helpful?&rdquo; thumbs up/down in the chat window.</li>
+  <li><b>Fewer routine enquiries</b> by phone, email and Facebook (compared with the months before).</li>
+  <li><b>Content gaps found:</b> topics people ask about that we had not published.</li>
+  <li><b>Cost per month</b> within the approved cap.</li>
+</ul>
+
+<!-- ============================== 11 RISKS ============================== -->
+<h1>11. Risks and how we handle them</h1>
+
+<table>
+  <thead><tr><th style="width:27%">Risk</th><th style="width:12%">Likelihood</th><th>How we handle it</th></tr></thead>
+  <tbody>
+    <tr><td>The assistant gives a wrong answer</td><td>Medium</td><td>It answers only from passages, must cite them, and says &ldquo;I don't know&rdquo; otherwise. The disclaimer, weekly review and staff pilot also help.</td></tr>
+    <tr><td>Someone tries to trick it into saying something improper</td><td>Medium</td><td>Fixed rules, refusal of off-topic requests, a length limit, logging and the kill switch. It has no access to anything that is not already public.</td></tr>
+    <tr><td>A visitor types personal information</td><td>Medium</td><td>A notice not to, masking of obvious personal details, short log retention, and provider terms that rule out training on our data.</td></tr>
+    <tr><td>Costs grow unexpectedly</td><td>Low</td><td>A monthly cap at the provider, a per-visitor limit, and automatic shut-off at the cap.</td></tr>
+    <tr><td>Provider outage or internet loss</td><td>Low</td><td>The chat window says the assistant is unavailable and points to the Contact page. The rest of the website keeps working.</td></tr>
+    <tr><td>Published information is outdated, so the answers are too</td><td>Medium</td><td>The assistant is only as good as what we publish. The log of unanswered questions shows what needs updating.</td></tr>
+    <tr><td>The public mistakes an AI answer for an official statement</td><td>Low</td><td>A visible AI label, the disclaimer, and links to official pages in every answer.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== 12 DECISIONS ============================== -->
+<h1>12. Decisions needed from the team</h1>
+
+<ol>
+  <li><b>Go ahead with Phase 1 (public assistant, published information only)?</b> &nbsp;&#9744; Yes &nbsp;&#9744; No &nbsp;&#9744; Revise</li>
+  <li><b>Where should the AI run?</b> &nbsp;&#9744; A. Hosted (recommended) &nbsp;&#9744; B. Local workstation &nbsp;&#9744; C. Hybrid</li>
+  <li><b>Hardware (if B or C):</b> &nbsp;&#9744; Tier 1 pilot laptop &nbsp;&#9744; Tier 2 workstation &nbsp;&#9744; Mac alternative</li>
+  <li><b>Monthly spending cap</b> (if hosted): &#8369; ____________</li>
+  <li><b>Who reviews conversations weekly?</b> ____________________________</li>
+  <li><b>Who is the focal person for the DPO consultation?</b> ____________________________</li>
+  <li><b>Explore the staff assistant later (Phase 5)?</b> &nbsp;&#9744; Yes &nbsp;&#9744; Not now</li>
+</ol>
+
+<h2>Approval</h2>
+<table class="sign">
+  <thead><tr><th style="width:30%">Role</th><th style="width:35%">Name</th><th style="width:20%">Signature</th><th>Date</th></tr></thead>
+  <tbody>
+    <tr><td>Prepared by</td><td></td><td></td><td></td></tr>
+    <tr><td>Reviewed by (ICT)</td><td></td><td></td><td></td></tr>
+    <tr><td>Reviewed by (Data Protection Officer)</td><td></td><td></td><td></td></tr>
+    <tr><td>Approved by (Division Chief, LGMED)</td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== 13 GLOSSARY ============================== -->
+<h1>13. Glossary</h1>
+<table>
+  <tbody>
+    <tr><th style="width:28%">AI assistant / chatbot</th><td>A chat window where people type questions and get written answers.</td></tr>
+    <tr><th>LLM (large language model)</th><td>The AI technology that understands and writes language, e.g. Claude, GPT, Gemini, Llama.</td></tr>
+    <tr><th>Hallucination</th><td>When an LLM states something false with confidence. Answering only from our passages is how we prevent it.</td></tr>
+    <tr><th>RAG (retrieval-augmented generation)</th><td>Searching our own records first, then having the LLM answer only from what was found.</td></tr>
+    <tr><th>Index</th><td>A searchable copy of the published records, cut into short passages, kept up to date automatically.</td></tr>
+    <tr><th>Hosted service / API</th><td>An LLM run by a provider on their servers, used over the internet and paid per use.</td></tr>
+    <tr><th>Local / open model</th><td>An LLM whose files can be downloaded and run on our own computer, e.g. Llama, Qwen, Gemma.</td></tr>
+    <tr><th>Parameters (e.g. &ldquo;8B&rdquo;, &ldquo;32B&rdquo;)</th><td>A rough measure of a model's size. Larger models are usually more capable but need more GPU memory.</td></tr>
+    <tr><th>GPU / VRAM</th><td>The graphics card and its memory. The main hardware an LLM runs on; VRAM limits the model size.</td></tr>
+    <tr><th>Ollama / vLLM</th><td>Free programs for running open models on our own hardware.</td></tr>
+    <tr><th>DPO</th><td>Data Protection Officer, who advises on compliance with the Data Privacy Act (RA 10173).</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

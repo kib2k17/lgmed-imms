@@ -43,6 +43,7 @@ urlpatterns = [
     path("app/reports/", include("reports.urls")),
     path("app/calendar/", include("activities.urls")),
     path("app/updates/", include("updates.urls")),
+    path("app/monthly-submissions/", include("submissions.urls")),
 
     # Phase 3 administration
     path("app/settings/", include("administration.urls")),

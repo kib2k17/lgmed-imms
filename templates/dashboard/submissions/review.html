@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load static ui %}
+
+{% block page_actions %}
+  <a href="{% url 'submissions:home' %}?year={{ schedule.reporting_year }}&amp;month={{ schedule.reporting_month }}" class="btn btn-secondary">
+    {% icon "chevron-left" "size-4" %}Back to Monitoring
+  </a>
+  {% if not standing.is_complete and person.is_active %}
+    <button type="button" class="btn btn-primary" data-dialog-open="remind-one">
+      {% icon "mail" "size-4" %}Send Reminder
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 lg:grid-cols-3">
+    <section class="card lg:col-span-1" aria-labelledby="person-heading">
+      <div class="card-body">
+        <div class="flex items-center gap-3">
+          {% include "accounts/includes/avatar.html" with person=person size="size-12 text-sm" %}
+          <div class="min-w-0">
+            <h2 id="person-heading" class="text-card-title font-semibold text-slate-900">{{ person.get_display_name }}</h2>
+            <p class="text-meta text-slate-500">{{ person.position|default:person.get_role_display }}</p>
+          </div>
+        </div>
+        <dl class="mt-4 space-y-2.5 text-sm">
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Reporting month</dt><dd class="font-medium text-slate-900">{{ schedule.period_label }}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Deadline</dt><dd class="text-right font-medium text-slate-900">{{ schedule.deadline|date:"M j, Y g:i A" }}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Status</dt><dd>{% status_badge standing.status standing.label %}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Completed</dt><dd class="font-medium text-slate-900">{% if submission.completed_at %}{{ submission.completed_at|date:"M j, Y g:i A" }}{% else %}&mdash;{% endif %}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Email</dt><dd class="truncate font-medium text-slate-900">{{ person.email|default:"None on file" }}</dd></div>
+        </dl>
+        {% if standing.missing %}
+          <p class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-meta text-amber-900">
+            Missing: {{ standing.missing_titles|join:"; " }}
+          </p>
+        {% endif %}
+      </div>
+    </section>
+
+    <div class="lg:col-span-2">
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% for card in cards %}
+          <section class="card" aria-labelledby="doc-{{ card.kind }}-title">
+            <div class="card-header">
+              <div class="min-w-0">
+                <h2 id="doc-{{ card.kind }}-title" class="card-title">{{ card.label }}</h2>
+                <p class="truncate text-meta text-slate-500">{{ card.title }}</p>
+              </div>
+              {% if card.has %}{% status_badge "completed" "Submitted" %}{% else %}{% status_badge "pending" "Pending" %}{% endif %}
+            </div>
+            <div class="card-body">
+              {% if card.has %}
+                <p class="truncate text-sm font-medium text-slate-900" title="{{ card.name }}">{{ card.name }}</p>
+                <p class="text-meta text-slate-500">{{ card.size|filesize }} &middot; {{ card.uploaded_at|date:"M j, Y g:i A" }}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  {% if card.is_pdf %}
+                    {% include "components/pdf_view_button.html" with url=card.view_url title=card.name download_url=card.download_url btn_class="btn-secondary btn-sm" sr_label=card.label %}
+                  {% endif %}
+                  <a href="{{ card.download_url }}" class="btn btn-secondary btn-sm">{% icon "download" "size-3.5" %}Download {{ card.label }}</a>
+                </div>
+              {% else %}
+                <p class="text-sm text-slate-500">Not yet submitted.</p>
+              {% endif %}
+            </div>
+          </section>
+        {% endfor %}
+      </div>
+
+      <section class="card mt-4" aria-labelledby="trail-heading">
+        <div class="card-header"><h2 id="trail-heading" class="card-title">Activity</h2></div>
+        {% if trail %}
+          <ul class="divide-y divide-slate-100">
+            {% for entry in trail %}
+              <li class="flex items-start justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
+                <div class="min-w-0">
+                  <p class="text-slate-800"><span class="font-medium">{{ entry.get_action_display }}</span> &middot; {{ entry.user_label }}</p>
+                  <p class="text-meta text-slate-500">{{ entry.details }}</p>
+                </div>
+                <time class="shrink-0 text-meta text-slate-500" datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:"M j, g:i A" }}</time>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-5 py-6 text-center text-sm text-slate-400">No activity recorded yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="card mt-4" aria-labelledby="emails-heading">
+        <div class="card-header"><h2 id="emails-heading" class="card-title">Emails to this staff member</h2></div>
+        {% if emails %}
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th scope="col">Email</th><th scope="col">Delivery</th><th scope="col" class="hidden sm:table-cell">When</th></tr></thead>
+              <tbody>
+                {% for email in emails %}
+                  <tr>
+                    <td>{{ email.get_notification_type_display }}</td>
+                    <td>
+                      {% if email.email_status == "SENT" %}{% status_badge "completed" "Sent" %}
+                      {% elif email.email_status == "FAILED" %}{% status_badge "failed" "Failed - retrying" %}
+                      {% elif email.email_status == "SKIPPED" %}{% status_badge "inactive" "Not sent" %}
+                      {% else %}{% status_badge "pending" "Queued" %}{% endif %}
+                      {% if email.last_error %}<span class="mt-0.5 block text-meta text-slate-500">{{ email.last_error|truncatechars:80 }}</span>{% endif %}
+                    </td>
+                    <td class="hidden whitespace-nowrap sm:table-cell">{{ email.sent_at|default:email.created_at|date:"M j, g:i A" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="px-5 py-6 text-center text-sm text-slate-400">No emails sent for this month yet.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  {% if not standing.is_complete and person.is_active %}
+    <form method="post" action="{% url 'submissions:remind' %}" id="remind-one-form" data-once>
+      {% csrf_token %}
+      <input type="hidden" name="selected" value="{{ row_key }}">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    </form>
+    <dialog id="remind-one" aria-labelledby="remind-one-title"
+            class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+      <div class="p-5">
+        <h2 id="remind-one-title" class="text-card-title font-semibold text-slate-900">Send a reminder to {{ person.get_display_name }}?</h2>
+        <p class="mt-1.5 text-sm text-slate-600">An email and an in-system notification naming the missing {{ standing.missing_labels|join:" and " }} for {{ schedule.period_label }}.</p>
+        <label for="remind-one-message" class="form-label mt-4">Message to include <span class="font-normal text-slate-500">(optional)</span></label>
+        <textarea id="remind-one-message" name="message" form="remind-one-form" maxlength="500" rows="3" class="form-textarea"></textarea>
+      </div>
+      <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+        <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+        <button type="submit" form="remind-one-form" class="btn btn-primary">{% icon "mail" "size-4" %}Send Reminder</button>
+      </div>
+    </dialog>
+  {% endif %}
+{% endblock %}

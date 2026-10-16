@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% load static ui humanize %}
+
+{% block page_actions %}
+  <button type="button" class="btn btn-primary" data-dialog-open="schedule-dialog">
+    {% icon "calendar-check" "size-4" %}Set Submission Deadline
+  </button>
+  <button type="button" class="btn btn-secondary" data-dialog-open="remind-dialog" data-remind-open>
+    {% icon "mail" "size-4" %}Send Reminders
+  </button>
+  <a href="{% url 'submissions:export' %}?{% query_string page=None %}" class="btn btn-secondary">
+    {% icon "download" "size-4" %}<span class="hidden sm:inline">Compliance Report</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% include "dashboard/submissions/_tabs.html" with tab="monitor" %}
+
+  {# ---- The reporting month in view --------------------------------- #}
+  {% if focus %}
+    <section class="card mb-4 overflow-hidden" aria-labelledby="period-heading">
+      <div class="flex flex-wrap items-center justify-between gap-4 p-4 sm:px-5">
+        <div class="flex min-w-0 items-center gap-3.5">
+          <span aria-hidden="true" class="grid size-11 shrink-0 place-items-center rounded-lg {% if focus_open %}bg-brand-50 text-brand-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+            {% icon "calendar-check" "size-5" %}
+          </span>
+          <div class="min-w-0">
+            <h2 id="period-heading" class="text-lg font-bold text-slate-900">{{ focus.period_label }}</h2>
+            <p class="text-sm text-slate-600">
+              Deadline: <span class="font-semibold text-slate-900">{{ focus.deadline|date:"F j, Y" }}, {{ focus.deadline|date:"g:i A" }} PST</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          {% if focus_open %}
+            <span class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold {% if focus_days <= 1 %}bg-red-50 text-red-800{% elif focus_days <= 3 %}bg-amber-50 text-amber-800{% else %}bg-green-50 text-green-800{% endif %}">
+              {% icon "clock" "size-4" %}
+              {% if focus_days == 0 %}Due today{% else %}{{ focus_days }} day{{ focus_days|pluralize }} remaining{% endif %}
+            </span>
+            <span class="text-meta text-slate-500 tabular" data-countdown="{{ focus.deadline|date:'c' }}"></span>
+          {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
+              {% icon "lock" "size-4" %}Submission period closed
+            </span>
+          {% endif %}
+          <a href="{% url 'submissions:schedule_update' focus.pk %}" class="btn btn-secondary btn-sm">
+            {% icon "edit" "size-3.5" %}{% if focus_open %}Change or Extend{% else %}Extend Deadline{% endif %}
+          </a>
+        </div>
+      </div>
+      {% if focus.announcement %}
+        <div class="border-t border-slate-100 bg-slate-50/70 px-4 py-2.5 text-sm text-slate-700 sm:px-5">
+          <span class="font-semibold">Announcement:</span> {{ focus.announcement|truncatechars:240 }}
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if not schedules and not year and not month %}
+    <section class="card">
+      {% include "components/empty_state.html" with icon="calendar-check" title="No submission deadline has been set" message="Set the first reporting month's deadline. Staff are notified by email and in the system, and reminders follow automatically." %}
+      <div class="-mt-8 pb-10 text-center">
+        <button type="button" class="btn btn-primary" data-dialog-open="schedule-dialog">
+          {% icon "calendar-check" "size-4" %}Set Submission Deadline
+        </button>
+      </div>
+    </section>
+  {% else %}
+
+  {# ---- Figures ------------------------------------------------------- #}
+  <section aria-labelledby="figures-heading">
+    <h2 id="figures-heading" class="sr-only">Submission figures</h2>
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      {% for card in stat_cards %}
+        {% include "components/stat_card.html" with card=card %}
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---- Progress chart --------------------------------------------- #}
+  <section class="card mt-4" aria-labelledby="progress-heading">
+    <div class="card-header">
+      <h2 id="progress-heading" class="card-title">Submission Progress</h2>
+      <span class="text-sm font-semibold text-slate-900 tabular">{{ summary.percent }}% completed</span>
+    </div>
+    <div class="card-body">
+      <div class="flex h-4 w-full overflow-hidden rounded-full bg-slate-100" role="img"
+           aria-label="{{ summary.completed }} completed, {{ summary.partial }} incomplete, {{ summary.not_submitted }} not submitted, {{ summary.overdue }} overdue, of {{ summary.total }}">
+        {% for segment in chart %}
+          {% if segment.count %}
+            <div class="h-full {% if segment.tone == 'success' %}bg-green-600{% elif segment.tone == 'warning' %}bg-amber-500{% elif segment.tone == 'danger' %}bg-red-600{% else %}bg-slate-400{% endif %}"
+                 style="width: {{ segment.percent|stringformat:'s' }}%" title="{{ segment.label }}: {{ segment.count }}"></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <ul class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+        {% for segment in chart %}
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true" class="size-2.5 rounded-full {% if segment.tone == 'success' %}bg-green-600{% elif segment.tone == 'warning' %}bg-amber-500{% elif segment.tone == 'danger' %}bg-red-600{% else %}bg-slate-400{% endif %}"></span>
+            <span class="text-slate-600">{{ segment.label }}</span>
+            <span class="font-semibold text-slate-900 tabular">{{ segment.count }}</span>
+            <span class="text-meta text-slate-500 tabular">({{ segment.percent|floatformat:0 }}%)</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  {# ---- Staff monitoring table -------------------------------------- #}
+  <section class="card mt-4" aria-labelledby="table-heading">
+    <div class="card-header">
+      <h2 id="table-heading" class="card-title">Staff Submission Monitoring</h2>
+      <span class="text-meta text-slate-500">Tick staff with missing documents, then Send Reminders</span>
+    </div>
+
+    <form method="get" class="border-b border-slate-200">
+      {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+      <div class="flex flex-wrap items-end gap-3 p-4 sm:px-5">
+        <div class="min-w-0 flex-1 basis-56">
+          <label for="filter-q" class="form-label">Staff name</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 grid w-9 place-items-center text-slate-400">{% icon "search" "size-4" %}</span>
+            <input type="search" id="filter-q" name="q" value="{{ query }}" placeholder="Search staff name..." class="form-input pl-9">
+          </div>
+        </div>
+        <div class="w-[calc(50%-0.375rem)] sm:w-40">
+          <label for="filter-month" class="form-label">Month</label>
+          <select id="filter-month" name="month" class="form-select">
+            <option value="">All months</option>
+            {% for value, label in months %}<option value="{{ value }}" {% if month == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="w-[calc(50%-0.375rem)] sm:w-32">
+          <label for="filter-year" class="form-label">Year</label>
+          <select id="filter-year" name="year" class="form-select">
+            <option value="">All years</option>
+            {% for value in years %}<option value="{{ value }}" {% if year == value %}selected{% endif %}>{{ value }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="w-full sm:w-44">
+          <label for="filter-status" class="form-label">Status</label>
+          <select id="filter-status" name="status" class="form-select">
+            <option value="">All statuses</option>
+            {% for value, label in status_options %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="btn btn-primary">{% icon "filter" "size-4" %}Apply</button>
+          <a href="{{ request.path }}" class="btn btn-secondary">Clear</a>
+        </div>
+      </div>
+    </form>
+
+    {% if page_rows %}
+      <form method="post" action="{% url 'submissions:remind' %}" id="remind-form" data-remind-form data-once>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Staff MMIA and DTR submissions &mdash; {{ page_obj.paginator.count }} row{{ page_obj.paginator.count|pluralize }}</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="w-10">
+                  <input type="checkbox" class="size-4 rounded border-slate-300 text-brand-600" data-select-all
+                         aria-label="Select every incomplete submission on this page" {% if not pending_on_page %}disabled{% endif %}>
+                </th>
+                <th scope="col">Staff Name</th>
+                <th scope="col" class="hidden md:table-cell">Reporting Month</th>
+                <th scope="col">MMIA</th>
+                <th scope="col">DTR</th>
+                <th scope="col">Submission Status</th>
+                {% include "components/th_sort.html" with field="submitted" label="Date Submitted" th_class="hidden lg:table-cell" %}
+                <th scope="col" class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in page_rows %}
+                <tr>
+                  <td>
+                    {% if not row.standing.is_complete %}
+                      <input type="checkbox" name="selected" value="{{ row.key }}" class="size-4 rounded border-slate-300 text-brand-600" data-select-row
+                             aria-label="Select {{ row.staff.get_display_name }}, {{ row.schedule.period_label }}">
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="flex items-center gap-2.5">
+                      {% include "accounts/includes/avatar.html" with person=row.staff size="size-8 text-xs" %}
+                      <span class="min-w-0">
+                        <span class="block font-medium text-slate-900">{{ row.staff.get_display_name }}</span>
+                        <span class="block text-meta text-slate-500">{{ row.staff.position|default:row.staff.get_role_display }}<span class="md:hidden"> &middot; {{ row.schedule.period_label }}</span></span>
+                      </span>
+                    </span>
+                  </td>
+                  <td class="hidden whitespace-nowrap md:table-cell">{{ row.schedule.period_label }}</td>
+                  <td>{% if row.has_mmia %}{% status_badge "completed" "Submitted" %}{% else %}{% status_badge "pending" "Pending" %}{% endif %}</td>
+                  <td>{% if row.has_dtr %}{% status_badge "completed" "Submitted" %}{% else %}{% status_badge "pending" "Pending" %}{% endif %}</td>
+                  <td>{% status_badge row.standing.status row.standing.short_label %}</td>
+                  <td class="hidden whitespace-nowrap lg:table-cell">{% if row.submitted_on %}{{ row.submitted_on|date:"M j, Y" }}<span class="block text-meta text-slate-500">{{ row.submitted_on|date:"g:i A" }}</span>{% else %}&mdash;{% endif %}</td>
+                  <td class="text-right">
+                    <div class="flex flex-wrap justify-end gap-1.5">
+                      <a href="{% url 'submissions:review' row.schedule.pk row.staff.pk %}" class="btn btn-secondary btn-sm">
+                        {% icon "view" "size-3.5" %}View<span class="sr-only"> {{ row.staff.get_display_name }}</span>
+                      </a>
+                      {% if row.has_mmia %}
+                        <a href="{% url 'submissions:file' row.submission.pk 'mmia' %}" class="btn btn-ghost btn-sm" title="Download MMIA">
+                          {% icon "download" "size-3.5" %}MMIA<span class="sr-only"> of {{ row.staff.get_display_name }}</span>
+                        </a>
+                      {% endif %}
+                      {% if row.has_dtr %}
+                        <a href="{% url 'submissions:file' row.submission.pk 'dtr' %}" class="btn btn-ghost btn-sm" title="Download DTR">
+                          {% icon "download" "size-3.5" %}DTR<span class="sr-only"> of {{ row.staff.get_display_name }}</span>
+                        </a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </form>
+      {% include "includes/pagination.html" with page_obj=page_obj label="staff rows" %}
+    {% else %}
+      {% include "components/empty_state.html" with icon="search" title="No matching staff" message="No staff submission matches the current search and filters." %}
+    {% endif %}
+  </section>
+
+  {# ---- Recent activity ------------------------------------------------ #}
+  <section class="card mt-4" aria-labelledby="activity-heading">
+    <div class="card-header">
+      <h2 id="activity-heading" class="card-title">Recent Submission Activity</h2>
+    </div>
+    {% if activity %}
+      <ul class="divide-y divide-slate-100">
+        {% for entry in activity %}
+          <li class="flex items-start gap-3 px-4 py-2.5 sm:px-5">
+            <span aria-hidden="true" class="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full
+              {% if entry.action == 'COMPLETED' %}bg-green-50 text-green-700{% elif entry.action == 'REMINDER_SENT' %}bg-amber-50 text-amber-700{% elif 'DEADLINE' in entry.action or entry.action == 'SCHEDULE_CREATED' %}bg-brand-50 text-brand-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+              {% if entry.action == 'COMPLETED' %}{% icon "check" "size-3.5" %}{% elif entry.action == 'REMINDER_SENT' %}{% icon "mail" "size-3.5" %}{% elif 'DEADLINE' in entry.action or entry.action == 'SCHEDULE_CREATED' %}{% icon "calendar" "size-3.5" %}{% else %}{% icon "upload" "size-3.5" %}{% endif %}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-slate-800"><span class="font-medium">{{ entry.get_action_display }}</span> &middot; {{ entry.user_label }}</p>
+              <p class="truncate text-meta text-slate-500">{{ entry.details }}</p>
+            </div>
+            <time class="shrink-0 text-meta text-slate-500" datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|naturaltime }}</time>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="px-5 py-6 text-center text-sm text-slate-400">No submission activity yet for this period.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% include "dashboard/submissions/_schedule_dialog.html" %}
+
+  {# ---- Send Reminder confirmation ------------------------------------ #}
+  <dialog id="remind-dialog" aria-labelledby="remind-dialog-title"
+          class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-overlay backdrop:bg-slate-900/50">
+    <div class="p-5">
+      <div class="flex items-start gap-3.5">
+        <span aria-hidden="true" class="grid size-10 shrink-0 place-items-center rounded-md bg-amber-50 text-amber-700">{% icon "mail" "size-5" %}</span>
+        <div class="min-w-0 flex-1">
+          <h2 id="remind-dialog-title" class="text-card-title font-semibold text-slate-900">Send Reminder?</h2>
+          <p class="mt-1.5 text-sm text-slate-600" data-remind-summary>
+            Select staff with incomplete or missing submissions in the table first.
+          </p>
+          <label for="remind-message" class="form-label mt-4">Message to include <span class="font-normal text-slate-500">(optional)</span></label>
+          <textarea id="remind-message" name="message" form="remind-form" maxlength="500" rows="3" class="form-textarea"
+                    placeholder="e.g. Please upload your DTR today so the Division report can be finalised."></textarea>
+          <p class="form-help">Each person receives an email at their registered address and an in-system notification naming the missing document.</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 rounded-b-lg border-t border-slate-200 bg-slate-50 px-5 py-3.5">
+      <button type="button" class="btn btn-secondary" data-dialog-close>Cancel</button>
+      <button type="submit" form="remind-form" class="btn btn-primary" data-remind-confirm disabled>
+        {% icon "mail" "size-4" %}Send Reminder
+      </button>
+    </div>
+  </dialog>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/monthly-submissions.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

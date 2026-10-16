@@ -1,0 +1,34 @@
+{% load ui %}
+{% comment %}
+ The Division Chief's two faces of Monthly Submissions: monitoring everyone's
+ compliance, and setting the deadlines it is measured against.
+ Pass `tab` as "monitor" or "deadlines".
+{% endcomment %}
+<nav aria-label="Monthly Submissions sections" class="mb-4 no-print">
+  <ul class="flex flex-wrap gap-1 border-b border-slate-200">
+    <li>
+      <a href="{% url 'submissions:home' %}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                {% if tab == 'monitor' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if tab == "monitor" %}aria-current="page"{% endif %}>
+        {% icon "monitoring" "size-4" %}Monitoring
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'submissions:schedules' %}"
+         class="inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium
+                {% if tab == 'deadlines' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900{% endif %}"
+         {% if tab == "deadlines" %}aria-current="page"{% endif %}>
+        {% icon "calendar" "size-4" %}Deadline Management
+      </a>
+    </li>
+    {% if user.must_submit_monthly %}
+      <li>
+        <a href="{% url 'submissions:mine' %}"
+           class="inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900">
+          {% icon "user" "size-4" %}My Submissions
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>

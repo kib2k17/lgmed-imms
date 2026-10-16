@@ -30,6 +30,8 @@ desktop.ini
 
 # Internal document storage - never served by a web server.
 protected/
+# Output of the scheduled reminder job (deploy/windows/).
+logs/
 
 # Secrets and key material, wherever they end up. .env.example is the
 # placeholder template and IS committed.

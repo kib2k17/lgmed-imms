@@ -1,0 +1,26 @@
+{% autoescape off %}{{ greeting }}
+{% for paragraph in paragraphs %}
+{{ paragraph }}
+{% endfor %}{% for label, value in facts %}
+{{ label }}: {{ value }}{% endfor %}
+{% if statuses %}
+{% for label, value in statuses %}{{ label }}: {{ value }}
+{% endfor %}{% endif %}{% for paragraph in after_facts %}
+{{ paragraph }}
+{% endfor %}{% if required_documents %}
+Required Documents:
+
+1. Monthly Monitoring Individual Accomplishments (MMIA)
+2. Daily Time Record (DTR)
+{% endif %}{% if announcement %}
+Announcement from the Division Chief:
+{{ announcement }}
+{% endif %}{% for line in closing %}
+{{ line }}
+{% endfor %}{% if link %}
+{{ button_label }}: {{ link }}
+{% endif %}
+{% for line in sign_off %}{{ line }}
+{% endfor %}
+This is an automated system-generated notification.
+{% endautoescape %}

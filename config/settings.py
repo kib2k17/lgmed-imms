@@ -187,6 +187,8 @@ INSTALLED_APPS = [
     "administration",
     "audit",
     "notifications",
+    # Monthly MMIA and DTR submissions (staff upload, Chief monitors)
+    "submissions",
     # LGMED Innovation Action
     "esira",
 ]
@@ -420,6 +422,52 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL") or (
 # and role - never its temporary password, which goes to the account holder
 # alone. Empty sends no notice.
 ACCOUNT_NOTIFY_EMAILS = env_list("ACCOUNT_NOTIFY_EMAILS")
+
+# The address the system is reached at, e.g. https://lgmed.caraga.dilg.gov.ph.
+# Used for the links in emails sent outside a request - the scheduled
+# reminders have no request to read the host from. Without it, development
+# links point at http://localhost:8000 and production links are left relative.
+LGMED_SITE_URL = env("LGMED_SITE_URL").rstrip("/")
+
+
+# ---------------------------------------------------------------------------
+# Monthly Submissions (MMIA and DTR)
+# ---------------------------------------------------------------------------
+#
+# The deadline itself is never configured here: the Division Chief sets it
+# for each reporting month from the module. What lives here is how the system
+# behaves around that deadline. See submissions/ and docs/monthly-submissions.md.
+
+# Largest MMIA or DTR file accepted, in megabytes.
+MONTHLY_SUBMISSION_MAX_UPLOAD_MB = env_int("MONTHLY_SUBMISSION_MAX_UPLOAD_MB", 10)
+# Days before the deadline on which pending staff are reminded. 0 is the
+# deadline day itself.
+MONTHLY_SUBMISSION_REMINDER_DAYS = sorted(
+    {int(day) for day in env_list("MONTHLY_SUBMISSION_REMINDER_DAYS", "7,3,1,0")
+     if day.strip().isdigit()},
+    reverse=True,
+)
+# Reminders are not sent before this hour (Asia/Manila), so a scheduler that
+# runs every hour does not email the office at midnight.
+MONTHLY_SUBMISSION_REMINDER_HOUR = env_int("MONTHLY_SUBMISSION_REMINDER_HOUR", 8)
+# The roles required to submit. Administrators and the Division Chief monitor;
+# they do not submit.
+MONTHLY_SUBMISSION_SUBMITTER_ROLES = env_list(
+    "MONTHLY_SUBMISSION_SUBMITTER_ROLES", "LGMED_STAFF,ENCODER"
+)
+# How many times an email that failed is tried again, and how long to wait
+# between tries (minutes).
+MONTHLY_SUBMISSION_EMAIL_MAX_ATTEMPTS = env_int("MONTHLY_SUBMISSION_EMAIL_MAX_ATTEMPTS", 5)
+MONTHLY_SUBMISSION_EMAIL_RETRY_MINUTES = env_int("MONTHLY_SUBMISSION_EMAIL_RETRY_MINUTES", 10)
+# Overdue notices go out only for deadlines that passed within this many days,
+# so a scheduler switched on for the first time does not email about last year.
+MONTHLY_SUBMISSION_OVERDUE_WINDOW_DAYS = env_int("MONTHLY_SUBMISSION_OVERDUE_WINDOW_DAYS", 14)
+# Send an announcement or confirmation as soon as it is raised (in a
+# background thread) rather than waiting for the next scheduled run. The
+# scheduled command still retries anything that failed.
+MONTHLY_SUBMISSION_SEND_IMMEDIATELY = env_bool(
+    "MONTHLY_SUBMISSION_SEND_IMMEDIATELY", not RUNNING_TESTS
+)
 
 
 # ---------------------------------------------------------------------------

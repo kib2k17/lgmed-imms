@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block content %}
+  <div class="grid gap-4 lg:grid-cols-3">
+    <section class="card lg:col-span-2" aria-labelledby="form-heading">
+      <div class="card-header">
+        <h2 id="form-heading" class="card-title">Deadline for {{ schedule.period_label }}</h2>
+        {% if is_open %}{% status_badge "active" "Open" %}{% else %}{% status_badge "closed" "Closed" %}{% endif %}
+      </div>
+      <form method="post" data-once data-loading-title="Saving the deadline" data-loading-note="Staff who have not completed are notified of the change.">
+        {% csrf_token %}
+        <div class="card-body grid gap-4 sm:grid-cols-2">
+          {% if form.non_field_errors %}
+            <div role="alert" class="sm:col-span-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+          {% endif %}
+          {% include "components/form_field.html" with field=form.reporting_month %}
+          {% include "components/form_field.html" with field=form.reporting_year %}
+          {% include "components/form_field.html" with field=form.deadline_date %}
+          {% include "components/form_field.html" with field=form.deadline_time %}
+          {% include "components/form_field.html" with field=form.announcement wrapper_class="sm:col-span-2" %}
+          {% if not is_open %}
+            <p class="sm:col-span-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              This deadline has passed. Setting a later date extends it: staff who have not completed can upload again until the new deadline, and are notified.
+            </p>
+          {% endif %}
+        </div>
+        <div class="card-footer">
+          <a href="{% url 'submissions:schedules' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">{% icon "check" "size-4" %}Save Deadline</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="space-y-4">
+      <section class="card" aria-labelledby="compliance-heading">
+        <div class="card-header"><h2 id="compliance-heading" class="card-title">Compliance so far</h2></div>
+        <dl class="card-body space-y-2 text-sm">
+          <div class="flex justify-between"><dt class="text-slate-500">Total staff</dt><dd class="font-semibold tabular">{{ summary.total }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Completed</dt><dd class="font-semibold text-green-700 tabular">{{ summary.completed }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Incomplete</dt><dd class="font-semibold text-amber-700 tabular">{{ summary.partial }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Not submitted</dt><dd class="font-semibold tabular">{{ summary.not_submitted }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Overdue</dt><dd class="font-semibold text-red-700 tabular">{{ summary.overdue }}</dd></div>
+        </dl>
+      </section>
+      <section class="card" aria-labelledby="history-heading">
+        <div class="card-header"><h2 id="history-heading" class="card-title">Deadline history</h2></div>
+        {% if trail %}
+          <ul class="divide-y divide-slate-100">
+            {% for entry in trail %}
+              <li class="px-4 py-2.5 text-sm sm:px-5">
+                <p class="font-medium text-slate-800">{{ entry.get_action_display }} <span class="font-normal text-slate-500">&middot; {{ entry.user_label }}</span></p>
+                <p class="text-meta text-slate-500">{{ entry.details }}</p>
+                <p class="text-meta text-slate-400">{{ entry.created_at|date:"M j, Y g:i A" }}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-5 py-6 text-center text-sm text-slate-400">No changes recorded.</p>
+        {% endif %}
+      </section>
+    </aside>
+  </div>
+{% endblock %}

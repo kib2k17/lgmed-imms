@@ -86,6 +86,12 @@ CAPABILITIES = [
         "who registered it, and revoke one that no longer does.",
     ),
     (
+        "can_manage_monthly_submissions",
+        "Manage monthly submissions",
+        "Set and extend the MMIA and DTR deadline, monitor every staff "
+        "member's submission, open their files and send reminders.",
+    ),
+    (
         "can_delete",
         "Delete records",
         "Permanently remove a record. Always confirmed, always logged.",

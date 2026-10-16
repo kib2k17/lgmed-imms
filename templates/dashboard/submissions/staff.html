@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static ui %}
+
+{% block page_actions %}
+  {% if user.can_manage_monthly_submissions %}
+    <a href="{% url 'submissions:home' %}" class="btn btn-secondary">
+      {% icon "monitoring" "size-4" %}Staff Monitoring
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if open_schedules|length > 1 %}
+    <nav aria-label="Open reporting months" class="mb-4 flex flex-wrap items-center gap-2 no-print">
+      <span class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Open periods</span>
+      {% for item in open_schedules %}
+        <a href="?period={{ item.pk }}"
+           class="rounded-full border px-3 py-1 text-sm font-medium {% if schedule and item.pk == schedule.pk %}border-brand-600 bg-brand-600 text-white{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %}"
+           {% if schedule and item.pk == schedule.pk %}aria-current="page"{% endif %}>
+          {{ item.period_label }} &middot; due {{ item.deadline|date:"M j" }}
+        </a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+
+  {% if schedule %}
+    <div data-submission-summary>
+      {% include "dashboard/submissions/_staff_summary.html" %}
+    </div>
+
+    {% if schedule.announcement %}
+      <aside class="mt-3 flex items-start gap-3 rounded-md border border-brand-200 bg-brand-50/60 p-3.5 text-sm text-slate-800" aria-label="Announcement">
+        <span class="mt-0.5 shrink-0 text-brand-700">{% icon "announcements" "size-5" %}</span>
+        <div>
+          <p class="font-semibold text-slate-900">Announcement from the Division Chief</p>
+          <p class="mt-0.5 whitespace-pre-line">{{ schedule.announcement }}</p>
+        </div>
+      </aside>
+    {% endif %}
+
+    <div id="documents" class="mt-5" data-submission-cards>
+      {% include "dashboard/submissions/_document_cards.html" %}
+    </div>
+  {% else %}
+    <section class="card">
+      {% include "components/empty_state.html" with icon="calendar-check" title="No submission period has been opened yet" message="The Division Chief has not yet set an MMIA and DTR deadline. You will be notified by email and in the system as soon as one is set." %}
+    </section>
+  {% endif %}
+
+  {# ---- Submission history -------------------------------------------- #}
+  <section class="card mt-6" aria-labelledby="history-heading">
+    <div class="card-header">
+      <h2 id="history-heading" class="card-title">Monthly Submission History</h2>
+      <span class="text-meta text-slate-500">Every reporting month, kept on record</span>
+    </div>
+    {% if history %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">Your MMIA and DTR submissions by reporting month</caption>
+          <thead>
+            <tr>
+              <th scope="col">Month</th>
+              <th scope="col">MMIA</th>
+              <th scope="col">DTR</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="hidden sm:table-cell">Submitted On</th>
+              <th scope="col" class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history %}
+              <tr {% if item.is_current %}class="bg-brand-50/40"{% endif %}>
+                <td class="font-medium text-slate-900">
+                  {{ item.schedule.period_label }}
+                  <span class="block text-meta font-normal text-slate-500">Due {{ item.schedule.deadline|date:"M j, Y g:i A" }}</span>
+                </td>
+                <td>{% if 'mmia' in item.standing.submitted %}<span class="font-medium text-green-700">Uploaded</span>{% else %}<span class="text-slate-500">Missing</span>{% endif %}</td>
+                <td>{% if 'dtr' in item.standing.submitted %}<span class="font-medium text-green-700">Uploaded</span>{% else %}<span class="text-slate-500">Missing</span>{% endif %}</td>
+                <td>{% status_badge item.standing.status item.standing.short_label %}</td>
+                <td class="hidden whitespace-nowrap sm:table-cell">{% if item.submission.completed_at %}{{ item.submission.completed_at|date:"M j, Y" }}{% else %}&mdash;{% endif %}</td>
+                <td class="text-right">
+                  {% if item.is_current %}
+                    <span class="text-meta font-medium text-brand-700">Showing</span>
+                  {% else %}
+                    <a href="?period={{ item.schedule.pk }}#documents" class="btn btn-secondary btn-sm">
+                      {% icon "view" "size-3.5" %}View<span class="sr-only"> {{ item.schedule.period_label }}</span>
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include "components/empty_state.html" with icon="inbox" title="No submissions yet" message="Your monthly MMIA and DTR records will appear here." %}
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/monthly-submissions.js' %}{% if asset_version %}?v={{ asset_version }}{% endif %}" defer></script>
+{% endblock %}

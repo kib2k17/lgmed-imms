@@ -1,0 +1,103 @@
+{% load ui %}
+{% comment %}
+ The two upload cards - MMIA and DTR, and nothing else. Re-rendered after an
+ upload. Each card is an ordinary multipart form, so it works with scripting
+ off; monthly-submissions.js adds drag-and-drop, the file-size check, the
+ progress bar and the in-place update.
+{% endcomment %}
+<div class="grid gap-4 lg:grid-cols-2">
+  {% for card in cards %}
+    <section class="card flex flex-col" aria-labelledby="doc-{{ card.kind }}-title" data-doc-card="{{ card.kind }}">
+      <div class="card-header">
+        <div class="flex min-w-0 items-center gap-3">
+          <span aria-hidden="true"
+                class="grid size-10 shrink-0 place-items-center rounded-md {% if card.has %}bg-green-50 text-green-700{% else %}bg-brand-50 text-brand-700{% endif %}">
+            {% if card.kind == "mmia" %}{% icon "reports" "size-5" %}{% else %}{% icon "clock" "size-5" %}{% endif %}
+          </span>
+          <div class="min-w-0">
+            <h2 id="doc-{{ card.kind }}-title" class="card-title">{{ card.label }} Submission</h2>
+            <p class="truncate text-meta text-slate-500">{{ card.title }}</p>
+          </div>
+        </div>
+        {% if card.has %}
+          {% status_badge "completed" "Submitted" %}
+        {% elif can_upload %}
+          {% status_badge "pending" "Pending" %}
+        {% else %}
+          {% status_badge "overdue" "Not Submitted" %}
+        {% endif %}
+      </div>
+
+      <div class="card-body flex flex-1 flex-col gap-4">
+        <p class="text-sm text-slate-600">{{ card.description }}</p>
+
+        {% if card.has %}
+          <div class="rounded-md border border-slate-200 bg-slate-50/70 p-3">
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 shrink-0 text-slate-400">{% icon "file" "size-5" %}</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-slate-900" title="{{ card.name }}">{{ card.name }}</p>
+                <p class="text-meta text-slate-500">
+                  {{ card.size|filesize }} &middot; Submitted {{ card.uploaded_at|date:"M j, Y g:i A" }}
+                </p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              {% if card.is_pdf %}
+                {% include "components/pdf_view_button.html" with url=card.view_url title=card.name download_url=card.download_url btn_class="btn-secondary btn-sm" sr_label=card.label %}
+              {% endif %}
+              <a href="{{ card.download_url }}" class="btn btn-secondary btn-sm">
+                {% icon "download" "size-3.5" %}Download<span class="sr-only"> {{ card.label }}</span>
+              </a>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if can_upload %}
+          <form method="post" action="{% url 'submissions:upload' schedule.pk %}" enctype="multipart/form-data"
+                class="mt-auto" data-upload-form data-no-loading
+                data-max-bytes="{% widthratio max_upload_mb 1 1048576 %}" data-max-mb="{{ max_upload_mb }}"
+                data-label="{{ card.label }}">
+            {% csrf_token %}
+            <input type="hidden" name="kind" value="{{ card.kind }}">
+            <label for="file-{{ card.kind }}" data-dropzone
+                   class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-300 bg-white px-4 py-6 text-center transition-colors hover:border-brand-400 hover:bg-brand-50/40 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-600/25">
+              <span class="grid size-10 place-items-center rounded-full bg-brand-50 text-brand-700" aria-hidden="true">{% icon "upload" "size-5" %}</span>
+              <span class="text-sm font-medium text-slate-800">
+                {% if card.has %}Drag a new file here to replace it{% else %}Drag and drop your {{ card.label }} here{% endif %}, or <span class="text-brand-700 underline">browse</span>
+              </span>
+              <span class="text-meta text-slate-500">PDF, DOC, DOCX, XLS or XLSX &middot; up to {{ max_upload_mb }} MB</span>
+              <input type="file" id="file-{{ card.kind }}" name="file" required accept="{{ accept_extensions }}"
+                     class="sr-only" data-file-input aria-describedby="file-{{ card.kind }}-chosen">
+            </label>
+
+            <p id="file-{{ card.kind }}-chosen" class="mt-2 flex items-center gap-2 text-sm text-slate-700" data-chosen hidden>
+              <span class="shrink-0 text-slate-400">{% icon "file" "size-4" %}</span>
+              <span class="min-w-0 truncate font-medium" data-chosen-name></span>
+              <span class="shrink-0 text-meta text-slate-500 tabular" data-chosen-size></span>
+            </p>
+
+            <div class="mt-2" data-upload-progress hidden>
+              <div class="flex justify-between text-meta text-slate-600"><span>Uploading&hellip;</span><span class="tabular" data-progress-text>0%</span></div>
+              <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-brand-600 transition-[width] duration-150" style="width: 0%" data-progress-bar></div>
+              </div>
+            </div>
+
+            <p class="form-error" role="alert" data-upload-error hidden></p>
+
+            <div class="mt-3 flex justify-end">
+              <button type="submit" class="btn btn-primary" data-upload-button>
+                {% icon "upload" "size-4" %}{% if card.has %}Replace Document{% else %}Upload Document{% endif %}
+              </button>
+            </div>
+          </form>
+        {% elif not card.has %}
+          <p class="mt-auto flex items-center gap-2 rounded-md border border-red-100 bg-red-50/60 px-3 py-2 text-sm text-red-800">
+            {% icon "lock" "size-4" %}Not submitted. Uploads are closed for this reporting month.
+          </p>
+        {% endif %}
+      </div>
+    </section>
+  {% endfor %}
+</div>

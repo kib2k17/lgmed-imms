@@ -1,0 +1,16 @@
+# Hourly run of lgmed-submission-reminders.service (TEMPLATE)
+# /etc/systemd/system/lgmed-submission-reminders.timer
+#
+# Hourly so a failed email is retried within the hour. Reminders themselves
+# wait until MONTHLY_SUBMISSION_REMINDER_HOUR (08:00 Asia/Manila by default).
+
+[Unit]
+Description=Hourly LGMED-IMMS monthly submission reminders
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

@@ -101,6 +101,8 @@ STATUS_MAP = {
     "inactive": "neutral",
     "closed": "neutral",
     "not_started": "neutral",
+    # Monthly Submissions: neither the MMIA nor the DTR is in yet.
+    "not_submitted": "neutral",
     "not_assessed": "neutral",
     "permanent": "neutral",
     # Incoming: brought in from the spreadsheet register, not yet in the workflow.
