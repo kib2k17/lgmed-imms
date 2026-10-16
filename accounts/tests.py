@@ -151,8 +151,15 @@ class UserAdministrationTests(TestCase):
             side_effect=OSError("mail server down"),
         ), self.assertLogs("accounts.emails", "ERROR"):
             response = self._create()
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(User.objects.filter(username="new.officer").exists())
+        # The temporary password is shown once, uncached, for the
+        # administrator to pass on - not queued in the database for a retry.
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertContains(response, "welcome email could not be sent")
+        account = User.objects.get(username="new.officer")
+        password = re.search(r'font-mono[^>]*>([^<]+)</p>', response.content.decode()).group(1)
+        self.assertTrue(account.check_password(password))
+        self.assertTrue(account.must_change_password)
 
     def test_generated_passwords_pass_the_password_validators(self):
         from django.contrib.auth.password_validation import validate_password
@@ -233,22 +240,61 @@ class UserAdministrationTests(TestCase):
 
     # -- password reset ---------------------------------------------------
 
-    def test_password_reset_changes_the_password_and_is_logged(self):
+    def test_password_reset_generates_emails_and_is_logged(self):
+        from django.core import mail
+
+        self.staff.email = "staff@example.com"
+        self.staff.save()
         self.client.force_login(self.admin)
         AuditEvent.objects.all().delete()
         response = self.client.post(
             reverse("accounts:user_password", args=[self.staff.pk]),
+            # A password the administrator tries to choose is ignored.
             {"new_password1": "R3set-Passw0rd!", "new_password2": "R3set-Passw0rd!"},
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, self.staff.get_absolute_url())
 
         self.staff.refresh_from_db()
-        self.assertTrue(self.staff.check_password("R3set-Passw0rd!"))
+        self.assertFalse(self.staff.check_password("R3set-Passw0rd!"))
+        self.assertFalse(self.staff.check_password("pw"))
+        self.assertTrue(self.staff.must_change_password)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["staff@example.com"])
+        password = re.search(r"Temporary password:\s+(\S+)", mail.outbox[0].body).group(1)
+        self.assertTrue(self.staff.check_password(password))
 
         entry = AuditEvent.objects.get(action=Action.PASSWORD_RESET)
         self.assertEqual(entry.actor, self.admin)
         self.assertEqual(entry.target_label, "Karl Kevin Bacon")
-        self.assertNotIn("R3set-Passw0rd!", str(entry.changes) + entry.detail)
+        self.assertNotIn(password, str(entry.changes) + entry.detail)
+
+    def test_the_reset_page_offers_no_password_field(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("accounts:user_password", args=[self.staff.pk]))
+        self.assertNotContains(response, 'type="password"')
+
+    def test_a_reset_whose_email_fails_shows_the_password_once(self):
+        self.client.force_login(self.admin)
+        with patch("accounts.views.send_password_reset_email", return_value=False):
+            response = self.client.post(
+                reverse("accounts:user_password", args=[self.staff.pk])
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Cache-Control"], "no-store")
+        password = re.search(
+            r'font-mono[^>]*>([^<]+)</p>', response.content.decode()
+        ).group(1)
+        self.staff.refresh_from_db()
+        self.assertTrue(self.staff.check_password(password))
+        self.assertTrue(self.staff.must_change_password)
+
+    def test_the_reset_page_does_not_reveal_which_accounts_exist(self):
+        login = reverse("accounts:login")
+        for pk in (self.staff.pk, 999999):
+            response = self.client.get(reverse("accounts:user_password", args=[pk]))
+            self.assertEqual(response.status_code, 302, pk)
+            self.assertTrue(response["Location"].startswith(login), pk)
 
 
 class RoleMatrixTests(TestCase):
@@ -310,8 +356,10 @@ class SignInProtectionTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        # An encoder, whom a correct password signs in on its own: these tests
+        # are about reCAPTCHA, not two-step verification.
         cls.staff = User.objects.create_user(
-            username="staff", password="pw", role=Role.LGMED_STAFF
+            username="staff", password="pw", role=Role.ENCODER
         )
 
     def sign_in(self, token="a-token"):

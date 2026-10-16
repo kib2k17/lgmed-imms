@@ -266,6 +266,44 @@
   }
   .table tbody tr:last-child td { @apply border-b-0; }
   .table tbody tr { @apply transition-colors hover:bg-brand-50/50; }
+
+  /* -- Chart placeholder (components/chart_card.html) --------------------
+     A row of soft bars where the chart will be, pulsing gently until the
+     charting script has drawn it. Reduced motion stops the pulse. */
+  .chart-skeleton {
+    @apply pointer-events-none absolute inset-0 flex animate-pulse items-end gap-3 px-2 pb-6;
+  }
+  .chart-skeleton > span { @apply flex-1 rounded-t-md bg-slate-100; }
+  .chart-skeleton > span:nth-child(1) { height: 45%; }
+  .chart-skeleton > span:nth-child(2) { height: 70%; }
+  .chart-skeleton > span:nth-child(3) { height: 55%; }
+  .chart-skeleton > span:nth-child(4) { height: 85%; }
+  .chart-skeleton > span:nth-child(5) { height: 35%; }
+  .chart-skeleton > span:nth-child(6) { height: 60%; }
+
+  /* -- Stacked tables on phones ------------------------------------------
+     A list that opts in with `table-stack` (module_list.html's table_class
+     block) shows each row as a small card below the sm breakpoint instead of
+     a table squeezed sideways. Columns hidden at that width stay hidden,
+     except a cell marked `stack-show` - the due date, say - and a cell with
+     data-label="..." carries its column name above its value, since the
+     header row is no longer on screen. */
+  @media (width < 40rem) {
+    .table-stack thead { @apply sr-only; }
+    .table-stack, .table-stack tbody, .table-stack tr,
+    .table-stack tbody th, .table-stack tbody td { display: block; }
+    .table-stack tbody tr { @apply border-b border-slate-200 px-4 py-3; }
+    .table-stack tbody tr:last-child { @apply border-b-0; }
+    .table-stack tbody th, .table-stack tbody td { @apply border-b-0 p-0 text-left; }
+    .table-stack tbody :is(th, td) + :is(th, td) { @apply mt-2; }
+    .table-stack td[data-label]::before {
+      content: attr(data-label);
+      @apply mb-0.5 block text-[0.6875rem] font-semibold tracking-wide text-slate-500 uppercase;
+    }
+    /* !important: `hidden` is a utility, and utilities outrank components. */
+    .table-stack .stack-show { display: block !important; }
+    .table-stack td.stack-actions { @apply -ml-2 whitespace-normal; }
+  }
   .table-sort {
     @apply -mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5
            hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand-600;

@@ -26,6 +26,8 @@
   {{ block.super }}
 {% endblock %}
 
+{% block table_class %}table-stack{% endblock %}
+
 {% block table_head %}
   {% include "components/th_sort.html" with field="reference_number" label="Control number" %}
   {% include "components/th_sort.html" with field="title" label="Document" %}
@@ -73,7 +75,7 @@
         {% endif %}
       </td>
 
-      <td class="hidden whitespace-nowrap xl:table-cell">
+      <td class="stack-show hidden whitespace-nowrap xl:table-cell" data-label="Received">
         {% if record.date_received %}
           {{ record.date_received|date:"j M Y" }}
         {% else %}
@@ -99,7 +101,7 @@
         {% endif %}
       </td>
 
-      <td>
+      <td data-label="Status">
         {% status_badge record.display_status record.display_status_label %}
         {% if record.is_available_publicly %}
           <span class="mt-1 block text-meta text-slate-500">On public website</span>
@@ -112,7 +114,7 @@
         {% endif %}
       </td>
 
-      <td class="text-right whitespace-nowrap">
+      <td class="stack-actions text-right whitespace-nowrap">
         <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
           {% icon "view" "size-3.5" %}<span class="hidden sm:inline">View</span>
           <span class="sr-only">{{ record }}</span>

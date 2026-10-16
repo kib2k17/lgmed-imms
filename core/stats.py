@@ -135,6 +135,7 @@ def program_status_chart():
 
     return {
         "id": "programStatus",
+        "module": "programs",
         "title": "Program Status",
         "subtitle": (
             f"Distribution across {total} registered program{'s' if total != 1 else ''}."
@@ -155,6 +156,7 @@ def monitoring_activity_chart():
     values = _monthly_counts(MonitoringActivity.objects.all(), "monitoring_date", year)
     return {
         "id": "monitoringActivity",
+        "module": "monitoring",
         "title": "Monitoring Activities",
         "subtitle": f"Activities conducted per month in {year}.",
         "span": 2,
@@ -181,6 +183,7 @@ def lgu_monitoring_chart():
 
     return {
         "id": "lguMonitoring",
+        "module": "monitoring",
         "title": "LGU Monitoring Coverage",
         "subtitle": f"LGUs monitored in {year} against the total registered.",
         "span": 1,
@@ -200,6 +203,7 @@ def report_submission_chart():
     published = _monthly_counts(Report.objects.all(), "published_on", year)
     return {
         "id": "reportSubmissions",
+        "module": "reports",
         "title": "Report Submissions",
         "subtitle": f"Reports submitted and published per month in {year}.",
         "span": 2,
@@ -255,6 +259,7 @@ def pending_actions():
     items = [
         {
             "label": "Incoming documents awaiting Division Chief review",
+            "module": "incoming", "requires": "can_review_incoming",
             "count": incoming_for_review.count(),
             "detail": (
                 f"Oldest received {date_format(oldest_incoming.date_received, 'j M Y')}"
@@ -268,6 +273,7 @@ def pending_actions():
         },
         {
             "label": "Incoming documents overdue",
+            "module": "incoming",
             "count": incoming_overdue.count(),
             "detail": "Past their action due date",
             "status": "overdue",
@@ -275,6 +281,7 @@ def pending_actions():
         },
         {
             "label": "Monitoring records awaiting review",
+            "module": "monitoring", "requires": "can_approve",
             "count": for_review.count(),
             "detail": (
                 f"Oldest dated {date_format(oldest.monitoring_date, 'j M Y')}"
@@ -285,6 +292,7 @@ def pending_actions():
         },
         {
             "label": "Documents awaiting review",
+            "module": "documents",
             "count": unpublished.count(),
             "detail": f"{unpublished.filter(status=DocumentStatus.DRAFT).count()} still in draft",
             "status": "pending",
@@ -292,6 +300,7 @@ def pending_actions():
         },
         {
             "label": "Follow-up actions overdue",
+            "module": "monitoring",
             "count": overdue.count(),
             "detail": "Past their follow-up date",
             "status": "overdue",
@@ -299,6 +308,7 @@ def pending_actions():
         },
         {
             "label": "Reports awaiting action",
+            "module": "reports",
             "count": pending_reports.count(),
             "detail": "Draft, submitted or for review",
             "status": "submitted",
@@ -323,6 +333,138 @@ def upcoming_activities(user, limit=5):
         .upcoming()
         .order_by("start_date", "start_time")[:limit]
     )
+
+
+def _allowed(user, item):
+    """Whether an office-wide figure is this viewer's to see and act on."""
+    from accounts.menu_access import can_access_module
+
+    module = item.get("module") or item.get("url_name", "").split(":")[0]
+    if module and not can_access_module(user, module):
+        return False
+    requires = item.get("requires")
+    return not requires or bool(getattr(user, requires, False))
+
+
+def for_viewer(user, figures):
+    """
+    The office-wide dashboard figures narrowed to what `user` may open.
+
+    The figures are shared by everyone (and cached); this decides, per
+    request, which of them this person sees. A module closed to them from
+    Menu Permissions contributes no card, chart or count, and a queue only
+    one role can work - the Chief's review of incoming documents - is shown
+    only to that role.
+    """
+    from .safe_json import script_json
+
+    charts = [chart for chart in figures["charts"] if _allowed(user, chart)]
+    return {
+        **figures,
+        "summary_cards": [c for c in figures["summary_cards"] if _allowed(user, c)],
+        "charts": charts,
+        "pending_actions": [i for i in figures["pending_actions"] if _allowed(user, i)],
+        # Series only - the accessible figure tables are rendered server side.
+        "charts_json": script_json({c["id"]: c["data"] for c in charts}),
+    }
+
+
+def my_work(user):
+    """
+    What is waiting on this person, across the modules they may open.
+
+    Never cached: it is the one part of the dashboard that is about the
+    viewer rather than the office.
+    """
+    from accounts.menu_access import can_access_module
+
+    items = []
+
+    if can_access_module(user, "incoming"):
+        from incoming.models import OPEN_STATUSES as INCOMING_OPEN
+
+        # One query for all three figures.
+        figures = IncomingDocument.objects.assigned_to(user).aggregate(
+            unacknowledged=Count("pk", filter=Q(
+                status=IncomingStatus.ASSIGNED, acknowledged_at__isnull=True,
+            )),
+            open=Count("pk", filter=Q(status__in=INCOMING_OPEN)),
+            overdue=Count("pk", filter=Q(
+                status__in=INCOMING_OPEN, due_date__isnull=False,
+                due_date__lt=timezone.localdate(),
+            )),
+        )
+        unacknowledged = figures["unacknowledged"]
+        if unacknowledged:
+            items.append({
+                "label": "Incoming documents to acknowledge",
+                "count": unacknowledged,
+                "detail": "Assigned to you and not yet acknowledged",
+                "status": "pending",
+                "url": f"{reverse('incoming:list')}?view=mine",
+            })
+        open_assigned = figures["open"]
+        if open_assigned:
+            overdue = figures["overdue"]
+            items.append({
+                "label": "Incoming documents assigned to you",
+                "count": open_assigned,
+                "detail": f"{overdue} past the due date" if overdue else "Still open",
+                "status": "overdue" if overdue else "in_progress",
+                "url": f"{reverse('incoming:list')}?view=mine",
+            })
+
+    if can_access_module(user, "documents"):
+        documents = Document.objects.assigned_to(user).open().count()
+        if documents:
+            items.append({
+                "label": "Register documents assigned to you",
+                "count": documents,
+                "detail": "Open in the document register",
+                "status": "in_progress",
+                "url": f"{reverse('documents:list')}?view=assigned_to_me",
+            })
+
+    if can_access_module(user, "esira"):
+        from esira.models import OPEN_STEP_STATUSES, EsiraDocument
+
+        waiting = (
+            EsiraDocument.objects.filter(
+                steps__recipient=user, steps__status__in=list(OPEN_STEP_STATUSES),
+            ).distinct().count()
+        )
+        if waiting:
+            items.append({
+                "label": "e-SIRA documents waiting on you",
+                "count": waiting,
+                "detail": "To sign, approve, review or acknowledge",
+                "status": "pending",
+                "url": f"{reverse('esira:list')}?view=needs_me",
+            })
+
+    if user.must_submit_monthly and can_access_module(user, "monthly_submissions"):
+        from submissions.services import default_schedule_for_staff, submission_for
+
+        schedule = default_schedule_for_staff()
+        if schedule is not None and schedule.deadline > timezone.now():
+            submission = submission_for(user, schedule)
+            missing = [
+                label for label, present in (
+                    ("MMIA", submission is not None and bool(submission.mmia_file)),
+                    ("DTR", submission is not None and bool(submission.dtr_file)),
+                ) if not present
+            ]
+            if missing:
+                deadline = timezone.localtime(schedule.deadline)
+                items.append({
+                    "label": f"{' and '.join(missing)} for {schedule.period_label}",
+                    "count": len(missing),
+                    "detail": f"Due {date_format(deadline, 'j M Y, g:i A')}",
+                    "status": "overdue" if deadline < timezone.localtime() else "pending",
+                    "url": reverse("submissions:mine"),
+                })
+
+    return items
 
 
 # ---------------------------------------------------------------------------

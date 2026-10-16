@@ -26,5 +26,6 @@ urlpatterns = [
     path("<int:pk>/review/", views.ReviewView.as_view(), name="review"),
     path("<int:pk>/assign/", views.AssignView.as_view(), name="assign"),
     path("<int:pk>/acknowledge/", views.AcknowledgeView.as_view(), name="acknowledge"),
+    path("acknowledge/", views.BulkAcknowledgeView.as_view(), name="bulk_acknowledge"),
     # Updates and returns are taken in Outgoing Monitoring once acknowledged.
 ]

@@ -136,7 +136,9 @@
        64rem is comfortably above the grid's natural height, so the cap only
        ever limits growth; it never squeezes the rows.
       {% endcomment %}
-      <section class="card flex flex-col xl:col-span-2 xl:max-h-[64rem] xl:self-stretch"
+      {% comment %}On a phone seven columns leave each day a sliver; the month's
+         activities are listed in full just below, so the grid stands aside.{% endcomment %}
+      <section class="card flex flex-col max-sm:hidden xl:col-span-2 xl:max-h-[64rem] xl:self-stretch"
                aria-labelledby="calendar-heading">
         <div class="card-header">
           <div>

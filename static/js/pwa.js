@@ -419,7 +419,11 @@
      shown; the detail stays behind the sign-in.
      ---------------------------------------------------------------------- */
 
+  // Once a minute; every five while the live connection (app.js) is open,
+  // since that announces a new notification the moment it is raised.
   var POLL_MS = 60 * 1000;
+  var LIVE_POLL_MS = 5 * 60 * 1000;
+  var live = false;
   var SEEN_KEY = "lgmed.notifications.announced";
   var pollTimer = null;
   var polling = false;
@@ -518,7 +522,7 @@
 
   function schedule() {
     window.clearTimeout(pollTimer);
-    if (config.statusUrl) pollTimer = window.setTimeout(poll, POLL_MS);
+    if (config.statusUrl) pollTimer = window.setTimeout(poll, live ? LIVE_POLL_MS : POLL_MS);
   }
 
   function startNotifications() {
@@ -528,6 +532,14 @@
     poll();
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") poll();
+    });
+    document.addEventListener("lgmed:check-notifications", poll);
+    document.addEventListener("lgmed:live", function (event) {
+      var connected = Boolean(event.detail && event.detail.connected);
+      if (connected === live) return;
+      live = connected;
+      // Dropped: look now rather than up to five minutes from now.
+      if (!live) poll(); else schedule();
     });
 
     var enable = document.querySelectorAll("[data-push-enable]");

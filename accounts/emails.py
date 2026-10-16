@@ -66,6 +66,40 @@ def send_welcome_email(user, password, request=None):
     return True
 
 
+def send_password_reset_email(user, password, request=None):
+    """
+    Send the account holder the temporary password an administrator's reset
+    generated. Returns True when the message was handed to the mail server;
+    never raises, for the same reason as the welcome email.
+    """
+    if not user.email:
+        return False
+
+    login_path = reverse("accounts:login")
+    context = {
+        "user": user,
+        "password": password,
+        "login_url": request.build_absolute_uri(login_path) if request else login_path,
+        "agency": AGENCY,
+    }
+    message = EmailMultiAlternatives(
+        subject=f"{AGENCY['system_name']}: your password was reset",
+        body=render_to_string("emails/password_reset.txt", context),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    message.attach_alternative(
+        render_to_string("emails/password_reset.html", context), "text/html"
+    )
+
+    try:
+        message.send()
+    except Exception:
+        logger.exception("Password reset email to %s could not be sent", user.email)
+        return False
+    return True
+
+
 def send_account_created_notice(user, created_by, request=None):
     """
     Tell ACCOUNT_NOTIFY_EMAILS that an account was created. Returns True when

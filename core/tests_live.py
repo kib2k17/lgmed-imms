@@ -22,11 +22,12 @@ class LiveConnectionTests(TransactionTestCase):
             username="staff", password="pw", role=Role.LGMED_STAFF
         )
 
-    def _headers(self, user=None):
+    def _headers(self, user=None, client=None):
         headers = [(b"origin", b"http://localhost"), (b"host", b"localhost")]
         if user is not None:
-            self.client.force_login(user)
-            session = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+            client = client or self.client
+            client.force_login(user)
+            session = client.cookies[settings.SESSION_COOKIE_NAME].value
             headers.append(
                 (b"cookie", f"{settings.SESSION_COOKIE_NAME}={session}".encode())
             )
@@ -76,3 +77,26 @@ class LiveConnectionTests(TransactionTestCase):
         key = await sync_to_async(lambda: SystemSetting.load().notice_key)()
         self.assertEqual(message["notice"]["key"], key)
         await socket.disconnect()
+
+    async def test_a_new_notification_tells_only_its_recipients_pages(self):
+        from notifications.service import notify
+
+        staff_socket = WebsocketCommunicator(
+            application, "/ws/live/", headers=await sync_to_async(self._headers)(self.staff),
+        )
+        self.assertTrue((await staff_socket.connect())[0])
+        await staff_socket.receive_json_from()                    # the notice on connect
+        admin_headers = await sync_to_async(
+            lambda: self._headers(self.admin, client=self.client_class())
+        )()
+        admin_socket = WebsocketCommunicator(application, "/ws/live/", headers=admin_headers)
+        self.assertTrue((await admin_socket.connect())[0])
+        await admin_socket.receive_json_from()
+
+        await sync_to_async(notify)([self.staff], title="A document was assigned to you")
+
+        # Only a prompt to look: the title stays behind the status endpoint.
+        self.assertEqual(await staff_socket.receive_json_from(timeout=2), {"type": "notifications"})
+        self.assertTrue(await admin_socket.receive_nothing(timeout=0.5))
+        await staff_socket.disconnect()
+        await admin_socket.disconnect()

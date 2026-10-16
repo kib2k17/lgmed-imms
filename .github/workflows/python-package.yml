@@ -59,6 +59,9 @@ jobs:
         DJANGO_DEBUG: "0"
         DJANGO_ALLOWED_HOSTS: lgmed-imms.example.gov.ph
         DJANGO_BEHIND_TLS_PROXY: "1"
+        # Throw-away key generated for CI, which stores no certificate. A
+        # production server without its own key fails this check (lgmed.E001).
+        ESIRA_CREDENTIAL_KEY: 8SYOhZfEm_4Q_3cE50uYuopN4N2mEBscJJLZgnuYpzQ=
       run: python manage.py check --deploy --fail-level ERROR
 
     - name: Missing migrations

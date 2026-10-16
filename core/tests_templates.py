@@ -153,3 +153,60 @@ class TemplateHygieneTests(SimpleTestCase):
                         f"{opens} {{% {tag} %}} vs {closes} {{% end{tag} %}}"
                     )
         self.assertEqual(offenders, [], "Unbalanced template tags: " + "; ".join(offenders))
+
+
+class TemplateCommentTests(SimpleTestCase):
+    def test_no_template_comment_spans_lines(self):
+        """
+        `{# ... #}` is a comment only on one line; spread over several, Django
+        prints it on the page. Longer notes belong in {% comment %}.
+        """
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        pattern = re.compile(r"\{#(?:(?!#\}).)*?\n", re.S)
+        offenders = [
+            str(path.relative_to(settings.BASE_DIR))
+            for path in Path(settings.BASE_DIR, "templates").rglob("*.html")
+            if pattern.search(path.read_text(encoding="utf-8"))
+        ]
+        self.assertEqual(offenders, [])
+
+
+class DarkThemeTests(SimpleTestCase):
+    def test_dark_css_matches_the_compiled_stylesheet(self):
+        """Rebuilt app.css without dark.css? Run build-css, which does both."""
+        from pathlib import Path
+
+        from django.conf import settings
+
+        from core.management.commands.build_dark_css import generate
+
+        css = Path(settings.BASE_DIR, "static", "css")
+        self.assertEqual(
+            generate((css / "app.css").read_text(encoding="utf-8")),
+            (css / "dark.css").read_text(encoding="utf-8"),
+            "static/css/dark.css is out of date: run build-css.ps1 (or .sh).",
+        )
+
+    def test_conversions(self):
+        from core.management.commands.build_dark_css import convert
+
+        slate = {"900": "oklch(20.8% .042 265.755)"}
+        # Pale tint background -> translucent tint of the middle shade.
+        self.assertIn("var(--color-amber-500)", convert("background-color", "var(--color-amber-50)", slate))
+        # Dark status text -> light shade.
+        self.assertEqual(convert("color", "var(--color-red-700)", slate), "var(--color-red-300)")
+        # Filled backgrounds keep their colour.
+        self.assertIsNone(convert("background-color", "var(--color-brand-700)", slate))
+        # White cards become the dark surface; white haze on the navy sidebar stays.
+        self.assertEqual(convert("background-color", "var(--color-white)", slate), "var(--lgmed-surface)")
+        self.assertIsNone(convert(
+            "background-color", "color-mix(in oklab,var(--color-white)10%,transparent)", slate))
+        # A dark slate backdrop stays dark.
+        self.assertEqual(
+            convert("background-color", "color-mix(in oklab,var(--color-slate-900)50%,transparent)", slate),
+            "color-mix(in oklab,oklch(20.8% .042 265.755)50%,transparent)",
+        )

@@ -1105,3 +1105,40 @@ class FileCaptureTests(DocumentTestCase):
         response = self.client.get(reverse("documents:list"), {"source": "incoming"})
         self.assertContains(response, "Request for the SGLG validation report")
         self.assertNotContains(response, "Registered here</a>")
+
+
+class ModelLevelUploadValidationTests(TestCase):
+    """
+    The model fields check a new file too, so an upload through the Django
+    administration - where none of the module forms run - meets the same rules.
+    """
+
+    def form(self, data, files, instance=None):
+        from django.forms import modelform_factory
+
+        from reports.models import Report
+
+        AdminLikeForm = modelform_factory(Report, fields=["file"])
+        return AdminLikeForm(data, files, instance=instance)
+
+    def test_a_disguised_file_is_refused(self):
+        upload = SimpleUploadedFile("minutes.pdf", b"<html><script>alert(1)</script>")
+        form = self.form({}, {"file": upload})
+        self.assertFalse(form.is_valid())
+        self.assertIn("file", form.errors)
+
+    def test_an_unaccepted_format_is_refused(self):
+        form = self.form({}, {"file": SimpleUploadedFile("tool.exe", b"MZ\x90\x00")})
+        self.assertFalse(form.is_valid())
+
+    def test_a_genuine_file_is_accepted(self):
+        form = self.form({}, {"file": SimpleUploadedFile("report.pdf", b"%PDF-1.7\n...")})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_an_existing_file_is_not_judged_again(self):
+        from reports.models import Report
+
+        report = Report(title="Old")
+        report.file.name = "reports/2020/legacy.txt"     # accepted under older rules
+        form = self.form({}, {}, instance=report)
+        self.assertTrue(form.is_valid(), form.errors)

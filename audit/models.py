@@ -11,6 +11,8 @@ class Action(models.TextChoices):
     LOGOUT = "LOGOUT", "Signed out"
     LOGIN_FAILED = "LOGIN_FAILED", "Failed sign-in"
     PASSWORD_RESET = "PASSWORD_RESET", "Password reset"
+    # By the account holder - distinct from a reset, which an administrator does.
+    PASSWORD_CHANGED = "PASSWORD_CHANGED", "Password changed"
     ROLE_CHANGE = "ROLE_CHANGE", "Role changed"
     ACTIVATION = "ACTIVATION", "Account activated"
     DEACTIVATION = "DEACTIVATION", "Account deactivated"
@@ -151,6 +153,7 @@ class AuditEvent(models.Model):
             Action.LOGOUT: "archived",
             Action.LOGIN_FAILED: "critical",
             Action.PASSWORD_RESET: "pending",
+            Action.PASSWORD_CHANGED: "active",
             Action.ROLE_CHANGE: "pending",
             Action.ACTIVATION: "active",
             Action.DEACTIVATION: "critical",

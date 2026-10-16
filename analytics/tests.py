@@ -209,7 +209,7 @@ class AdvancedFilteringTests(TestCase):
             reverse("monitoring:list"),
             {"export": "csv", "from": "2026-07-01"},
         )
-        body = response.content.decode("utf-8-sig")
+        body = b"".join(response.streaming_content).decode("utf-8-sig")
         self.assertIn("August activity", body)
         self.assertNotIn("March activity", body)
 

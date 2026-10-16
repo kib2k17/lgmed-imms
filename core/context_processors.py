@@ -115,6 +115,12 @@ def navigation(request):
             current_path=path,
         ),
         "public_nav": build_public_nav(current_path=path),
+        # The appearance switch in the user menu (static/js/app.js).
+        "theme_choices": (
+            ("light", "Light", "sun"),
+            ("dark", "Dark", "moon"),
+            ("system", "Device", "monitor"),
+        ),
     }
 
 

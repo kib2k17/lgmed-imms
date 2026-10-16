@@ -144,6 +144,13 @@
           Turn this on to prompt for your certificate password on every signing action.
         {% endif %}
       </p>
+      {% if not user.mfa_enabled %}
+        <p class="mt-1 text-meta text-slate-600">
+          Switching this off needs two-step verification on your account
+          (<a href="{% url 'accounts:profile' %}" class="underline">My Profile</a>).
+          {% if not profile.require_passphrase %}Until then, you are still asked for the password.{% endif %}
+        </p>
+      {% endif %}
     </div>
     <span class="relative inline-flex shrink-0">
       <input type="checkbox" id="require-passphrase" name="require_passphrase" role="switch"
@@ -160,11 +167,22 @@
     <div class="min-w-0">
       <p class="font-semibold text-slate-900">Show my certificate password</p>
       <p class="text-meta text-slate-600" data-reveal-output aria-live="polite">
-        {% if stored %}Your password is hidden.{% else %}No certificate on file.{% endif %}
+        {% if not stored %}No certificate on file.
+        {% elif not user.mfa_enabled %}Turn on two-step verification in <a href="{% url 'accounts:profile' %}" class="underline">My Profile</a> to view it.
+        {% else %}Your password is hidden. Enter a code from your authenticator app to show it.{% endif %}
       </p>
     </div>
+    {% if stored and user.mfa_enabled %}
+      <div class="w-36 shrink-0">
+        <label for="reveal-code" class="sr-only">Authentication code</label>
+        <input id="reveal-code" type="text" inputmode="numeric" autocomplete="one-time-code"
+               spellcheck="false" autocapitalize="off" maxlength="32" placeholder="Code"
+               class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-mono tracking-[0.2em] text-slate-900 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/25 focus:outline-none"
+               data-reveal-code>
+      </div>
+    {% endif %}
     <button type="button" class="grid size-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-brand-800 hover:bg-brand-50 disabled:opacity-50"
-            data-reveal-toggle aria-pressed="false" {% if not stored %}disabled{% endif %}>
+            data-reveal-toggle aria-pressed="false" {% if not stored or not user.mfa_enabled %}disabled{% endif %}>
       <span data-icon-show>{% icon "view" "size-5" "2" %}</span>
       <span data-icon-hide hidden>{% icon "view-off" "size-5" "2" %}</span>
       <span class="sr-only">Show or hide my certificate password</span>

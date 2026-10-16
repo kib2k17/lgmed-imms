@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import TimeStampedModel
+from documents.upload_rules import validate_new_file
 
 
 class MonitoringStatus(models.TextChoices):
@@ -138,7 +139,7 @@ class MonitoringAttachment(models.Model):
         MonitoringActivity, on_delete=models.CASCADE, related_name="attachments"
     )
     title = models.CharField(max_length=255)
-    file = models.FileField(upload_to=attachment_path)
+    file = models.FileField(upload_to=attachment_path, validators=[validate_new_file])
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(
         "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,

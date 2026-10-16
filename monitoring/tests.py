@@ -118,7 +118,7 @@ class MonitoringModuleTests(TestCase):
         self.assertIn("text/csv", response["Content-Type"])
         self.assertIn("attachment;", response["Content-Disposition"])
 
-        body = response.content.decode("utf-8-sig")
+        body = b"".join(response.streaming_content).decode("utf-8-sig")
         self.assertIn("Full Disclosure Policy Check", body)
         self.assertNotIn("SGLG Assessment", body)
 

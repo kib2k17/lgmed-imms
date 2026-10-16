@@ -14,24 +14,49 @@ from .safe_json import script_json
 # ---------------------------------------------------------------------------
 
 
+# The office-wide figures are the same for everyone and cost a few dozen
+# counts, so they are worked out at most once a minute. "Figures as of" on the
+# page shows when, so a number a minute old is never presented as live.
+DASHBOARD_CACHE_KEY = "lgmed:dashboard-figures"
+
+
+def dashboard_figures():
+    from django.conf import settings
+    from django.core.cache import cache
+
+    seconds = settings.LGMED_DASHBOARD_CACHE_SECONDS
+    figures = cache.get(DASHBOARD_CACHE_KEY) if seconds else None
+    if figures is None:
+        charts = stats.charts()
+        figures = {
+            "as_of": timezone.localtime(),
+            "summary_cards": stats.summary_cards(),
+            "charts": charts,
+            "recent_monitoring": list(stats.recent_monitoring()),
+            "pending_actions": stats.pending_actions(),
+        }
+        if seconds:
+            cache.set(DASHBOARD_CACHE_KEY, figures, seconds)
+    return figures
+
+
 @login_required
 def dashboard(request):
     """Regional monitoring and evaluation overview, computed from the records."""
-    charts = stats.charts()
+    from accounts.menu_access import can_access_module
 
     context = {
         "page_title": "LGMED-IMMS Dashboard",
         "page_subtitle": "Regional monitoring and evaluation overview",
         "breadcrumbs": [{"label": "Dashboard"}],
         "active_nav": "dashboard",
-        "as_of": timezone.localtime(),
-        "summary_cards": stats.summary_cards(),
-        "charts": charts,
-        "recent_monitoring": stats.recent_monitoring(),
-        "pending_actions": stats.pending_actions(),
+        # The office's figures, narrowed to the modules this person may open.
+        **stats.for_viewer(request.user, dashboard_figures()),
+        # Each person's own, so never shared through the cache.
+        "my_work": stats.my_work(request.user),
+        "can_open_reports": can_access_module(request.user, "reports"),
+        "can_open_monitoring": can_access_module(request.user, "monitoring"),
         "upcoming_activities": stats.upcoming_activities(request.user),
-        # Series only - the accessible figure tables are rendered server side.
-        "charts_json": script_json({c["id"]: c["data"] for c in charts}),
     }
     return render(request, "dashboard/dashboard.html", context)
 
@@ -328,10 +353,21 @@ def public_document_file(request, token):
     ):
         raise Http404("No such document.")
 
+    import mimetypes
+
+    from .media import INLINE_TYPES
+
+    filename = document.public_file.name.rsplit("/", 1)[-1]
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    # Only PDFs and pictures open in the browser, as everywhere else files are
+    # served (core/media.py, core/files.py). Anything else is a download, so
+    # no file can ever run as a page on this site.
+    inline = content_type in INLINE_TYPES and request.GET.get("download") != "1"
     response = FileResponse(
         document.public_file.open("rb"),
-        as_attachment=request.GET.get("download") == "1",
-        filename=document.public_file.name.rsplit("/", 1)[-1],
+        as_attachment=not inline,
+        filename=filename,
+        content_type=content_type if content_type in INLINE_TYPES else "application/octet-stream",
     )
     return response
 

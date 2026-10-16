@@ -114,7 +114,11 @@ def sign_form_for(user, backend, *args):
         *args,
         collects_credentials=backend.collects_credentials,
         stored=stored,
-        require_passphrase=SignerProfile.for_user(user).require_passphrase,
+        # A profile switched off before two-step verification was a condition
+        # of it - or whose holder has since turned MFA off - still asks.
+        require_passphrase=(
+            SignerProfile.for_user(user).require_passphrase or not user.mfa_enabled
+        ),
         styles=workflow.signature_styles(user),
         initial={"style": workflow.default_style_key(user)},
     )
@@ -847,13 +851,17 @@ class CertificateListView(EsiraMixin, TemplateView):
             messages.success(request, "Your signature image was removed.")
         elif action == "protection":
             required = request.POST.get("require_passphrase") == "on"
-            workflow.set_require_passphrase(user, required)
-            messages.success(
-                request,
-                "Your certificate password will be asked for on every signature."
-                if required else
-                "Signing will use your stored password without asking.",
-            )
+            try:
+                workflow.set_require_passphrase(user, required)
+            except workflow.WorkflowError as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(
+                    request,
+                    "Your certificate password will be asked for on every signature."
+                    if required else
+                    "Signing will use your stored password without asking.",
+                )
         elif action == "remove_certificate":
             record = get_object_or_404(
                 SigningCertificate, pk=request.POST.get("certificate"), user=user,
@@ -924,11 +932,49 @@ class SignatureStyleImageView(EsiraMixin, View):
 
 
 class CertificatePasswordView(EsiraMixin, View):
-    """Show the signer their own stored certificate password. POST only, logged."""
+    """
+    Show the signer their own stored certificate password. POST only, logged.
+
+    The password opens a PNPKI certificate that signs in its holder's name, so
+    a signed-in session is not enough to read it: that session may be a screen
+    left unlocked. A current two-step verification code is asked for too, and
+    an account without two-step verification cannot read it here at all.
+    """
 
     def post(self, request):
+        from accounts import mfa
+        from accounts.forms import MFACodeForm
+        from audit.models import Action
+        from audit.recording import record
+
+        user = request.user
+        if workflow.stored_certificate(user) is None:
+            return JsonResponse({"error": "You have no certificate file on file."}, status=404)
+        if not user.mfa_enabled:
+            return JsonResponse({
+                "error": "Turn on two-step verification in My Profile to view your "
+                         "stored certificate password.",
+            }, status=403)
+
+        form = MFACodeForm(request.POST, dense=True)
+        outcome = mfa.check(user, form.cleaned_data["code"]) if form.is_valid() else None
+        if outcome is None or not outcome.ok:
+            record(
+                Action.ACCESS_DENIED, request=request, target=user,
+                detail="Wrong two-step code when asking to see the stored "
+                       "e-SIRA certificate password",
+            )
+            if outcome is not None and outcome.locked:
+                message = (
+                    "Too many wrong codes. Two-step verification is locked for "
+                    f"{int(mfa.LOCKOUT_DURATION.total_seconds() // 60)} minutes."
+                )
+            else:
+                message = "That code is not correct. Enter the code your authenticator app is showing now."
+            return JsonResponse({"error": message}, status=403)
+
         try:
-            password = workflow.reveal_passphrase(request.user)
+            password = workflow.reveal_passphrase(user)
         except workflow.WorkflowError as exc:
             return JsonResponse({"error": str(exc)}, status=404)
         response = JsonResponse({"password": password})

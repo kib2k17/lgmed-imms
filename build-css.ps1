@@ -13,3 +13,8 @@ $argsList = @("-i", "static/css/app.src.css", "-o", "static/css/app.css")
 if ($Watch) { $argsList += "--watch" } else { $argsList += "--minify" }
 
 & $tailwind @argsList
+
+# The dark theme is derived from the compiled stylesheet; rebuild it too.
+# (A -Watch run never reaches here: build once more before committing.)
+$python = Join-Path $PSScriptRoot "venv\Scripts\python.exe"
+& $python (Join-Path $PSScriptRoot "manage.py") build_dark_css

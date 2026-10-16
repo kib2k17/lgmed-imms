@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 
 from administration.models import SystemSetting
 from core.middleware import mark_passive
@@ -113,6 +113,39 @@ def mark_all_read(request):
         if count
         else "There were no unread notifications.",
     )
+    return redirect(safe_next(
+        request, request.META.get("HTTP_REFERER"), reverse("notifications:list")
+    ))
+
+
+@login_required
+@require_POST
+def bulk_notifications(request):
+    """
+    Mark several of one's own notifications read, or dismiss them, at once.
+
+    Only the requester's own: the ids posted are narrowed to their notifications
+    before anything is touched, so a hand-made post naming someone else's
+    changes nothing.
+    """
+    action = request.POST.get("action")
+    ids = [value for value in request.POST.getlist("ids") if value.isdigit()]
+    chosen = Notification.objects.for_user(request.user).visible().filter(pk__in=ids)
+    now = timezone.now()
+    if action == "read":
+        count = chosen.filter(read_at__isnull=True).update(read_at=now)
+        done = "marked as read"
+    elif action == "dismiss":
+        count = chosen.update(dismissed_at=now, read_at=now)
+        done = "dismissed"
+    else:
+        count, done = 0, ""
+    if not ids or not done:
+        messages.info(request, "Tick the notifications to act on first.")
+    else:
+        messages.success(
+            request, f"{count} notification{'s' if count != 1 else ''} {done}."
+        )
     return redirect(safe_next(
         request, request.META.get("HTTP_REFERER"), reverse("notifications:list")
     ))

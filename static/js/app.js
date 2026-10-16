@@ -546,6 +546,7 @@
       }
       liveSocket.addEventListener("open", function () {
         liveRetry = 1000;
+        document.dispatchEvent(new CustomEvent("lgmed:live", { detail: { connected: true } }));
         window.clearInterval(livePing);
         livePing = window.setInterval(function () {
           if (liveSocket && liveSocket.readyState === 1) {
@@ -559,10 +560,16 @@
         if (data && data.type === "notice") {
           document.dispatchEvent(new CustomEvent("lgmed:notice", { detail: data.notice }));
         }
+        // A new notification for this person: pwa.js checks the status
+        // endpoint now instead of at its next scheduled look.
+        if (data && data.type === "notifications") {
+          document.dispatchEvent(new CustomEvent("lgmed:check-notifications"));
+        }
       });
       liveSocket.addEventListener("close", function (event) {
         window.clearInterval(livePing);
         liveSocket = null;
+        document.dispatchEvent(new CustomEvent("lgmed:live", { detail: { connected: false } }));
         // 4401: no longer signed in. The next page opened goes to sign-in.
         if (event.code === 4401) return;
         liveTimer = window.setTimeout(connectLive, liveRetry);
@@ -758,6 +765,18 @@ window.LGMED.chartPalette = {
  */
 window.LGMED.applyChartDefaults = function () {
   var palette = window.LGMED.chartPalette;
+  // Grid, labels and segment edges in the dark theme's colours when it is on.
+  if (window.LGMED.isDark()) {
+    palette.grid = "#334155";
+    palette.text = "#cbd5e1";
+    palette.muted = "#94a3b8";
+    palette.surface = "#141c2f";
+  } else {
+    palette.grid = "#e2e8f0";
+    palette.text = "#475569";
+    palette.muted = "#94a3b8";
+    palette.surface = "#ffffff";
+  }
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   Chart.defaults.font.family =
@@ -776,7 +795,71 @@ window.LGMED.applyChartDefaults = function () {
   Chart.defaults.maintainAspectRatio = false;
 };
 
+/* ------------------------------------------------------------------------
+   Appearance: light, dark, or whatever the device is set to.
+
+   The choice is kept in this browser only. base.html applies it before the
+   first paint; this keeps the switch in the user menu in step, follows the
+   device while "Device" is chosen, and tells the page when the theme changed
+   so charts drawn after it use the matching colours.
+   ------------------------------------------------------------------------ */
+(function () {
+  var KEY = "lgmed.theme";
+  var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  function stored() {
+    try { return window.localStorage.getItem(KEY) || "light"; } catch (error) { return "light"; }
+  }
+
+  function apply(choice) {
+    var dark = choice === "dark" || (choice === "system" && media && media.matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-theme-choice]"), function (button) {
+      button.setAttribute("aria-pressed", button.getAttribute("data-theme-choice") === choice ? "true" : "false");
+    });
+    document.dispatchEvent(new CustomEvent("lgmed:theme", { detail: { dark: dark } }));
+  }
+
+  // Capture phase: the switch sits in the user menu, whose panel stops clicks
+  // from bubbling (so a click inside it does not close it) - a listener on
+  // the way up never heard them.
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest && event.target.closest("[data-theme-choice]");
+    if (!button) return;
+    var choice = button.getAttribute("data-theme-choice");
+    try { window.localStorage.setItem(KEY, choice); } catch (error) { /* private mode */ }
+    apply(choice);
+  }, true);
+
+  if (media && media.addEventListener) {
+    media.addEventListener("change", function () {
+      if (stored() === "system") apply("system");
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { apply(stored()); });
+})();
+
+window.LGMED.isDark = function () {
+  return document.documentElement.getAttribute("data-theme") === "dark";
+};
+
+/* A form that asks before it posts: data-confirm-submit="question". Without
+   scripting the form simply posts; the server applies its own checks. */
+document.addEventListener("submit", function (event) {
+  var form = event.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  var question = form.getAttribute("data-confirm-submit");
+  if (question && !window.confirm(question)) event.preventDefault();
+}, true);
+
 window.LGMED.initCharts = function (data) {
+  // The placeholders go whether or not the charts can be drawn: without the
+  // charting script, the figures table below each panel is what remains.
+  Array.prototype.forEach.call(
+    document.querySelectorAll("[data-chart-skeleton]"),
+    function (skeleton) { skeleton.remove(); }
+  );
   if (typeof Chart === "undefined" || !data) return;
 
   var palette = window.LGMED.chartPalette;
@@ -809,7 +892,7 @@ window.LGMED.initCharts = function (data) {
               palette.status.warning,
               palette.status.neutral,
             ],
-            borderColor: "#ffffff",
+            borderColor: palette.surface,
             borderWidth: 2,
             hoverOffset: 4,
           },

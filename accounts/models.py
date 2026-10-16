@@ -103,6 +103,13 @@ class User(AbstractUser):
         storage=protected_storage,
         blank=True,
     )
+    # Set when the password was chosen by someone other than the holder - a
+    # new account's emailed temporary password, or an administrator's reset.
+    # Until the holder sets one of their own, every page sends them to do so
+    # (accounts.middleware.PasswordChangeRequiredMiddleware).
+    must_change_password = models.BooleanField(
+        "must change password at next sign-in", default=False,
+    )
 
     class Meta:
         verbose_name = "user account"
@@ -385,10 +392,28 @@ class User(AbstractUser):
 
         Administrators hold the keys to every other account, the audit log
         and the public website, so a stolen administrator password is the
-        one that does the most damage. Everyone else may turn MFA on for
-        themselves from My Profile.
+        one that does the most damage. Two more kinds of account act in the
+        office's name where a stolen password would be seen by outsiders:
+        those who publish to the public website, and those holding a verified
+        PNPKI certificate, which signs as them. Everyone else may turn MFA on
+        for themselves from My Profile.
         """
-        return self.can_administer
+        return self.can_administer or self.can_approve or self.holds_signing_certificate
+
+    @property
+    def holds_signing_certificate(self):
+        """A verified, unexpired e-SIRA signing certificate is on record."""
+        if not self.pk:
+            return False
+        from django.utils import timezone
+
+        from esira.models import SigningCertificate
+
+        return SigningCertificate.objects.filter(
+            user=self,
+            status=SigningCertificate.Status.VERIFIED,
+            not_after__gt=timezone.now(),
+        ).exists()
 
     @property
     def mfa_enabled(self):
@@ -409,9 +434,10 @@ class MFADevice(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="mfa_device",
     )
-    # Base32, as the authenticator app holds it. Stored so the server can
-    # compute the same code; never shown again after enrolment.
-    secret = models.CharField(max_length=64)
+    # The base32 key the authenticator app holds, stored encrypted
+    # (accounts/vault.py) so the server can compute the same code. Read and
+    # written through get_secret()/set_secret(); never shown after enrolment.
+    secret = models.CharField(max_length=255)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
     # The time step of the last code accepted, so a code cannot be used twice.
@@ -433,6 +459,17 @@ class MFADevice(models.Model):
     @property
     def is_confirmed(self):
         return self.confirmed_at is not None
+
+    def get_secret(self):
+        """The base32 secret, or None when this server cannot decrypt it."""
+        from . import vault
+
+        return vault.unseal(self.secret)
+
+    def set_secret(self, secret):
+        from . import vault
+
+        self.secret = vault.seal(secret)
 
 
 class RecoveryCode(models.Model):

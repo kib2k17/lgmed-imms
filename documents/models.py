@@ -262,17 +262,9 @@ class EventType(models.TextChoices):
 # File storage
 # ---------------------------------------------------------------------------
 
-# What may be uploaded. Enforced in `documents.forms`, stated here so the
+# What may be uploaded, stated once in documents/upload_rules.py so the
 # model, the form and the help text cannot disagree about it.
-ALLOWED_EXTENSIONS = (
-    "pdf",
-    "doc", "docx",
-    "xls", "xlsx", "csv",
-    "ppt", "pptx",
-    "jpg", "jpeg", "png", "gif", "bmp", "webp", "tif", "tiff",
-)
-
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+from .upload_rules import ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES, validate_new_file  # noqa: E402,F401
 
 
 def document_path(instance, filename):
@@ -487,6 +479,7 @@ class Document(TimeStampedModel):
         "document file",
         upload_to=document_path,
         blank=True,
+        validators=[validate_new_file],
         help_text=(
             "PDF, Word, Excel, PowerPoint or an image. The current version - "
             "every earlier one is kept."
@@ -1056,7 +1049,7 @@ class DocumentVersion(models.Model):
         Document, on_delete=models.CASCADE, related_name="versions"
     )
     version_number = models.PositiveIntegerField()
-    file = models.FileField(upload_to=version_path)
+    file = models.FileField(upload_to=version_path, validators=[validate_new_file])
     uploaded_at = models.DateTimeField(auto_now_add=True, db_index=True)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

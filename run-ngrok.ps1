@@ -18,13 +18,21 @@
 # DEVELOPMENT ONLY. This exposes a DEBUG=True server holding demonstration
 # accounts with a published password. Stop the tunnel (Ctrl+C) when the demo
 # ends; do not leave it up unattended.
+#
+# It refuses to open the tunnel onto the real database or onto a server that
+# skips two-step verification - see tunnel-guard.ps1. With -Serve the server it
+# starts uses the demo database (-Database, default lgmedimms_demo).
 param(
     [switch]$Serve,
     [int]$Port = 8000,
-    [string]$Domain = "engaging-elephant-curiously.ngrok-free.app"
+    [string]$Domain = "engaging-elephant-curiously.ngrok-free.app",
+    [string]$Database = "lgmedimms_demo"
 )
 
 $ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "tunnel-guard.ps1")
+Assert-DemoTunnelSafe -Serve:$Serve -Database $Database -Port $Port
 
 # --- ngrok -----------------------------------------------------------------
 # The winget install edits PATH, but a shell opened before the install keeps
@@ -53,10 +61,7 @@ if ($Serve) {
         Write-Error "venv\Scripts\python.exe not found. See README.md - Running the system."
         exit 1
     }
-    Write-Host "Starting runserver on port $Port in a new window..." -ForegroundColor Cyan
-    Start-Process -FilePath $python `
-                  -ArgumentList @("manage.py", "runserver", "$Port") `
-                  -WorkingDirectory $PSScriptRoot
+    Start-DemoServer -Python $python -Port $Port -Database $Database
     Start-Sleep -Seconds 3
 }
 

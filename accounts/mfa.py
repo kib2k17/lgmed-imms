@@ -154,7 +154,11 @@ def check(user, code):
             return Outcome(ok=False, locked=True)
 
         now = timezone.now()
-        step = totp.match(device.secret, code, after_step=device.last_used_step)
+        secret = device.get_secret()
+        step = (
+            totp.match(secret, code, after_step=device.last_used_step)
+            if secret else None      # undecryptable: only a recovery code helps
+        )
         if step is not None:
             device.last_used_step = step
             device.last_used_at = now
@@ -203,11 +207,13 @@ def setup_secret(request, user):
 
 def enrol(user, secret, step):
     """Save a confirmed authenticator and issue fresh recovery codes."""
+    from . import vault
+
     with transaction.atomic():
         MFADevice.objects.update_or_create(
             user=user,
             defaults={
-                "secret": secret,
+                "secret": vault.seal(secret),
                 "confirmed_at": timezone.now(),
                 "last_used_at": timezone.now(),
                 "last_used_step": step,

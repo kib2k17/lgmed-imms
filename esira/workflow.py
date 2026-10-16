@@ -1203,7 +1203,9 @@ def review_certificate(record, reviewer, *, decision, remarks=""):
 
     if not reviewer.can_verify_signing_certificates:
         raise PermissionDenied("Your role does not permit verifying certificates.")
-    if record.user_id == reviewer.pk and not reviewer.is_superuser:
+    # No exception for the superuser: a certificate signs in its holder's
+    # name, so a second person must vouch for it whoever the holder is.
+    if record.user_id == reviewer.pk:
         raise PermissionDenied(
             "You may not verify your own certificate. Another administrator must."
         )
@@ -1345,6 +1347,13 @@ def set_require_passphrase(user, required):
     required = bool(required)
     if profile.require_passphrase == required:
         return profile
+    # Without the prompt, the stored certificate signs on a signed-in session
+    # alone - so that session must have needed more than a password.
+    if not required and not user.mfa_enabled:
+        raise WorkflowError(
+            "Turn on two-step verification in My Profile first. Without it, "
+            "anyone who learned your password could sign in your name."
+        )
     profile.require_passphrase = required
     profile.save(update_fields=["require_passphrase", "updated_at"])
     log(

@@ -35,7 +35,7 @@
 
     {% if records %}
       <div class="table-wrap">
-        <table class="table">
+        <table class="table {% block table_class %}{% endblock %}">
           <caption class="sr-only">
             {{ module_label }} &mdash; {{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}
             {% if is_filtered %}matching the current search and filters{% endif %}

@@ -54,6 +54,10 @@ class TwoStepSignInTests(TestCase):
         cls.staff = User.objects.create_user(
             username="staff", password="pw", role=Role.LGMED_STAFF
         )
+        # A role that neither administers nor publishes: MFA is its choice.
+        cls.encoder = User.objects.create_user(
+            username="encoder", password="pw", role=Role.ENCODER
+        )
 
     # -- helpers ------------------------------------------------------------
 
@@ -79,9 +83,14 @@ class TwoStepSignInTests(TestCase):
 
     # -- who is asked -------------------------------------------------------
 
-    def test_staff_without_mfa_sign_in_with_a_password(self):
-        self.sign_in("staff")
+    def test_an_encoder_without_mfa_signs_in_with_a_password(self):
+        self.sign_in("encoder")
         self.assertTrue(self.signed_in())
+
+    def test_staff_who_publish_must_enrol_before_being_signed_in(self):
+        response = self.sign_in("staff")
+        self.assertRedirects(response, reverse("accounts:mfa_setup"))
+        self.assertFalse(self.signed_in())
 
     def test_an_administrator_must_enrol_before_being_signed_in(self):
         response = self.sign_in("admin")
@@ -251,14 +260,14 @@ class TwoStepSignInTests(TestCase):
         self.assertContains(self.client.get(reverse("accounts:profile")), "New recovery codes")
 
     def test_turning_it_off_needs_a_code(self):
-        secret, _ = self.enrol(self.staff)
-        self.client.force_login(self.staff)
+        secret, _ = self.enrol(self.encoder)
+        self.client.force_login(self.encoder)
         self.client.post(reverse("accounts:mfa_disable"), {"code": "000000"})
-        self.assertTrue(MFADevice.objects.filter(user=self.staff).exists())
+        self.assertTrue(MFADevice.objects.filter(user=self.encoder).exists())
 
         self.client.post(reverse("accounts:mfa_disable"), {"code": self.now_code(secret)})
-        self.assertFalse(MFADevice.objects.filter(user=self.staff).exists())
-        self.assertEqual(mfa.recovery_codes_left(self.staff), 0)
+        self.assertFalse(MFADevice.objects.filter(user=self.encoder).exists())
+        self.assertEqual(mfa.recovery_codes_left(self.encoder), 0)
         self.assertTrue(AuditEvent.objects.filter(action=Action.MFA_DISABLED).exists())
 
     def test_an_administrator_turning_it_off_is_sent_to_set_up_again(self):
@@ -309,3 +318,57 @@ class TwoStepSignInTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertTrue(MFADevice.objects.filter(user=self.other_admin).exists())
+
+
+class SecretEncryptionTests(TestCase):
+    """The authenticator secret is never stored in plain text (M-06)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="enc", password="pw", role=Role.ENCODER)
+
+    def test_the_stored_secret_is_sealed(self):
+        secret = totp.generate_secret()
+        mfa.enrol(self.user, secret, step=totp.current_step() - 5)
+        stored = MFADevice.objects.get(user=self.user).secret
+        self.assertNotIn(secret, stored)
+        self.assertTrue(stored.startswith("gAAAAA"))
+        self.assertEqual(MFADevice.objects.get(user=self.user).get_secret(), secret)
+        code = totp._code_at(secret, totp.current_step())
+        self.assertTrue(mfa.check(self.user, code).ok)
+
+    def test_a_secret_from_before_encryption_still_works(self):
+        secret = totp.generate_secret()
+        mfa.enrol(self.user, secret, step=totp.current_step() - 5)
+        MFADevice.objects.filter(user=self.user).update(secret=secret)  # legacy row
+        self.assertTrue(mfa.check(self.user, totp._code_at(secret, totp.current_step())).ok)
+
+    def test_a_changed_key_refuses_codes_but_not_recovery_codes(self):
+        from cryptography.fernet import Fernet
+
+        secret = totp.generate_secret()
+        codes = mfa.enrol(self.user, secret, step=totp.current_step() - 5)
+        code = totp._code_at(secret, totp.current_step())
+        with override_settings(LGMED_MFA_KEY=Fernet.generate_key().decode()), \
+                self.assertLogs("accounts.vault", "ERROR"):
+            self.assertFalse(mfa.check(self.user, code).ok)
+        self.assertTrue(mfa.check(self.user, codes[0]).ok)
+
+    def test_the_migration_seals_and_unseals_existing_secrets(self):
+        import importlib
+
+        from django.apps import apps
+
+        migration = importlib.import_module("accounts.migrations.0008_encrypt_mfa_secrets")
+        secret = totp.generate_secret()
+        mfa.enrol(self.user, secret, step=totp.current_step() - 5)
+        MFADevice.objects.filter(user=self.user).update(secret=secret)
+
+        migration.encrypt_secrets(apps, None)
+        stored = MFADevice.objects.get(user=self.user).secret
+        self.assertTrue(stored.startswith("gAAAAA"))
+        migration.encrypt_secrets(apps, None)          # running twice is harmless
+        self.assertEqual(MFADevice.objects.get(user=self.user).secret, stored)
+
+        migration.decrypt_secrets(apps, None)
+        self.assertEqual(MFADevice.objects.get(user=self.user).secret, secret)

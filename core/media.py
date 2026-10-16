@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from django.apps import apps
-from django.http import FileResponse, Http404
+from django.http import Http404
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_safe
 
@@ -132,9 +132,37 @@ def clean_path(path):
     return normalised
 
 
-def owners(name):
-    """(source, record) for every record whose file is stored under `name`."""
-    for source in SOURCES:
+# Which sources can hold a file under each top-level path, from the upload_to
+# functions - plus the register's copies: documents.Document, its versions and
+# its supporting files reuse the stored name of the Incoming or Outgoing file
+# they were captured from (incoming/register.py). Consulted first, so a request
+# costs a query or two instead of one per source; see `decide`.
+PREFIX_SOURCES = {
+    "announcements/": ("announcements.Announcement",),
+    "reports/": ("reports.Report",),
+    "updates/": ("updates.UpdateAttachment",),
+    "documents/": ("documents.Document", "documents.DocumentVersion"),
+    "incoming/": ("incoming.IncomingDocument", "incoming.IncomingUpdate",
+                  "documents.Document", "documents.DocumentVersion",
+                  "documents.SupportingFile"),
+    "outgoing/": ("outgoing.OutgoingDocument", "documents.Document",
+                  "documents.DocumentVersion", "documents.SupportingFile"),
+    "monitoring/": ("monitoring.MonitoringAttachment",),
+    "ppa/public/": ("programs.SupportingDocument",),
+}
+
+
+def likely_sources(name):
+    """The sources the path's prefix says can own it, in SOURCES order."""
+    for prefix, models in PREFIX_SOURCES.items():
+        if name.startswith(prefix):
+            return [source for source in SOURCES if source.model in models]
+    return []
+
+
+def owners(name, sources=SOURCES):
+    """(source, record) for every record of `sources` storing its file under `name`."""
+    for source in sources:
         model = apps.get_model(source.model)
         for obj in model.objects.filter(**{source.field: name}):
             yield source, obj
@@ -161,12 +189,21 @@ def decide(user, name):
     "public", "staff" or None: whether, and on what footing, `user` may have
     the file stored as `name`.
     """
+    # The sources the path points at are asked first; a grant there settles
+    # it. Before anything is refused, every other source is asked too - a
+    # file stored under an unexpected path, or owned through a copy the map
+    # does not know about, is judged exactly as it was before the shortcut.
+    first = likely_sources(name)
+    rest = [source for source in SOURCES if source not in first]
     granted = None
-    for source, obj in owners(name):
-        if source.is_public is not None and source.is_public(obj) and _public_site_on():
-            return "public"
-        if granted is None and _staff_may_view(user, source, obj):
-            granted = "staff"
+    for sources in (first, rest):
+        for source, obj in owners(name, sources):
+            if source.is_public is not None and source.is_public(obj) and _public_site_on():
+                return "public"
+            if granted is None and _staff_may_view(user, source, obj):
+                granted = "staff"
+        if granted:
+            return granted
     return granted
 
 
@@ -185,20 +222,20 @@ def serve(request, path):
         # this person's to read: a 403 here would confirm the file exists.
         raise Http404("No such file.")
 
-    try:
-        handle = default_storage.open(name, "rb")
-    except (FileNotFoundError, OSError, ValueError):
-        raise Http404("No such file.")
+    from .files import send_stored
 
     filename = posixpath.basename(name)
     content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     inline = content_type in INLINE_TYPES
-    response = FileResponse(
-        handle,
-        as_attachment=not inline,
-        filename=filename,
-        content_type=content_type if inline else "application/octet-stream",
-    )
+    try:
+        response = send_stored(
+            default_storage, name,
+            filename=filename,
+            as_attachment=not inline,
+            content_type=content_type if inline else "application/octet-stream",
+        )
+    except Http404:
+        raise Http404("No such file.")
     if footing == "public":
         response["Cache-Control"] = "public, max-age=3600"
     else:

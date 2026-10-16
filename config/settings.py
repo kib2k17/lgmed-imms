@@ -137,6 +137,12 @@ elif LAN_ACCESS:
 # elsewhere. Enrolments are kept, so removing the line restores them as they
 # were. Development only: with DEBUG off it is ignored, and the code is always
 # asked for.
+# Fernet key that encrypts each authenticator's secret (accounts/vault.py).
+# Empty derives one from SECRET_KEY - then rotating SECRET_KEY means every
+# enrolled account must be reset and enrol again. Set it in production and
+# back it up with ESIRA_CREDENTIAL_KEY, apart from the database backups.
+LGMED_MFA_KEY = env("LGMED_MFA_KEY")
+
 MFA_OFF = (
     DEBUG
     and env_bool("LGMED_MFA_OFF", False)
@@ -209,6 +215,13 @@ MIDDLEWARE = [
     # Publishes the request to the audit signal handlers. Last, so it sees the
     # authenticated user and wraps the view that raises PermissionDenied.
     "audit.middleware.AuditMiddleware",
+    # Scans every uploaded file with ClamAV before a view sees it, when
+    # LGMED_CLAMAV_ADDRESS is set (core/antivirus.py). After the audit
+    # middleware, so a blocked file is recorded against the request.
+    "core.middleware.UploadScanMiddleware",
+    # Holds an account still on a temporary password (a new account's, or an
+    # administrator's reset) on the change-password page until it is replaced.
+    "accounts.middleware.PasswordChangeRequiredMiddleware",
     # Refuses the URLs of a module closed from Menu Permissions. After the
     # audit middleware, so the refusal it records carries the request.
     "accounts.middleware.ModuleAccessMiddleware",
@@ -315,6 +328,13 @@ else:
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "lgmed-imms",
     }}
+
+# How long the dashboard's office-wide figures are reused (core/views.py).
+# Off under `manage.py test`, where a figure cached by one test would be read
+# by the next; core/tests_performance.py switches it on to measure it.
+LGMED_DASHBOARD_CACHE_SECONDS = env_int(
+    "LGMED_DASHBOARD_CACHE_SECONDS", 0 if RUNNING_TESTS else 60
+)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -438,6 +458,18 @@ LGMED_SITE_URL = env("LGMED_SITE_URL").rstrip("/")
 # for each reporting month from the module. What lives here is how the system
 # behaves around that deadline. See submissions/ and docs/monthly-submissions.md.
 
+# ---------------------------------------------------------------------------
+# Virus scanning of uploads (core/antivirus.py) - off unless an address is set
+# ---------------------------------------------------------------------------
+
+# "127.0.0.1:3310" or "unix:/run/clamav/clamd.ctl". Empty: no scanning.
+LGMED_CLAMAV_ADDRESS = env("LGMED_CLAMAV_ADDRESS")
+LGMED_CLAMAV_TIMEOUT = env_float("LGMED_CLAMAV_TIMEOUT", 30.0)
+# On: refuse uploads while the scanner cannot be reached. Off: accept them
+# unscanned and log an error - an office cannot stop filing papers because a
+# daemon restarted, but an administrator must know it happened.
+LGMED_CLAMAV_REQUIRED = env_bool("LGMED_CLAMAV_REQUIRED", False)
+
 # Largest MMIA or DTR file accepted, in megabytes.
 MONTHLY_SUBMISSION_MAX_UPLOAD_MB = env_int("MONTHLY_SUBMISSION_MAX_UPLOAD_MB", 10)
 # Days before the deadline on which pending staff are reminded. 0 is the
@@ -511,6 +543,13 @@ MEDIA_ROOT = BASE_DIR / "media"
 # and the system writes a separate, approved copy into MEDIA_ROOT. Flipping a
 # boolean on the internal file is deliberately not enough.
 PROTECTED_MEDIA_ROOT = BASE_DIR / "protected"
+
+# Let nginx send file bytes once Django has checked access (core/files.py):
+# the view answers with an X-Accel-Redirect to an `internal` nginx location
+# instead of streaming the file through the single Daphne process. Needs the
+# two /_internal/ locations in deploy/nginx/lgmed-imms.conf - without them
+# every file request would 404, which is why it is off unless asked for.
+LGMED_ACCEL_REDIRECT = env_bool("LGMED_ACCEL_REDIRECT", False)
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

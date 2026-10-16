@@ -117,6 +117,18 @@
                       class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">
                 {% icon "download" "size-4 text-slate-400" %}Install app</button>
             </div>
+            <div class="border-t border-slate-200 px-4 py-3">
+              <p id="theme-label" class="text-meta font-semibold tracking-wide text-slate-500 uppercase">Appearance</p>
+              <div role="group" aria-labelledby="theme-label"
+                   class="mt-2 grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-100 p-0.5">
+                {% for value, label, glyph in theme_choices %}
+                  <button type="button" data-theme-choice="{{ value }}" aria-pressed="false"
+                          class="flex items-center justify-center gap-1 rounded px-1.5 py-1 text-meta font-medium text-slate-600 hover:text-slate-900 aria-pressed:bg-white aria-pressed:text-slate-900 aria-pressed:shadow-xs">
+                    {% icon glyph "size-3.5" %}{{ label }}
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
             <div class="border-t border-slate-200 p-1.5">
               <form method="post" action="{% url 'accounts:logout' %}">
                 {% csrf_token %}

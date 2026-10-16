@@ -248,6 +248,13 @@ class IncomingListView(IncomingModuleMixin, ModuleListView):
         context["summary"] = _summary(self.request.user)
         context["active_view"] = self.request.GET.get("view", "")
         context["can_review"] = self.request.user.can_review_incoming
+        # The rows on this page this person can acknowledge, for the
+        # "acknowledge the ticked" form; empty hides the form and the ticks.
+        user = self.request.user
+        context["acknowledgeable"] = {
+            record.pk for record in context["records"]
+            if record.assigned_to_id == user.pk and record.may_be_acknowledged_by(user)
+        }
         return context
 
 
@@ -461,6 +468,47 @@ class AcknowledgeView(WorkflowActionView):
             "Monitoring: record your updates and the communication sent there.",
         )
         return redirect(document.action_url)
+
+
+class BulkAcknowledgeView(CapabilityRequiredMixin, View):
+    """
+    Acknowledge several of one's own assignments at once.
+
+    Each is acknowledged exactly as the single button does it - through
+    workflow.acknowledge, which checks it is this person's to acknowledge - so
+    a document that is not theirs, or no longer waiting, is skipped and
+    reported rather than acknowledged.
+    """
+
+    capability = "can_view"
+    http_method_names = ["post"]
+
+    def post(self, request):
+        ids = [value for value in request.POST.getlist("ids") if value.isdigit()]
+        done, skipped = [], 0
+        for document in IncomingDocument.objects.filter(pk__in=ids, assigned_to=request.user):
+            if not document.may_be_acknowledged_by(request.user):
+                skipped += 1
+                continue
+            workflow.acknowledge(document, request.user)
+            done.append(document.tracking_number)
+        skipped += len(ids) - len(done) - skipped
+        if done:
+            messages.success(
+                request,
+                f"You acknowledged {len(done)} document{'s' if len(done) != 1 else ''} "
+                f"({', '.join(done[:5])}{', ...' if len(done) > 5 else ''}). They are "
+                "now in Outgoing Monitoring.",
+            )
+        if skipped:
+            messages.warning(
+                request,
+                f"{skipped} document{'s were' if skipped != 1 else ' was'} not "
+                "acknowledged: not assigned to you, or no longer waiting for it.",
+            )
+        if not ids:
+            messages.info(request, "Tick the documents to acknowledge first.")
+        return redirect(f"{reverse('incoming:list')}?view=mine")
 
 
 # Updates, returns for revision and completion are not here: once the focal

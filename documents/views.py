@@ -20,7 +20,7 @@ import os
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.http import FileResponse, Http404
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -28,7 +28,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import TemplateView, View
 
-from core.files import serve_inline
+from core.files import send_fieldfile, serve_inline
 from core.mixins import CapabilityRequiredMixin
 from core.views_base import (
     ModuleCreateView,
@@ -561,17 +561,17 @@ def _serve(document, fieldfile, request, user, version=None):
     trail never claims a download that did not happen.
     """
     try:
-        handle = fieldfile.open("rb")
-    except (FileNotFoundError, OSError, ValueError):
+        response = send_fieldfile(
+            fieldfile, as_attachment=True, filename=os.path.basename(fieldfile.name)
+        )
+    except Http404:
         raise Http404(
             "The file recorded for this document is not present in storage. "
             "Report this to the system administrator."
         )
 
     workflow.record_download(document, user, version=version, request=request)
-    return FileResponse(
-        handle, as_attachment=True, filename=os.path.basename(fieldfile.name)
-    )
+    return response
 
 
 class DocumentDownloadView(CapabilityRequiredMixin, View):
@@ -681,18 +681,14 @@ class SupportingFileDownloadView(CapabilityRequiredMixin, View):
 
     def get(self, request, pk, file_pk):
         document, supporting = _supporting_file(request, pk, file_pk)
-        try:
-            handle = supporting.file.open("rb")
-        except (FileNotFoundError, OSError, ValueError):
-            raise Http404(
-                "The file recorded here is not present in storage. Report this "
-                "to the system administrator."
-            )
+        response = send_fieldfile(
+            supporting.file, as_attachment=True, filename=supporting.file_name
+        )
         workflow.log(
             document, request.user, EventType.DOWNLOADED,
             detail=f"Downloaded supporting file {supporting.file_name}", request=request,
         )
-        return FileResponse(handle, as_attachment=True, filename=supporting.file_name)
+        return response
 
 
 @method_decorator(xframe_options_sameorigin, name="dispatch")

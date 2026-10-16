@@ -8,6 +8,11 @@
 window.LGMED = window.LGMED || {};
 
 window.LGMED.initAnalytics = function (data) {
+  // Placeholders out first, drawn or not (components/chart_card.html).
+  Array.prototype.forEach.call(
+    document.querySelectorAll("[data-chart-skeleton]"),
+    function (skeleton) { skeleton.remove(); }
+  );
   if (typeof Chart === "undefined" || !data) return;
 
   var palette = window.LGMED.chartPalette;
@@ -75,7 +80,7 @@ window.LGMED.initAnalytics = function (data) {
               palette.status.danger,
               palette.status.neutral,
             ],
-            borderColor: "#ffffff",
+            borderColor: palette.surface,
             borderWidth: 2,
           },
         ],

@@ -24,6 +24,7 @@ from pathlib import Path
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from core.testing import close_response
 from django.urls import reverse
@@ -49,7 +50,9 @@ from .models import (
 )
 from .public import public_statistics, visible
 
-TODAY = datetime.date(2026, 9, 14)
+# The real date, as the models see it. A fixed date here aged out: "three days
+# from now" became a day in the past and the not-yet-in-effect test failed.
+TODAY = timezone.localdate()
 
 
 def temp_media():
@@ -663,6 +666,16 @@ class PublicDocumentTests(PPATestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(b"".join(response.streaming_content),
                          b"A clean regional summary.")
+        close_response(response)
+
+    def test_only_pdfs_and_pictures_open_in_the_browser(self):
+        # summary.txt is neither, so it is handed over as a download of an
+        # unspecified type - it can never be rendered as a page of this site.
+        self.clear_for_release(self.document)
+        self.publish_chain(self.program)
+        response = self.client.get(self.url())
+        self.assertTrue(response["Content-Disposition"].startswith("attachment"))
+        self.assertEqual(response["Content-Type"], "application/octet-stream")
         close_response(response)
 
     def test_withdrawing_the_parent_stops_the_download(self):

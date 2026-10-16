@@ -25,6 +25,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
+from accounts import mfa, totp
 from accounts.models import Role, User
 from audit.models import Action, AuditEvent
 from core.testing import close_response
@@ -179,6 +180,12 @@ class EsiraTestCase(TestCase):
             username="outsider", password="pw", role=Role.ENCODER,
             first_name="Otto", last_name="Outsider",
         )
+        # Signers who switch off the certificate password prompt must have
+        # two-step verification (esira.workflow.set_require_passphrase).
+        cls.mfa_secrets = {}
+        for user in (cls.owner, cls.signer):
+            cls.mfa_secrets[user.pk] = totp.generate_secret()
+            mfa.enrol(user, cls.mfa_secrets[user.pk], step=totp.current_step() - 5)
 
     # -- helpers ------------------------------------------------------------
 
@@ -199,6 +206,10 @@ class EsiraTestCase(TestCase):
 
     def box(self, document, signer, page=1, x=0.1, y=0.8):
         return {"page": page, "x": x, "y": y, "width": 0.3, "height": 0.08, "signer": signer.pk}
+
+    def mfa_code(self, user):
+        """The code the user's authenticator app is showing now."""
+        return totp._code_at(self.mfa_secrets[user.pk], totp.current_step())
 
     def credentials(self, data, passphrase="secret"):
         return {"pkcs12": data, "passphrase": passphrase}
@@ -441,6 +452,14 @@ class CertificateTests(EsiraTestCase):
         with self.assertRaisesMessage(workflow.WorkflowError, "another account"):
             workflow.register_certificate(self.outsider, pkcs12_file=p12_upload(data), passphrase="secret")
 
+    def test_a_superuser_cannot_verify_their_own_certificate_either(self):
+        self.admin.is_superuser = True
+        self.admin.save()
+        data, _ = PKI.issue("Divina Chief")
+        record = workflow.register_certificate(self.admin, pkcs12_file=p12_upload(data), passphrase="secret")
+        with self.assertRaises(PermissionDenied):
+            workflow.review_certificate(record, self.admin, decision="verify")
+
     def test_an_administrator_cannot_verify_their_own_certificate(self):
         data, _ = PKI.issue("Divina Chief")
         record = workflow.register_certificate(self.admin, pkcs12_file=p12_upload(data), passphrase="secret")
@@ -480,6 +499,27 @@ class StoredCertificateTests(EsiraTestCase):
         with self.assertRaisesMessage(workflow.WorkflowError, "passphrase"):
             workflow.sign(document, self.owner, credentials={"stored": True, "passphrase": "wrong"})
         workflow.sign(document, self.owner, credentials={"stored": True, "passphrase": "secret"})
+
+    def test_protection_cannot_be_switched_off_without_two_step_verification(self):
+        self.verified_certificate(self.outsider)
+        with self.assertRaisesMessage(workflow.WorkflowError, "two-step verification"):
+            workflow.set_require_passphrase(self.outsider, False)
+        self.assertTrue(SignerProfile.for_user(self.outsider).require_passphrase)
+
+        self.client.force_login(self.outsider)
+        self.client.post(reverse("esira:certificates"), {"action": "protection"})
+        self.assertTrue(SignerProfile.for_user(self.outsider).require_passphrase)
+
+    def test_the_password_is_still_asked_for_once_two_step_verification_is_off(self):
+        from .signing import get_backend
+        from .views import sign_form_for
+
+        self.verified_certificate(self.owner)
+        workflow.set_require_passphrase(self.owner, False)
+        self.assertFalse(sign_form_for(self.owner, get_backend()).asks_for_passphrase)
+        mfa.disable(self.owner)
+        self.owner.refresh_from_db()
+        self.assertTrue(sign_form_for(self.owner, get_backend()).asks_for_passphrase)
 
     def test_an_unverified_stored_certificate_cannot_sign(self):
         data, _ = PKI.issue("Olivia Owner")
@@ -642,12 +682,34 @@ class CertificatePageTests(EsiraTestCase):
         self.client.post(url, {"action": "protection", "require_passphrase": "on"})
         self.assertTrue(SignerProfile.for_user(self.signer).require_passphrase)
 
-        reveal = self.client.post(reverse("esira:certificate_password"))
+        reveal_url = reverse("esira:certificate_password")
+        # A signed-in session alone does not show it: a current code is needed.
+        for data in ({}, {"code": "000000"}):
+            refused = self.client.post(reveal_url, data)
+            self.assertEqual(refused.status_code, 403)
+            self.assertNotIn("secret", refused.content.decode())
+        self.assertTrue(AuditEvent.objects.filter(
+            action=Action.ACCESS_DENIED, actor=self.signer).exists())
+        self.assertFalse(AuditEntry.objects.filter(
+            action=AuditAction.CERT_PASSWORD_VIEWED, actor=self.signer).exists())
+
+        reveal = self.client.post(reveal_url, {"code": self.mfa_code(self.signer)})
         self.assertEqual(reveal.json(), {"password": "secret"})
         self.assertEqual(reveal["Cache-Control"], "no-store")
         self.assertTrue(AuditEntry.objects.filter(
             action=AuditAction.CERT_PASSWORD_VIEWED, actor=self.signer).exists())
-        self.assertEqual(self.client.get(reverse("esira:certificate_password")).status_code, 405)
+        # The same code does not work twice.
+        again = self.client.post(reveal_url, {"code": self.mfa_code(self.signer)})
+        self.assertEqual(again.status_code, 403)
+        self.assertEqual(self.client.get(reveal_url).status_code, 405)
+
+    def test_without_two_step_verification_the_password_is_not_shown(self):
+        data, _ = PKI.issue("Otto Outsider")
+        workflow.register_certificate(self.outsider, pkcs12_file=p12_upload(data), passphrase="secret")
+        self.client.force_login(self.outsider)
+        response = self.client.post(reverse("esira:certificate_password"), {"code": "123456"})
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("two-step verification", response.json()["error"])
 
     def test_a_wrong_password_is_shown_on_the_form(self):
         self.client.force_login(self.signer)

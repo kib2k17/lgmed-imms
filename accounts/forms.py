@@ -1,6 +1,6 @@
 from django import forms
 from django.conf import settings
-from django.contrib.auth.forms import AuthenticationForm, SetPasswordForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from audit.models import Action
 from audit.recording import client_ip, record
@@ -270,19 +270,60 @@ class UserCreateForm(UserForm):
         user = super().save(commit=False)
         self.temporary_password = generate_temporary_password()
         user.set_password(self.temporary_password)
+        # Emailed, so known to more than its holder: replaced at first sign-in.
+        user.must_change_password = True
         if commit:
             user.save()
         return user
 
 
-class AdminSetPasswordForm(SetPasswordForm):
-    """Reset another user's password without knowing the old one."""
+class AdminPasswordResetForm(forms.Form):
+    """
+    Reset another account's password to a generated temporary one.
+
+    The administrator never chooses it. A password the administrator picked
+    would stay known to them for as long as the holder kept it - and every
+    action taken with it would read as the holder's in the audit trail. The
+    temporary password is replaced at the holder's next sign-in.
+    """
+
+    def __init__(self, *args, user, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def save(self):
+        self.temporary_password = generate_temporary_password()
+        self.user.set_password(self.temporary_password)
+        self.user.must_change_password = True
+        self.user.save(update_fields=["password", "must_change_password"])
+        return self.user
+
+
+class OwnPasswordChangeForm(PasswordChangeForm):
+    """The account holder replaces their own password."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
+        self.fields["old_password"].label = "Current password"
+        for name, field in self.fields.items():
             field.widget.attrs["class"] = FIELD_CLASS
-            field.widget.attrs["autocomplete"] = "new-password"
+            field.widget.attrs["autocomplete"] = (
+                "current-password" if name == "old_password" else "new-password"
+            )
+
+    def clean_new_password1(self):
+        new = self.cleaned_data.get("new_password1")
+        old = self.cleaned_data.get("old_password")
+        if new and old and new == old:
+            raise forms.ValidationError("Choose a password different from the current one.")
+        return new
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.must_change_password = False
+        if commit:
+            user.save()
+        return user
 
 
 class ProfilePhotoForm(forms.Form):

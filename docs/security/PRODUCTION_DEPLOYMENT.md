@@ -90,7 +90,7 @@ sudo chown root:lgmed /etc/lgmed-imms/lgmed.env && sudo chmod 640 /etc/lgmed-imm
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | yes | `https://<hostname>` |
 | `MYSQL_PASSWORD` (+ `MYSQL_*`) | **yes** | From step 2 |
 | `DJANGO_BEHIND_TLS_PROXY=1`, `DJANGO_TRUST_X_FORWARDED_FOR=1` | yes behind nginx | Only because the nginx template overwrites/appends those headers |
-| `ESIRA_CREDENTIAL_KEY` | strongly recommended | `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` - set **before** anyone stores a certificate; back it up offline |
+| `ESIRA_CREDENTIAL_KEY` | **required** (`check --deploy` fails without it, lgmed.E001) | `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` - set **before** anyone stores a certificate; back it up offline |
 | `EMAIL_*` | before creating accounts | Otherwise temporary passwords go to the log (`lgmed.W005`) |
 | `RECAPTCHA_*` | if reachable from the internet | Google reCAPTCHA v3 keys for the hostname |
 | `ESIRA_PNPKI_TRUST_ROOTS` | for e-SIRA | Paths to the DICT PNPKI CA certificates |

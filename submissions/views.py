@@ -13,7 +13,7 @@ import io
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -27,7 +27,7 @@ from accounts.models import User
 from audit.models import Action
 from audit.recording import record
 from core import csv_safe
-from core.files import is_pdf, serve_inline
+from core.files import is_pdf, send_fieldfile, serve_inline
 from core.mixins import CapabilityRequiredMixin
 
 from . import notify, services
@@ -324,24 +324,18 @@ class SubmissionFileView(ModuleMixin, View):
 
     def get(self, request, pk, kind):
         submission, kind, fieldfile = _submission_file(request, pk, kind)
-        try:
-            handle = fieldfile.open("rb")
-        except (FileNotFoundError, OSError, ValueError):
-            raise Http404(
-                "The file recorded here is not present in storage. Report this "
-                "to the system administrator."
-            )
+        response = send_fieldfile(
+            fieldfile, as_attachment=True,
+            filename=submission.original_name(kind) or f"{kind.value}",
+            content_type="application/octet-stream",
+        )
         services.log(
             AuditAction.DOWNLOADED, user=request.user, schedule=submission.schedule,
             staff=submission.staff, kind=kind,
             details=f"Downloaded {kind.label} {submission.original_name(kind)}",
             request=request,
         )
-        return FileResponse(
-            handle, as_attachment=True,
-            filename=submission.original_name(kind) or f"{kind.value}",
-            content_type="application/octet-stream",
-        )
+        return response
 
 
 @method_decorator(xframe_options_sameorigin, name="dispatch")

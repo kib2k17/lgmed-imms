@@ -117,11 +117,23 @@
         setShown(false, hiddenText);
         return;
       }
+      // The password is shown only against a current two-step code
+      // (esira.views.CertificatePasswordView).
+      var codeInput = reveal.querySelector("[data-reveal-code]");
+      var code = codeInput ? codeInput.value.trim() : "";
+      if (!code) {
+        output.textContent = "Enter a code from your authenticator app first.";
+        if (codeInput) codeInput.focus();
+        return;
+      }
+      var body = new FormData();
+      body.append("code", code);
       button.disabled = true;
       fetch(reveal.getAttribute("data-url"), {
         method: "POST",
         credentials: "same-origin",
         headers: { "X-CSRFToken": csrfToken(), "X-Requested-With": "XMLHttpRequest" },
+        body: body,
       })
         .then(function (response) {
           return response.json().then(function (body) {
@@ -130,6 +142,8 @@
           });
         })
         .then(function (password) {
+          // A code is good once; clear it so the next reveal asks again.
+          if (codeInput) codeInput.value = "";
           setShown(true, password);
         })
         .catch(function (error) {

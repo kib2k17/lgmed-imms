@@ -150,6 +150,13 @@ class BatchView(CanEncodeMixin, DetailView):
     context_object_name = "batch"
     template_name = "dashboard/sync/batch.html"
 
+    def get_object(self, queryset=None):
+        # The preview lists every row of the uploaded register, so it is held
+        # to the same capability as committing it, as the other batch views are.
+        batch = super().get_object(queryset)
+        _require(self.request.user, batch.profile)
+        return batch
+
     def get_template_names(self):
         if self.object.profile.is_migration:
             return ["dashboard/sync/migration.html"]

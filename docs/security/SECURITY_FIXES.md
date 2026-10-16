@@ -136,3 +136,97 @@ All runs on the development machine (Windows 11, Python 3.14.7, MySQL test datab
 | Backup restore drill | - | NOT RUN (procedure documented) |
 
 Existing tests that already covered IDOR and role rules (Documents archive visibility, Activities ownership, e-SIRA routing, Incoming assignment, PPA review) continue to pass as part of the full suite.
+
+## 4. Improvement plan, Phases 0 and 1 (2026-10-16)
+
+Task IDs refer to the LGMED-IMMS Phased Improvement Plan of 2026-10-16.
+
+### Phase 0 - housekeeping
+
+| Task | File | Change |
+|---|---|---|
+| 0.1 | `programs/tests.py` | `TODAY` is the real date; a fixed date had aged out and failed the not-yet-in-effect test (I-06) |
+| 0.2 | `venv/lgmed.env` (local, untracked) | `LGMED_MFA_OFF` commented out |
+| 0.3 | `tunnel-guard.ps1` (new), `run-ngrok.ps1`, `run-cloudflare.ps1`, `docs/demo-tunnel.md` | Tunnels refuse the real database and `LGMED_MFA_OFF`; `-Serve` starts the server on a `_demo` database with MFA on (M-08) |
+| 0.4 | `.github/workflows/jekyll-docker.yml` | Removed (I-05) |
+
+### Phase 1 - account and signing security
+
+| Task | File | Change |
+|---|---|---|
+| 1.1 | `accounts/models.py`, migration `accounts.0007` | `User.must_change_password`, set on account creation and administrator reset |
+| 1.2 | `accounts/middleware.py`, `config/settings.py` | `PasswordChangeRequiredMiddleware` holds a flagged account on the change page; background requests get 403 |
+| 1.3 | `accounts/views.py`, `accounts/forms.py`, `accounts/urls.py`, `templates/accounts/password_change.html`, `templates/accounts/profile.html`, `audit/models.py`, migration `audit.0007` | Self-service password change from My Profile; `PASSWORD_CHANGED` audit action; other sessions signed out |
+| 1.4 | `accounts/forms.py`, `accounts/views.py`, `accounts/emails.py`, `templates/dashboard/users/password.html`, `templates/emails/password_reset.*` | Administrator reset generates the password and emails it; shown once, uncached, only if the email fails |
+| 1.5 | `esira/workflow.py`, `esira/views.py`, `templates/dashboard/esira/certificates.html` | The passphrase prompt cannot be switched off without MFA; a signer without MFA is always asked |
+| 1.6 | `accounts/models.py` | `mfa_required` covers `can_approve` (LGMED Staff) and holders of a verified, unexpired signing certificate (decision D1: no grace period) |
+| 1.7 | `esira/workflow.py` | No superuser exemption from verifying one's own certificate |
+| 1.7 | `accounts/views.py` | Reset page looks the account up only after the sign-in and capability checks (no ID enumeration) |
+| 1.7 | `core/views.py` | Public PPA files: only PDFs and pictures inline, everything else a download |
+| 1.7 | `datasync/views.py` | Batch preview requires the profile's capability |
+| 1.7 | `accounts/throttle.py` | Failures counted in atomic per-bucket counters instead of a read-modify-write list |
+| 1.9 | `esira/views.py`, `static/js/esira-certificates.js`, `templates/dashboard/esira/certificates.html` | "Show my certificate password" requires a current two-step code (shared lockout; failures audit-logged as ACCESS_DENIED); unavailable without two-step verification. Found during Phase 1, outside the original plan |
+| 1.8 | `core/checks.py`, `.github/workflows/python-package.yml`, `docs/security/PRODUCTION_DEPLOYMENT.md` | Missing `ESIRA_CREDENTIAL_KEY` is an error (`lgmed.E001`) when DEBUG is off; CI uses a throw-away key |
+
+**Behaviour changes:** LGMED Staff, and anyone with a verified signing certificate, must enrol an authenticator at their next sign-in. New and reset accounts must choose a password before using the system. Administrators no longer type a password when resetting one. A production server without `ESIRA_CREDENTIAL_KEY` fails `check --deploy`.
+
+Tests: `accounts/test_password.py` (new), plus additions to `accounts/tests.py`, `accounts/test_mfa.py`, `esira/tests.py`, `datasync/tests.py` and `programs/tests.py`.
+
+## 5. Improvement plan, Phase 2 - data protection (2026-10-16)
+
+| Task | File | Change |
+|---|---|---|
+| 2.1 | `accounts/vault.py` (new), `accounts/models.py`, `accounts/mfa.py`, migration `accounts.0008`, `config/settings.py`, `.env.example`, `core/checks.py` | Authenticator secrets stored as Fernet tokens under `LGMED_MFA_KEY` (derived from `SECRET_KEY` when unset; `lgmed.W006` warns). The migration widens the column, seals existing secrets, and reverses cleanly. A secret that cannot be decrypted refuses app codes but still accepts recovery codes (M-06) |
+| 2.2 | `accounts/test_mfa.py` | Rehearsed on the test database: sealing, idempotence, unsealing, legacy plain-text rows, changed key |
+| 2.3 | `accounts/views.py`, `templates/dashboard/users/password.html` | **Changed from the plan.** Account emails are *not* queued in a database outbox: they carry a temporary password, which a queue would store until sent. A failed welcome email now shows the password once (uncached) to the administrator, as a failed reset email already does |
+| 2.4 | `documents/upload_rules.py` (new), `documents/models.py`, `documents/forms.py`, `incoming/models.py`, `outgoing/models.py`, `monitoring/models.py`, `reports/models.py`, migrations (no SQL) | The upload rules also run as model-field validators, so a Django-admin upload meets them; only newly posted files are judged |
+| 2.5 | `core/antivirus.py` (new), `core/middleware.py`, `config/settings.py`, `.env.example`, `core/checks.py` | Optional ClamAV scanning of every uploaded file before any view runs, over the clamd INSTREAM protocol (no new package). Off unless `LGMED_CLAMAV_ADDRESS` is set (`lgmed.W007` warns); infected files refused with 422 and audit-logged; scanner outage logs and passes, or refuses with 503 when `LGMED_CLAMAV_REQUIRED=1` (M-09, decision D3 still open) |
+
+**Behaviour changes:** after `migrate`, two-step verification keeps working for every enrolled account; rotating `SECRET_KEY` without `LGMED_MFA_KEY` set now also requires re-enrolment. A failed welcome email shows the temporary password on screen instead of asking for a separate reset.
+
+Tests: `core/tests_antivirus.py` (new, fake clamd), `accounts/test_mfa.py` (`SecretEncryptionTests`), `documents/tests.py` (`ModelLevelUploadValidationTests`), `accounts/tests.py`.
+
+## 6. Improvement plan, Phase 3 - performance (2026-10-16)
+
+### 3.0 Measurements
+
+Taken on the test database by `core/tests_performance.py` (`PRINT_FIGURES = True`), before on commit `1fb623c`, after on this branch, each after one warm-up request. 5,000 audit rows for the export.
+
+| Request | Before | After |
+|---|---|---|
+| Dashboard | 36 queries, 99 ms | 8 queries, 50-69 ms |
+| Internal file late in the media gateway's list (Outgoing) | 16 queries, 62 ms | 9 queries, 22 ms |
+| Public announcement image (first in the list) | 2 queries | 2 queries |
+| Audit log page | 20 queries, 326 ms | 16 queries, 248-303 ms |
+| Audit CSV export | 11 queries, 1.7 s, 12.4 MiB peak (Python heap) | one query per 1,000 rows, 1.5-2.7 s, 6.3 MiB, streamed |
+
+Correction to the audit report: the media gateway's cost was not "11 queries per file" for every file. It stopped at the first public owner, so announcement images were already cheap; the cost fell on files owned by models late in `SOURCES` and on refused requests.
+
+### Changes
+
+| Task | File | Change |
+|---|---|---|
+| 3.1 | `core/media.py` | `PREFIX_SOURCES`: a path's prefix names the models that can own it (including the register's copies of Incoming/Outgoing files); those are asked first, and every other source is still asked before a request is refused - so no access decision changed |
+| 3.2 | `core/files.py`, `core/media.py`, `documents/views.py`, `submissions/views.py`, `programs/views.py`, `config/settings.py`, `deploy/nginx/lgmed-imms.conf` | `send_stored` / `send_fieldfile`: with `LGMED_ACCEL_REDIRECT=1`, after the access check Django answers with `X-Accel-Redirect` to an `internal` nginx location, which sets the security headers nginx does not carry over. Off by default. e-SIRA PDFs are excluded: they are verified against their SHA-256 in memory before serving |
+| 3.3 | `core/views.py`, `config/settings.py` | Office-wide dashboard figures cached for `LGMED_DASHBOARD_CACHE_SECONDS` (60; 0 under tests); the page's "Figures as of" shows when; upcoming activities stay per user |
+| 3.4 | `core/views_base.py`, `audit/views.py` | CSV export streamed, read 1,000 rows at a time by key (the MySQL driver otherwise buffers the whole result), related rows joined from the export columns, row count audited before the first byte; the audit log's filter lists computed once per request instead of three times |
+| 3.5 | - | Not done: Outgoing is filtered by `date_sent` (indexed) and quick views; `communication_type` is only a sort column |
+
+Tests: `core/tests_performance.py` (new) holds query budgets for each request above and the accel-redirect behaviour; `activities/tests.py` and `monitoring/tests.py` read the export as a stream.
+
+## 7. Improvement plan, Phase 4 - user experience (2026-10-16)
+
+| Task | File | Change |
+|---|---|---|
+| 4.1 | `core/stats.py`, `core/views.py`, `templates/dashboard/dashboard.html` | Office-wide figures are tagged with their module and narrowed per viewer (`for_viewer`): a module closed in Menu Permissions shows no card, chart, count, panel or action button, and the Chief's incoming review queue and monitoring review appear only to the roles that act on them. New "My Work" panel (`my_work`, never cached): incoming documents to acknowledge and assigned to the viewer (one aggregate query), register documents assigned to them, e-SIRA documents waiting on them, and their missing MMIA/DTR for the open month |
+| 4.2 | `static/css/app.src.css`, `templates/dashboard/module_list.html`, `templates/dashboard/incoming/list.html`, `templates/dashboard/documents/list.html`, `templates/dashboard/activities/calendar.html` | `table-stack`: below 640 px a list row becomes a card, each cell labelled from `data-label`; the received/due dates stay visible (`stack-show`). The month grid gives way to the month's list on phones |
+| 4.3 | `core/consumers.py`, `notifications/service.py`, `static/js/app.js`, `static/js/pwa.js` | A new notification sends the recipient's open pages a bare "check now" over the existing WebSocket (per-user group, after commit); the page then asks the session-checked status endpoint. No notification content crosses the socket. The fallback poll slows from 1 to 5 minutes while the socket is up |
+| 4.4 | `templates/components/chart_card.html`, `static/js/app.js`, `static/js/analytics.js`, `static/js/updates.js`, `static/css/app.src.css` | Chart placeholders while the charting script loads; removed when charts are drawn or cannot be; hidden without JavaScript; the pulse respects reduced motion |
+| 4.5 | `notifications/views.py`, `notifications/urls.py`, `templates/dashboard/notifications/list.html`, `incoming/views.py`, `incoming/urls.py`, `templates/dashboard/incoming/list.html`, `static/js/app.js` | Bulk mark-read / dismiss for one's own notifications; bulk acknowledge of one's own incoming assignments, each through `workflow.acknowledge` and its permission check, with a confirmation (`data-confirm-submit`). Bulk assign and bulk archive were not built: each needs a per-document decision (due date, retention) |
+| 4.6 | `core/management/commands/build_dark_css.py` (new), `static/css/dark.css` (generated), `templates/base.html`, `templates/includes/topbar.html`, `core/context_processors.py`, `core/icons.py`, `static/js/app.js`, `static/js/analytics.js`, `static/js/updates.js`, `build-css.ps1`, `build-css.sh` | Dark theme for the signed-in system (the public site stays light). Generated from the compiled stylesheet: the slate scale is redefined light-for-dark, white surfaces become the card colour, pale tints and dark text of every other colour are swapped, filled buttons keep their colour, dialog backdrops stay dark. Light / Dark / Device switch in the user menu, remembered per browser and applied before first paint; charts take matching grid, label and edge colours. A test fails if dark.css falls out of step with app.css |
+
+`static/css/app.css` rebuilt with `tools/tailwindcss.exe` (it also picks up one class, `shrink`, left out of the previous build).
+
+Also fixed: three multi-line `{# #}` comments added in this phase rendered as page text (Django comments are single-line); `core/tests_templates.py` now fails on any such comment.
+
+Tests: `core/tests.py` (`RoleAwareDashboardTests`, `PhoneLayoutAndPlaceholderTests`, `AppearanceSwitchTests`), `core/tests_templates.py` (`TemplateCommentTests`, `DarkThemeTests`), `core/tests_live.py` (notification signal), `notifications/tests.py` (`BulkNotificationTests`), `incoming/tests.py` (`BulkAcknowledgeTests`), `core/tests_performance.py` (dashboard budget 12 with "My Work").

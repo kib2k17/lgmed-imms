@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.generic import (
@@ -39,6 +39,23 @@ def _filter_or_ignore(queryset, lookup):
         return queryset.filter(**lookup)
     except (ValueError, TypeError, ValidationError):
         return queryset
+
+
+def in_chunks(queryset, size=1000):
+    """
+    Every row of `queryset`, in its order, a thousand at a time.
+
+    The MySQL driver holds a query's whole result in memory however it is
+    iterated, so a large export is read as one query for the ordered keys and
+    then one query per thousand rows - the memory a chunk needs, not the table.
+    """
+    keys = list(queryset.values_list("pk", flat=True))
+    for start in range(0, len(keys), size):
+        chunk = keys[start:start + size]
+        rows = queryset.order_by().in_bulk(chunk)
+        for key in chunk:
+            if key in rows:
+                yield rows[key]
 
 
 class ModuleContextMixin:
@@ -180,41 +197,50 @@ class ModuleListView(LoginRequiredMixin, ModuleContextMixin, ListView):
             return self.export_csv()
         return super().get(request, *args, **kwargs)
 
+    def export_relations(self, queryset, columns):
+        """
+        The related rows the export columns read ("document_type.name"),
+        joined in the one query rather than fetched once per exported row.
+        """
+        from django.core.exceptions import FieldDoesNotExist
+
+        paths = set()
+        for _header, accessor in columns:
+            if callable(accessor) or "." not in accessor:
+                continue
+            model, path = queryset.model, []
+            for part in accessor.split(".")[:-1]:
+                try:
+                    field = model._meta.get_field(part)
+                except FieldDoesNotExist:
+                    break
+                if not (field.many_to_one or field.one_to_one):
+                    break
+                path.append(part)
+                model = field.related_model
+            if path:
+                paths.add("__".join(path))
+        return queryset.select_related(*sorted(paths)) if paths else queryset
+
     def export_csv(self):
-        """Export the *filtered* queryset, so what you see is what you get."""
+        """
+        Export the *filtered* queryset, so what you see is what you get.
+
+        Streamed a chunk of rows at a time: the audit log runs to tens of
+        thousands of entries, and building the whole file in memory first held
+        all of them - as model objects and as text - for the length of the
+        request.
+        """
         from audit.models import Action
         from audit.recording import record
         stamp = timezone.localtime().strftime("%Y%m%d")
         name = slugify(self.module_label or "records")
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = (
-            f'attachment; filename="lgmed-imms-{name}-{stamp}.csv"'
-        )
-        response.write("﻿")  # BOM, so Excel opens UTF-8 correctly
-
-        writer = csv_safe.writer(response)
         columns = self.export_columns or [("ID", "pk")]
-        writer.writerow([header for header, _ in columns])
+        queryset = self.export_relations(self.get_queryset(), columns)
 
-        rows = 0
-        # Named `item`, not `record`: `record` is the audit function imported
-        # above, and shadowing it here made the export blow up on its own log line.
-        for item in self.get_queryset():
-            row = []
-            for _header, accessor in columns:
-                value = accessor(item) if callable(accessor) else item
-                if not callable(accessor):
-                    for part in accessor.split("."):
-                        value = getattr(value, part, "")
-                        if value is None:
-                            value = ""
-                            break
-                    if callable(value):
-                        value = value()
-                row.append(str(value))
-            writer.writerow(row)
-            rows += 1
-
+        # Counted before the first byte goes out, so the trail says how many
+        # rows left even if the download is then abandoned part-way.
+        rows = queryset.count()
         record(
             Action.EXPORT,
             detail=(
@@ -222,6 +248,37 @@ class ModuleListView(LoginRequiredMixin, ModuleContextMixin, ListView):
                 + (" matching the active filters" if self.is_filtered() else "")
             ),
             request=self.request,
+        )
+
+        class Echo:
+            """A file the csv writer writes into, handing each line straight back."""
+
+            def write(self, value):
+                return value
+
+        writer = csv_safe.writer(Echo())
+
+        def lines():
+            yield "﻿"  # BOM, so Excel opens UTF-8 correctly
+            yield writer.writerow([header for header, _ in columns])
+            for item in in_chunks(queryset):
+                row = []
+                for _header, accessor in columns:
+                    value = accessor(item) if callable(accessor) else item
+                    if not callable(accessor):
+                        for part in accessor.split("."):
+                            value = getattr(value, part, "")
+                            if value is None:
+                                value = ""
+                                break
+                        if callable(value):
+                            value = value()
+                    row.append(str(value))
+                yield writer.writerow(row)
+
+        response = StreamingHttpResponse(lines(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = (
+            f'attachment; filename="lgmed-imms-{name}-{stamp}.csv"'
         )
         return response
 

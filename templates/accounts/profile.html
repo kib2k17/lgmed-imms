@@ -128,6 +128,18 @@
     </section>
   </div>
 
+  <section class="card mt-4" aria-labelledby="password-heading">
+    <div class="card-header">
+      <div>
+        <h2 id="password-heading" class="card-title">Password</h2>
+        <p class="mt-0.5 text-meta text-slate-500">Change it whenever you think someone else may know it</p>
+      </div>
+      <a href="{% url 'accounts:password_change' %}" class="btn btn-secondary btn-sm">
+        {% icon "lock" "size-3.5" %}Change password
+      </a>
+    </div>
+  </section>
+
   <section class="card mt-4" aria-labelledby="mfa-heading">
     <div class="card-header">
       <div>

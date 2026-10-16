@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import TimeStampedModel
+from documents.upload_rules import validate_new_file
 
 
 def outgoing_path(instance, filename):
@@ -59,6 +60,7 @@ class OutgoingDocument(TimeStampedModel):
         "file of the communication",
         upload_to=outgoing_path,
         blank=True,
+        validators=[validate_new_file],
         help_text="The communication as sent, e.g. the signed and scanned reply.",
     )
     incoming = models.OneToOneField(

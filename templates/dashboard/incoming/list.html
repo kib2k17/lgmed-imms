@@ -24,7 +24,24 @@
   {{ block.super }}
 {% endblock %}
 
+{% block table_class %}table-stack{% endblock %}
+
+{% block after_table %}
+  {% if acknowledgeable %}
+    <form id="bulk-acknowledge" method="post" action="{% url 'incoming:bulk_acknowledge' %}"
+          data-confirm-submit="Acknowledge the ticked documents? Each moves to Outgoing Monitoring under its LGMED code."
+          class="mt-3 flex flex-wrap items-center gap-2">
+      {% csrf_token %}
+      <span class="text-meta text-slate-600">Assignments waiting on you:</span>
+      <button type="submit" class="btn btn-primary btn-sm">
+        {% icon "check" "size-3.5" %}Acknowledge ticked
+      </button>
+    </form>
+  {% endif %}
+{% endblock %}
+
 {% block table_head %}
+  {% if acknowledgeable %}<th scope="col" class="w-8"><span class="sr-only">Select</span></th>{% endif %}
   {% include "components/th_sort.html" with field="lgmed_code" label="LGMED code / DNS No." %}
   {% include "components/th_sort.html" with field="subject" label="Subject" %}
   {% include "components/th_sort.html" with field="date_received" label="Received" th_class="hidden sm:table-cell" %}
@@ -37,6 +54,16 @@
 {% block table_body %}
   {% for record in records %}
     <tr>
+      {% if acknowledgeable %}
+        <td class="w-8">
+          {% if record.pk in acknowledgeable %}
+            <input type="checkbox" name="ids" value="{{ record.pk }}" form="bulk-acknowledge"
+                   id="acknowledge-{{ record.pk }}"
+                   class="size-4 rounded border-slate-300 text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-600">
+            <label for="acknowledge-{{ record.pk }}" class="sr-only">Select {{ record.tracking_number }}</label>
+          {% endif %}
+        </td>
+      {% endif %}
       <th scope="row" class="border-b border-slate-100 px-4 py-2.5 text-left align-middle font-medium text-slate-900">
         <a href="{{ record.get_absolute_url }}" class="hover:text-brand-700 hover:underline">{{ record.tracking_number }}</a>
         {% if record.lgmed_code %}
@@ -46,13 +73,13 @@
           <span class="mt-0.5 block text-meta font-semibold text-red-700">{{ record.get_priority_display }} priority</span>
         {% endif %}
       </th>
-      <td>
+      <td data-label="Subject">
         {{ record.subject|truncatechars:70 }}
         <span class="block text-meta text-slate-500">
           {{ record.document_type.name }}{% if record.source_office %} &middot; from {{ record.source_office|truncatechars:40 }}{% endif %}
         </span>
       </td>
-      <td class="hidden whitespace-nowrap sm:table-cell">
+      <td class="stack-show hidden whitespace-nowrap sm:table-cell" data-label="Received">
         <time datetime="{{ record.date_received|date:'Y-m-d' }}">{{ record.date_received|date:"j M Y" }}</time>
         {% if record.due_date %}
           <span class="block text-meta {% if record.is_overdue %}font-medium text-red-700{% else %}text-slate-500{% endif %}">
@@ -70,7 +97,7 @@
           <span class="text-slate-400">{% if record.status == "IMPORTED" %}Not yet assigned{% else %}Awaiting the Division Chief{% endif %}</span>
         {% endif %}
       </td>
-      <td>{% status_badge record.display_status record.display_status_label %}</td>
+      <td data-label="Status">{% status_badge record.display_status record.display_status_label %}</td>
       <td class="hidden text-slate-500 xl:table-cell">
         {% with update=record.latest_update %}
           {% if update %}
@@ -81,7 +108,7 @@
           {% endif %}
         {% endwith %}
       </td>
-      <td class="text-right whitespace-nowrap">
+      <td class="stack-actions text-right whitespace-nowrap">
         <a href="{{ record.get_absolute_url }}" class="btn btn-ghost btn-sm">
           {% icon "view" "size-3.5" %}<span class="hidden sm:inline">Open</span>
           <span class="sr-only">{{ record.tracking_number }}</span>

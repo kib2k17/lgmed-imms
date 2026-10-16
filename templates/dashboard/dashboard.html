@@ -4,10 +4,12 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block page_actions %}
-  <a href="{% url 'reports:list' %}?export=csv" class="btn btn-secondary">
-    {% icon "download" "size-4" %}<span class="hidden sm:inline">Export reports</span>
-  </a>
-  {% if user.can_encode %}
+  {% if can_open_reports %}
+    <a href="{% url 'reports:list' %}?export=csv" class="btn btn-secondary">
+      {% icon "download" "size-4" %}<span class="hidden sm:inline">Export reports</span>
+    </a>
+  {% endif %}
+  {% if user.can_encode and can_open_monitoring %}
     <a href="{% url 'monitoring:create' %}" class="btn btn-primary">
       {% icon "plus" "size-4" %}New monitoring record
     </a>
@@ -44,7 +46,8 @@
   {# ---- Operational lists ---------------------------------------------- #}
   <div class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
 
-    {# Recent monitoring activity #}
+    {# Recent monitoring activity - not for a viewer the module is closed to #}
+    {% if can_open_monitoring %}
     <section class="card flex flex-col xl:col-span-2" aria-labelledby="recent-heading">
       <div class="card-header">
         <div>
@@ -109,9 +112,39 @@
         {% endif %}
       {% endif %}
     </section>
+    {% endif %}
 
     {# Right rail #}
     <div class="flex flex-col gap-4">
+
+      {# My work: what is waiting on this person, never the office's figures #}
+      {% if my_work %}
+        <section class="card border-brand-200" aria-labelledby="my-work-heading">
+          <div class="card-header">
+            <div>
+              <h2 id="my-work-heading" class="card-title">My Work</h2>
+              <p class="mt-0.5 text-meta text-slate-500">Waiting on you, {{ user.get_short_name|default:user.username }}</p>
+            </div>
+          </div>
+          <ul class="divide-y divide-slate-100">
+            {% for item in my_work %}
+              <li>
+                <a href="{{ item.url }}" class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 sm:px-5">
+                  <span class="mt-0.5 text-lg font-bold text-slate-900 tabular">{{ item.count }}</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-medium text-slate-900">{{ item.label }}</span>
+                    <span class="mt-1 flex flex-wrap items-center gap-2">
+                      {% status_badge item.status %}
+                      <span class="text-meta text-slate-500">{{ item.detail }}</span>
+                    </span>
+                  </span>
+                  <span class="mt-1 shrink-0 text-slate-400">{% icon "chevron-right" "size-4" %}</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
 
       {# Requires attention #}
       <section class="card" aria-labelledby="attention-heading">

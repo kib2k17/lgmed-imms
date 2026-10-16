@@ -8,60 +8,27 @@ authority" invites a person to change four unrelated things in one submission
 and leaves a trail that cannot say which of them they meant.
 """
 
-import os
-
 from django import forms
-from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 
 from accounts.models import Section
 from core.forms_base import GovModelForm
-from core.uploads import check_signature
 
-from .models import (
+# Re-exported: incoming, outgoing, monitoring and reports import them from here.
+from .upload_rules import (  # noqa: F401
+    ACCEPT_ATTRIBUTE,
     ALLOWED_EXTENSIONS,
+    FORMAT_HELP,
     MAX_UPLOAD_BYTES,
+    validate_upload,
+)
+from .models import (
     DisposalAuthority,
     Document,
     DocumentStatus,
     DocumentType,
     RetentionDisposition,
 )
-
-ACCEPT_ATTRIBUTE = ",".join(f".{extension}" for extension in ALLOWED_EXTENSIONS)
-
-FORMAT_HELP = (
-    "PDF, Word, Excel, PowerPoint or an image (JPG, PNG, TIFF). "
-    f"Up to {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
-)
-
-
-def validate_upload(uploaded):
-    """
-    Check an uploaded file against the module's accepted formats and size.
-
-    Shared by every form that takes a file, so the register cannot end up
-    holding something the download view will not serve.
-    """
-    # Only a file arriving now is judged. A record's existing file comes back
-    # unchanged on every edit and was accepted under the rules of its day.
-    if not uploaded or not isinstance(uploaded, UploadedFile):
-        return uploaded
-
-    extension = os.path.splitext(uploaded.name)[1].lstrip(".").lower()
-    if extension not in ALLOWED_EXTENSIONS:
-        raise forms.ValidationError(
-            f"'{extension or uploaded.name}' is not an accepted document "
-            f"format. {FORMAT_HELP}"
-        )
-    if uploaded.size > MAX_UPLOAD_BYTES:
-        limit = MAX_UPLOAD_BYTES // (1024 * 1024)
-        raise forms.ValidationError(
-            f"This file is {uploaded.size / (1024 * 1024):.1f} MB. "
-            f"The limit is {limit} MB."
-        )
-    return check_signature(uploaded)
-
 
 class DocumentFileField(forms.FileField):
     """A file input that already knows what the register accepts."""

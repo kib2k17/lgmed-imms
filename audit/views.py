@@ -1,4 +1,5 @@
 from django.db.models import Count, Q
+from django.utils.functional import cached_property
 from django.utils import timezone
 from django.utils.formats import date_format
 
@@ -50,7 +51,9 @@ class AuditListView(AuditModuleMixin, ModuleListView):
         ("Path", "path"),
     )
 
-    @property
+    # Cached for the request: the toolbar, the filters and the export each
+    # read it, and each read scanned the whole log twice for its DISTINCTs.
+    @cached_property
     def filter_fields(self):
         actors = (
             AuditEvent.objects.exclude(actor_label="")

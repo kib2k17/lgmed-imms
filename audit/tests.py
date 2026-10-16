@@ -168,6 +168,9 @@ class AccountAuditTests(TestCase):
         cls.staff = User.objects.create_user(
             username="staff", password="pw", role=Role.LGMED_STAFF
         )
+        cls.encoder = User.objects.create_user(
+            username="encoder", password="pw", role=Role.ENCODER
+        )
 
     def test_password_is_never_written_to_the_log(self):
         AuditEvent.objects.all().delete()
@@ -197,10 +200,10 @@ class AccountAuditTests(TestCase):
     @override_settings(RECAPTCHA_SITE_KEY="", RECAPTCHA_SECRET_KEY="")
     def test_sign_in_and_sign_out_are_recorded(self):
         AuditEvent.objects.all().delete()
-        # Staff, not the administrator: an administrator's password alone no
-        # longer signs in - it waits on two-step verification.
+        # An encoder: administrators' and publishing staff's passwords alone
+        # no longer sign in - they wait on two-step verification.
         self.client.post(
-            reverse("accounts:login"), {"username": "staff", "password": "pw"}
+            reverse("accounts:login"), {"username": "encoder", "password": "pw"}
         )
         self.client.post(reverse("accounts:logout"))
         self.assertTrue(AuditEvent.objects.filter(action=Action.LOGIN).exists())

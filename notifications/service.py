@@ -97,6 +97,15 @@ def notify(recipients, *, title, message="", url="", category=Category.SYSTEM,
                 dedupe_key=dedupe_key[:120],
             )
         )
+    if created:
+        # Once the rows are committed - a page told to look before then would
+        # find nothing new.
+        from django.db import transaction
+
+        from core.consumers import signal_notifications
+
+        recipients_now = [item.recipient_id for item in created]
+        transaction.on_commit(lambda: signal_notifications(recipients_now))
     return created
 
 

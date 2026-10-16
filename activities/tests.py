@@ -725,7 +725,7 @@ class CalendarViewTests(CalendarTestCase):
         self.client.force_login(self.ben)
 
         response = self.client.get(reverse("activities:list"), {"export": "csv"})
-        body = response.content.decode("utf-8-sig")
+        body = b"".join(response.streaming_content).decode("utf-8-sig")
 
         self.assertIn("Ben's own plan", body)
         self.assertNotIn("Ana's private plan", body)

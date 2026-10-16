@@ -33,10 +33,27 @@
     {% include "components/table_toolbar.html" with search_placeholder=search_placeholder filters=filters %}
 
     {% if records %}
+      {% comment %}The ticks below belong to this form through their form="" attribute:
+         each row already holds a form of its own, and forms do not nest.{% endcomment %}
+      <form id="bulk-notifications" method="post" action="{% url 'notifications:bulk' %}"
+            class="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 sm:px-5">
+        {% csrf_token %}
+        <span class="text-meta text-slate-600">With the ticked notifications:</span>
+        <button type="submit" name="action" value="read" class="btn btn-secondary btn-sm">
+          {% icon "check" "size-3.5" %}Mark read
+        </button>
+        <button type="submit" name="action" value="dismiss" class="btn btn-secondary btn-sm">
+          {% icon "close" "size-3.5" %}Dismiss
+        </button>
+      </form>
       <ul class="divide-y divide-slate-100">
         {% for record in records %}
           <li class="{% if not record.is_read %}bg-brand-50/40{% endif %}">
             <div class="flex items-start gap-3 px-4 py-3.5 sm:px-5">
+              <input type="checkbox" name="ids" value="{{ record.pk }}" form="bulk-notifications"
+                     id="notification-{{ record.pk }}"
+                     class="mt-2.5 size-4 shrink-0 rounded border-slate-300 text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-600">
+              <label for="notification-{{ record.pk }}" class="sr-only">Select {{ record.title }}</label>
               <span aria-hidden="true"
                     class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-md
                            {% if record.level == 'URGENT' %}bg-red-50 text-red-700

@@ -25,6 +25,12 @@
       <div class="relative {{ height|default:'h-64' }}">
         <canvas id="{{ id }}" role="img"
                 aria-label="{{ title }}. {{ subtitle }} The figures are listed in the data table below the chart."></canvas>
+        {% comment %}Holds the chart's place while the charting script loads; removed by
+           LGMED.initCharts, and hidden outright without JavaScript.{% endcomment %}
+        <div class="chart-skeleton" data-chart-skeleton aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <noscript><style>.chart-skeleton { display: none; }</style></noscript>
       </div>
     {% else %}
       <div class="flex {{ height|default:'h-64' }} flex-col items-center justify-center rounded-md border border-dashed border-slate-200 text-center">

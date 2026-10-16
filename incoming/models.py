@@ -26,6 +26,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import TimeStampedModel
+from documents.upload_rules import validate_new_file
 
 # How long an assigned document may go without an update from its focal person
 # before the Chief's dashboard counts it as awaiting one.
@@ -182,7 +183,8 @@ class IncomingDocument(TimeStampedModel):
         help_text="The office, agency or LGU the document came from.",
     )
     attachment = models.FileField(
-        "document / file attachment", upload_to=incoming_path, blank=True
+        "document / file attachment", upload_to=incoming_path, blank=True,
+        validators=[validate_new_file],
     )
     initial_remarks = models.TextField(
         blank=True, help_text="What the receiving officer noted on arrival."
@@ -484,7 +486,8 @@ class IncomingUpdate(models.Model):
         default=IncomingStatus.IN_PROGRESS,
     )
     attachment = models.FileField(
-        "supporting attachment", upload_to=update_path, blank=True
+        "supporting attachment", upload_to=update_path, blank=True,
+        validators=[validate_new_file],
     )
 
     class Meta:

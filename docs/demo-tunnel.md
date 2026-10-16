@@ -20,6 +20,33 @@ account, no sign-up, no token.
 winget install Cloudflare.cloudflared
 ```
 
+Then give the demo its own database. The tunnel scripts refuse to open onto
+the real one (see `tunnel-guard.ps1`), so this step is not optional:
+
+```sql
+CREATE DATABASE lgmedimms_demo CHARACTER SET utf8mb4;
+```
+
+```powershell
+$env:MYSQL_DATABASE = 'lgmedimms_demo'
+venv\Scripts\python manage.py migrate
+venv\Scripts\python manage.py bootstrap_demo
+```
+
+Close that PowerShell window afterwards, so the next server you start from it
+goes back to the real database.
+
+### What the scripts refuse
+
+- **`-Serve`** starts the server on `lgmedimms_demo` (or `-Database <name>`,
+  which must end in `_demo`) with two-step verification switched on,
+  whatever `venv\lgmed.env` says. It refuses if something is already running
+  on the port, because the tunnel would reach that server instead.
+- **Without `-Serve`** it cannot ask the running server which database it
+  opened, so it refuses unless `venv\lgmed.env` already points at a `_demo`
+  database and does not set `LGMED_MFA_OFF`. In practice: stop the server
+  and use `-Serve`.
+
 ---
 
 ## To start the tunnel
@@ -30,8 +57,8 @@ winget install Cloudflare.cloudflared
 2. Run one of these:
 
    ```powershell
-   .\run-cloudflare.ps1 -Serve     # if the system is NOT already running
-   .\run-cloudflare.ps1            # if it is already running on port 8000
+   .\run-cloudflare.ps1 -Serve     # the usual way: starts the demo server too
+   .\run-cloudflare.ps1            # only if a server on lgmedimms_demo is already running
    ```
 
 3. Wait for the box it prints, and copy the link inside it:

@@ -24,7 +24,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Prefetch, Q
-from django.http import FileResponse, Http404
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -41,6 +41,7 @@ from django.views.generic.edit import FormView
 
 from audit.models import Action
 from audit.recording import record as record_audit
+from core.files import send_fieldfile
 from core.mixins import (
     CanEncodePPAMixin,
     CanPublishPPAMixin,
@@ -1433,8 +1434,8 @@ class DocumentDownloadView(LoginRequiredMixin, DetailView):
             mimetypes.guess_type(document.original_name or document.filename)[0]
             or "application/octet-stream"
         )
-        response = FileResponse(
-            document.file.open("rb"),
+        response = send_fieldfile(
+            document.file,
             content_type=content_type,
             # Inline so the reviewer can read a PDF without downloading it;
             # the review screen embeds this URL in an object element.
@@ -1700,8 +1701,8 @@ class AuthorityFileView(CanReviewPPAMixin, DetailView):
             detail=f"Opened the memorandum for {authority.reference}.",
         )
         name = authority.memorandum.name.rsplit("/", 1)[-1]
-        response = FileResponse(
-            authority.memorandum.open("rb"),
+        response = send_fieldfile(
+            authority.memorandum,
             content_type=mimetypes.guess_type(name)[0] or "application/octet-stream",
             as_attachment=request.GET.get("download") == "1",
             filename=name,

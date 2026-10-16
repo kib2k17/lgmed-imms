@@ -333,3 +333,52 @@ class NotificationViewTests(TestCase):
         response = self.client.get(reverse("core:dashboard"))
         self.assertEqual(response.context["unread_notifications"], 0)
         self.assertContains(response, "Nothing needs your attention")
+
+
+class BulkNotificationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import Role, User
+        from notifications.service import notify
+
+        cls.me = User.objects.create_user(username="me", password="pw", role=Role.ENCODER)
+        cls.other = User.objects.create_user(username="other", password="pw", role=Role.ENCODER)
+        notify([cls.me], title="One")
+        notify([cls.me], title="Two")
+        notify([cls.other], title="Theirs")
+
+    def post(self, action, notifications):
+        from django.urls import reverse
+
+        self.client.force_login(self.me)
+        return self.client.post(reverse("notifications:bulk"), {
+            "action": action, "ids": [n.pk for n in notifications],
+        })
+
+    def test_ticked_notifications_are_marked_read(self):
+        from notifications.models import Notification
+
+        mine = list(Notification.objects.filter(recipient=self.me))
+        self.post("read", mine[:1])
+        self.assertEqual(Notification.objects.filter(recipient=self.me, read_at__isnull=True).count(), 1)
+
+    def test_ticked_notifications_are_dismissed(self):
+        from notifications.models import Notification
+
+        self.post("dismiss", Notification.objects.filter(recipient=self.me))
+        self.assertFalse(Notification.objects.filter(recipient=self.me, dismissed_at__isnull=True).exists())
+
+    def test_someone_elses_notifications_are_untouched(self):
+        from notifications.models import Notification
+
+        theirs = Notification.objects.get(recipient=self.other)
+        self.post("dismiss", [theirs])
+        theirs.refresh_from_db()
+        self.assertIsNone(theirs.dismissed_at)
+
+    def test_the_list_offers_the_ticks(self):
+        from django.urls import reverse
+
+        self.client.force_login(self.me)
+        response = self.client.get(reverse("notifications:list"))
+        self.assertContains(response, 'form="bulk-notifications"', count=2)

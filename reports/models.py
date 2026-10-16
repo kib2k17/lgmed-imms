@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import TimeStampedModel
+from documents.upload_rules import validate_new_file
 
 
 class ReportPeriod(models.TextChoices):
@@ -55,7 +56,9 @@ class Report(TimeStampedModel):
     summary = models.TextField(blank=True)
 
     prepared_by = models.CharField(max_length=150, blank=True)
-    file = models.FileField(upload_to=report_path, blank=True)
+    file = models.FileField(
+        upload_to=report_path, blank=True, validators=[validate_new_file],
+    )
 
     status = models.CharField(
         max_length=20,

@@ -794,3 +794,35 @@ class DocumentRegisterSyncTests(IncomingTestCase):
         self.assertEqual(entry.status, "RECEIVED")
         self.assertEqual(entry.year, 2025)
         self.assertEqual(Document.objects.filter(incoming=document).count(), 1)
+
+
+class BulkAcknowledgeTests(IncomingTestCase):
+    def test_a_focal_person_acknowledges_several_at_once(self):
+        first = self.assign_to_focal(self.make_document(docket_number="2026-0101"))
+        second = self.assign_to_focal(self.make_document(docket_number="2026-0102"))
+        self.client.force_login(self.focal)
+
+        page = self.client.get(reverse("incoming:list"), {"view": "mine"})
+        self.assertContains(page, 'form="bulk-acknowledge"', count=2)
+
+        self.client.post(reverse("incoming:bulk_acknowledge"), {"ids": [first.pk, second.pk]})
+        for document in (first, second):
+            document.refresh_from_db()
+            self.assertEqual(document.status, IncomingStatus.ACKNOWLEDGED)
+
+    def test_someone_elses_assignment_is_skipped(self):
+        theirs = self.assign_to_focal(
+            self.make_document(docket_number="2026-0103"), assignee=self.other_focal,
+        )
+        self.client.force_login(self.focal)
+        response = self.client.post(
+            reverse("incoming:bulk_acknowledge"), {"ids": [theirs.pk]}, follow=True,
+        )
+        theirs.refresh_from_db()
+        self.assertEqual(theirs.status, IncomingStatus.ASSIGNED)
+        self.assertContains(response, "not acknowledged")
+
+    def test_nothing_to_acknowledge_shows_no_form(self):
+        self.client.force_login(self.viewer)
+        page = self.client.get(reverse("incoming:list"))
+        self.assertNotContains(page, "bulk-acknowledge")

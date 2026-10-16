@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -28,11 +29,16 @@ from core.context_processors import AGENCY
 
 from . import menu_access, mfa, photos, privacy, recaptcha, totp
 from .capabilities import CAPABILITIES, role_matrix
-from .emails import send_account_created_notice, send_welcome_email
+from .emails import (
+    send_account_created_notice,
+    send_password_reset_email,
+    send_welcome_email,
+)
 from .forms import (
-    AdminSetPasswordForm,
+    AdminPasswordResetForm,
     LoginForm,
     MFACodeForm,
+    OwnPasswordChangeForm,
     ProfilePhotoForm,
     UserCreateForm,
     UserForm,
@@ -116,6 +122,61 @@ def profile(request, photo_form=None):
         "photo_form": photo_form or ProfilePhotoForm(),
     }
     return render(request, "accounts/profile.html", context)
+
+
+@never_cache
+@login_required
+def password_change(request):
+    """
+    The account holder sets a password of their own.
+
+    Also where PasswordChangeRequiredMiddleware sends anyone still holding a
+    temporary password, with the page they asked for in ?next=. Changing the
+    password signs the account out everywhere else, since every other session
+    was authenticated against the old one.
+    """
+    from core.redirects import safe_next
+
+    user = request.user
+    forced = user.must_change_password
+    next_url = request.POST.get("next") or request.GET.get("next") or ""
+    if request.method == "POST":
+        form = OwnPasswordChangeForm(user, request.POST)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, form.user)
+            record(
+                Action.PASSWORD_CHANGED, target=user,
+                detail=(
+                    "Replaced the temporary password" if forced
+                    else "Changed by the account holder"
+                ),
+            )
+            messages.success(
+                request,
+                "Your password was changed. Any other device signed in to your "
+                "account has been signed out.",
+            )
+            fallback = reverse(settings.LOGIN_REDIRECT_URL if forced else "accounts:profile")
+            return redirect(safe_next(request, next_url, fallback))
+    else:
+        form = OwnPasswordChangeForm(user)
+
+    return render(request, "accounts/password_change.html", {
+        "form": form,
+        "forced": forced,
+        "next_url": next_url,
+        "page_title": "Choose a New Password" if forced else "Change Password",
+        "page_subtitle": (
+            "Replace the temporary password before you continue" if forced
+            else "Set a new password for your account"
+        ),
+        "active_nav": "profile",
+        "breadcrumbs": [
+            {"label": "My Profile", "url": reverse("accounts:profile")},
+            {"label": "Change password"},
+        ],
+    })
 
 
 @login_required
@@ -574,22 +635,34 @@ class UserCreateView(UserModuleMixin, ModuleCreateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        if send_welcome_email(self.object, form.temporary_password, self.request):
+        sent = send_welcome_email(self.object, form.temporary_password, self.request)
+        send_account_created_notice(self.object, self.request.user, self.request)
+        if sent:
             messages.success(
                 self.request,
                 "A welcome email with the username, role and a temporary "
                 f"password was sent to {self.object.email}.",
             )
-        else:
-            messages.warning(
-                self.request,
-                f"The account was created, but the welcome email to "
-                f"{self.object.email} could not be sent. Use Reset password "
-                f"to set a new one and give it to "
-                f"{self.object.get_display_name()} by a separate channel.",
-            )
-        send_account_created_notice(self.object, self.request.user, self.request)
-        return response
+            return response
+
+        # Not queued for a later retry: the email carries the temporary
+        # password, and a queue would keep it in the database until sent.
+        # Shown here once instead, as an administrator's reset does.
+        account = self.object
+        page = render(self.request, "dashboard/users/password.html", {
+            "account": account,
+            "issued_password": form.temporary_password,
+            "created": True,
+            "active_nav": "users",
+            "page_title": "Account Created",
+            "page_subtitle": account.get_display_name(),
+            "breadcrumbs": [
+                {"label": "Users & Roles", "url": reverse("accounts:user_list")},
+                {"label": account.get_display_name(), "url": account.get_absolute_url()},
+            ],
+        })
+        page["Cache-Control"] = "no-store"
+        return page
 
 
 class UserUpdateView(UserModuleMixin, ModuleUpdateView):
@@ -607,14 +680,23 @@ class UserUpdateView(UserModuleMixin, ModuleUpdateView):
 
 
 class UserPasswordResetView(CanAdministerMixin, FormView):
-    """Set a new password for another account."""
+    """
+    Reset another account's password to a generated temporary one.
+
+    The new password is emailed to the holder and must be replaced at their
+    next sign-in. It is shown here, once, only when the email could not be
+    sent - so the administrator can pass it on by another channel.
+    """
 
     template_name = "dashboard/users/password.html"
-    form_class = AdminSetPasswordForm
+    form_class = AdminPasswordResetForm
 
-    def dispatch(self, request, *args, **kwargs):
-        self.account = get_object_or_404(User, pk=kwargs["pk"])
-        return super().dispatch(request, *args, **kwargs)
+    def load_account(self):
+        # Looked up only once CanAdministerMixin has let the request through,
+        # so a stranger cannot tell an existing account number from a missing
+        # one by the difference between a 404 and a redirect to sign in.
+        self.account = get_object_or_404(User, pk=self.kwargs["pk"])
+        _refuse_if_outranked(self.request, self.account)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -622,11 +704,11 @@ class UserPasswordResetView(CanAdministerMixin, FormView):
         return kwargs
 
     def get(self, request, *args, **kwargs):
-        _refuse_if_outranked(request, self.account)
+        self.load_account()
         return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        _refuse_if_outranked(request, self.account)
+        self.load_account()
         return super().post(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -651,19 +733,34 @@ class UserPasswordResetView(CanAdministerMixin, FormView):
 
     def form_valid(self, form):
         form.save()
+        emailed = send_password_reset_email(
+            self.account, form.temporary_password, self.request
+        )
         record(
             Action.PASSWORD_RESET,
             target=self.account,
             detail=(
-                f"Password reset by {self.request.user.get_display_name()}"
+                f"Password reset by {self.request.user.get_display_name()}; "
+                + ("temporary password emailed to the holder" if emailed else
+                   "email failed, temporary password shown to the administrator")
             ),
         )
-        messages.success(
-            self.request,
-            f"The password for {self.account.get_display_name()} was reset. "
-            "Pass it on securely and ask them to change it at first sign-in.",
+        if emailed:
+            messages.success(
+                self.request,
+                f"The password for {self.account.get_display_name()} was reset. "
+                f"A temporary password was emailed to {self.account.email}; they "
+                "must choose a new one when they sign in.",
+            )
+            return redirect(self.account.get_absolute_url())
+
+        # No email reached them: this page is the only place the password is
+        # ever shown, and it is not kept anywhere.
+        response = self.render_to_response(
+            self.get_context_data(form=form, issued_password=form.temporary_password)
         )
-        return redirect(self.account.get_absolute_url())
+        response["Cache-Control"] = "no-store"
+        return response
 
 
 class UserActivationView(CanAdministerMixin, FormView):

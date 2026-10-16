@@ -55,10 +55,35 @@ def _window():
     return int(settings.LOGIN_THROTTLE_WINDOW)
 
 
-def _count(key):
-    """Failures inside the window, from the timestamps stored under `key`."""
-    now = time.time()
-    return [stamp for stamp in (cache.get(key) or []) if now - stamp < _window()]
+# Failures are counted in buckets, each a fifteenth of the window (a minute at
+# the default fifteen), and a bucket is only ever incremented - one atomic
+# cache operation per failure. Storing a list of timestamps instead meant
+# reading it, appending and writing it back, so two attempts landing together
+# could each write a list missing the other's failure.
+_BUCKETS_PER_WINDOW = 15
+
+
+def _bucket_seconds():
+    return max(1, -(-_window() // _BUCKETS_PER_WINDOW))
+
+
+def _buckets(now):
+    """The bucket indexes the window covers at `now`, oldest first."""
+    size = _bucket_seconds()
+    current = int(now // size)
+    span = -(-_window() // size)
+    return list(range(current - span + 1, current + 1))
+
+
+def _bucket_key(key, index):
+    return f"{key}:{index}"
+
+
+def _counts(key, now):
+    """[(bucket index, failures)] inside the window, oldest first."""
+    indexes = _buckets(now)
+    stored = cache.get_many([_bucket_key(key, i) for i in indexes])
+    return [(i, int(stored.get(_bucket_key(key, i)) or 0)) for i in indexes]
 
 
 def retry_after(request, username):
@@ -68,26 +93,42 @@ def retry_after(request, username):
     ip = client_ip(request)
     wait = 0
     now = time.time()
+    size = _bucket_seconds()
+    span = len(_buckets(now))
     for key, limit in _keys(username, ip):
         if limit <= 0:
             continue
-        stamps = _count(key)
-        if len(stamps) >= limit:
-            # The oldest failure that still counts has to age out first.
-            oldest = sorted(stamps)[len(stamps) - limit]
-            wait = max(wait, int(oldest + _window() - now) + 1)
+        counts = _counts(key, now)
+        excess = sum(n for _, n in counts) - limit + 1
+        if excess <= 0:
+            continue
+        # The oldest buckets age out first: wait until enough have gone that
+        # one more attempt would be under the limit.
+        for index, n in counts:
+            excess -= n
+            if excess <= 0:
+                wait = max(wait, int((index + span) * size - now) + 1)
+                break
     return wait
 
 
 def register_failure(request, username):
     ip = client_ip(request)
     now = time.time()
-    for key, limit in _keys(username, ip):
-        stamps = _count(key)
-        stamps.append(now)
-        # Keep no more than the limit needs: a flood cannot grow the entry.
-        cache.set(key, stamps[-max(limit, 1):], _window())
+    index = _buckets(now)[-1]
+    # Kept a bucket longer than the window, so it is still there to be read
+    # for as long as the window covers it.
+    timeout = _window() + _bucket_seconds()
+    for key, _limit in _keys(username, ip):
+        bucket = _bucket_key(key, index)
+        cache.add(bucket, 0, timeout)
+        try:
+            cache.incr(bucket)
+        except ValueError:
+            # Expired between the two calls: start it again.
+            cache.set(bucket, 1, timeout)
 
 
 def register_success(request, username):
-    cache.delete(_key("user-ip", username, client_ip(request) or "-"))
+    key = _key("user-ip", username, client_ip(request) or "-")
+    cache.delete_many([_bucket_key(key, i) for i in _buckets(time.time())])

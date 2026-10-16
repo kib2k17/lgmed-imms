@@ -293,6 +293,12 @@ class ViewTests(SyncTestCase):
         self.assertEqual(batch.status, BatchStatus.DISCARDED)
         self.assertEqual(IncomingDocument.objects.count(), 0)
 
+    def test_encoder_may_not_open_an_incoming_preview(self):
+        self.upload(incoming_workbook())
+        batch = SyncBatch.objects.latest("pk")
+        self.client.force_login(self.encoder)
+        self.assertEqual(self.client.get(batch.get_absolute_url()).status_code, 403)
+
     def test_encoder_may_not_sync_incoming(self):
         response = self.upload(incoming_workbook(), user=self.encoder)
         self.assertEqual(response.status_code, 200)     # the form refuses the choice

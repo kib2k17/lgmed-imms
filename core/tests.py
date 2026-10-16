@@ -11,6 +11,7 @@ import datetime
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Role, User
 from administration.models import SystemSetting
@@ -456,3 +457,130 @@ class SystemVersionTests(TestCase):
             with self.subTest(template=template):
                 rendered = render_to_string(template, {"agency": agency})
                 self.assertIn("2026.09.17+abc1234", rendered)
+
+
+class RoleAwareDashboardTests(TestCase):
+    """The dashboard shows each person what is theirs to open and to act on."""
+
+    @classmethod
+    def setUpTestData(cls):
+        import datetime
+
+        from documents.models import DocumentType
+        from incoming import workflow
+        from incoming.models import IncomingDocument
+
+        cls.chief = User.objects.create_user(username="chief", password="pw", role=Role.ADMIN)
+        cls.encoder = User.objects.create_user(
+            username="enc", password="pw", role=Role.ENCODER, first_name="Elena",
+        )
+        kind = DocumentType.objects.create(name="Memorandum")
+
+        def incoming(number):
+            document = IncomingDocument.objects.create(
+                docket_number=number, subject=f"Subject {number}", document_type=kind,
+                date_received=timezone.localdate(), source_office="RO", created_by=cls.chief,
+            )
+            workflow.record_received(document, cls.chief)
+            return document
+
+        incoming("2026-0001")                                    # awaiting review
+        cls.assigned = incoming("2026-0002")
+        workflow.assign(
+            cls.assigned, cls.chief, assignee=cls.encoder, remarks="Act on it.",
+            due_date=timezone.localdate() + datetime.timedelta(days=3),
+        )
+
+    def dashboard(self, user):
+        self.client.force_login(user)
+        return self.client.get(reverse("core:dashboard"))
+
+    def test_my_work_lists_what_is_assigned_to_me(self):
+        response = self.dashboard(self.encoder)
+        self.assertContains(response, "My Work")
+        labels = [item["label"] for item in response.context["my_work"]]
+        self.assertIn("Incoming documents to acknowledge", labels)
+
+    def test_the_chiefs_review_queue_is_shown_only_to_reviewers(self):
+        label = "Incoming documents awaiting Division Chief review"
+        chief_items = [i["label"] for i in self.dashboard(self.chief).context["pending_actions"]]
+        self.assertIn(label, chief_items)
+        encoder_items = [i["label"] for i in self.dashboard(self.encoder).context["pending_actions"]]
+        self.assertNotIn(label, encoder_items)
+
+    def test_a_closed_module_contributes_nothing(self):
+        from accounts.models import RoleModuleAccess
+
+        for module in ("incoming", "monitoring", "programs"):
+            RoleModuleAccess.objects.create(module=module, role=Role.ENCODER, allowed=False)
+        response = self.dashboard(self.encoder)
+        context = response.context
+        self.assertFalse([i for i in context["my_work"] if "Incoming" in i["label"]])
+        self.assertFalse([i for i in context["pending_actions"] if i.get("module") in ("incoming", "monitoring")])
+        self.assertFalse([c for c in context["charts"] if c["module"] in ("monitoring", "programs")])
+        self.assertFalse([c for c in context["summary_cards"]
+                          if c["url_name"].split(":")[0] in ("monitoring", "programs")])
+        self.assertNotContains(response, reverse("monitoring:create"))
+
+
+class PhoneLayoutAndPlaceholderTests(TestCase):
+    """The phone card layout and chart placeholders are in the pages that use them."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_user(
+            username="layout.admin", password="pw", role=Role.SUPERADMIN, is_superuser=True,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def test_incoming_and_documents_lists_stack_on_phones(self):
+        from documents.models import Document, DocumentType
+        from incoming.models import IncomingDocument
+
+        kind = DocumentType.objects.create(name="Letter")
+        IncomingDocument.objects.create(
+            docket_number="2026-0500", subject="A letter", document_type=kind,
+            date_received=timezone.localdate(), source_office="RO",
+        )
+        Document.objects.create(title="A register entry", document_type=kind, owner=self.admin)
+        for name in ("incoming:list", "documents:list"):
+            response = self.client.get(reverse(name))
+            self.assertContains(response, "table-stack", msg_prefix=name)
+            self.assertContains(response, 'data-label="Received"', msg_prefix=name)
+
+    def test_the_calendar_month_grid_steps_aside_on_phones(self):
+        response = self.client.get(reverse("activities:list"))
+        self.assertContains(response, "max-sm:hidden")
+
+    def test_dashboard_charts_have_placeholders_that_need_scripting(self):
+        from django.test import override_settings
+
+        with override_settings(LGMED_DASHBOARD_CACHE_SECONDS=0):
+            MonitoringActivity.objects.create(
+                title="Visit", lgu=LGU.objects.create(
+                    name="Butuan", lgu_type=LGUType.CITY,
+                    province=Province.objects.create(name="Agusan del Norte"),
+                ),
+                monitoring_date=timezone.localdate(), status=MonitoringStatus.COMPLETED,
+            )
+            response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, "data-chart-skeleton")
+        self.assertContains(response, "<noscript><style>.chart-skeleton")
+
+
+class AppearanceSwitchTests(TestCase):
+    def test_signed_in_pages_carry_the_theme_switch_and_stylesheet(self):
+        user = User.objects.create_user(username="theme.user", password="pw", role=Role.VIEWER)
+        self.client.force_login(user)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "css/dark.css")
+        for choice in ("light", "dark", "system"):
+            self.assertContains(response, f'data-theme-choice="{choice}"')
+        # Applied before the first paint, under the page's CSP nonce.
+        self.assertContains(response, 'localStorage.getItem("lgmed.theme")')
+
+    def test_the_public_website_stays_light(self):
+        response = self.client.get(reverse("core:home"))
+        self.assertNotContains(response, "css/dark.css")
