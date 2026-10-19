@@ -8,8 +8,8 @@ Every internal page has the same frame, so once you know one page you know where
 
 - **System banner** (marker 1): *Department of the Interior and Local Government • Regional Office XIII – Caraga* on the left, *Secure internal system — for authorized personnel only* on the right.
 - **Search records** (marker 2): a quick search box. On module list pages, use the module's own search box (Section 7.4), which searches that module's records.
-- **Notifications bell** (marker 3): the red badge shows how many notifications you have not read. Click the bell to see the latest; see Chapter 12.
-- **Account menu** (marker 4): your name and position. It opens **My profile**, **Design system** (a reference page of interface components), **Public website**, **Install app** (where the browser supports it) and **Sign out** (Figure {{ref:access-account-menu}}).
+- **Notifications bell** (marker 3): the red badge shows how many notifications you have not read. It updates within seconds of a new notification, without reloading the page. Click the bell to see the latest; see Chapter 12.
+- **Account menu** (marker 4): your name and position. It opens **My profile**, **Design system** (a reference page of interface components), **Public website**, **Install app** (where the browser supports it), **Appearance** (Section 7.10) and **Sign out** (Figure {{ref:access-account-menu}}).
 
 {{figure:ui-notification-bell}}
 
@@ -42,6 +42,9 @@ Most modules open on a list (a *register*). All lists work the same way (Figure 
 | **Row actions** | The eye icon (**View** / **Open**), pencil (**Edit**) and bin (**Delete**) at the end of each row. Only the actions your role may perform are shown. |
 | **Pagination** | **Previous** / **Next** and page numbers at the foot of the list. The number of rows per page is set by the administrator (default 15). |
 | **Export CSV** | Downloads the rows that match the current search and filters as a CSV file that opens in Excel. Every export is recorded in the audit log. |
+| **Tick boxes** | Some lists let you act on several rows at once: tick them, then use the button above or below the list - for example **Mark read** on Notifications, or **Acknowledge ticked** on your incoming assignments. |
+
+On a phone, the Incoming and Document Management lists show each record as a small card, with the column names written beside the values. The Calendar shows the month's activities as a list instead of the month grid.
 
 ## 7.5 Record pages
 
@@ -89,3 +92,24 @@ Where the browser supports it (Chrome or Edge on Windows and Android; *Add to Ho
 **Expected Result:** An LGMED-IMMS icon is added to the desktop, Start menu or home screen.
 
 **Important Notes:** **Install app** only appears when the browser can install the system, which requires a secure (HTTPS) address. The app keeps only the screen design and an offline notice on the device — never your records. You still need to be online and signed in.
+
+## 7.10 Light and dark appearance
+
+The internal system can be shown light (the default) or dark, which some people find easier on the eyes in the evening. The public website is always light.
+
+{{figure:ui-appearance}}
+
+### Procedure 7.2: Switch between light and dark
+
+**Purpose:** Choose how the system looks on your computer.
+
+**Who can do this:** All roles.
+
+**Steps:**
+
+1. Open the **Account menu** at the top right.
+2. Under **Appearance** (marker 1), click **Light**, **Dark** or **Device**. **Device** follows your computer's own light or dark setting.
+
+**Expected Result:** The page changes at once and stays that way on every page.
+
+**Important Notes:** The choice is remembered by **this browser only**: on another computer, or in another browser, choose again.

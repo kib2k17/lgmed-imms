@@ -91,6 +91,10 @@ sudo chown root:lgmed /etc/lgmed-imms/lgmed.env && sudo chmod 640 /etc/lgmed-imm
 | `MYSQL_PASSWORD` (+ `MYSQL_*`) | **yes** | From step 2 |
 | `DJANGO_BEHIND_TLS_PROXY=1`, `DJANGO_TRUST_X_FORWARDED_FOR=1` | yes behind nginx | Only because the nginx template overwrites/appends those headers |
 | `ESIRA_CREDENTIAL_KEY` | **required** (`check --deploy` fails without it, lgmed.E001) | `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` - set **before** anyone stores a certificate; back it up offline |
+| `LGMED_MFA_KEY` | strongly recommended (`lgmed.W006`) | A Fernet key, generated like `ESIRA_CREDENTIAL_KEY`; encrypts authenticator secrets. Set **before** anyone enrols; back it up with `ESIRA_CREDENTIAL_KEY`, apart from database backups |
+| `LGMED_SITE_URL` | yes | `https://<hostname>` - the links in scheduled emails (reminders, weekly summary) |
+| `LGMED_ACCEL_REDIRECT=1` | recommended | nginx sends file bytes after Django's check; needs the `/_internal/` locations in `deploy/nginx/lgmed-imms.conf` (else every file is a 404) |
+| `LGMED_CLAMAV_ADDRESS` | decision D3 (`lgmed.W007`) | `127.0.0.1:3310` once `clamav-daemon` runs; `LGMED_CLAMAV_REQUIRED=1` to refuse uploads while it is down |
 | `EMAIL_*` | before creating accounts | Otherwise temporary passwords go to the log (`lgmed.W005`) |
 | `RECAPTCHA_*` | if reachable from the internet | Google reCAPTCHA v3 keys for the hostname |
 | `ESIRA_PNPKI_TRUST_ROOTS` | for e-SIRA | Paths to the DICT PNPKI CA certificates |
@@ -107,6 +111,8 @@ set -a; . /etc/lgmed-imms/lgmed.env; set +a            # as a user allowed to re
 /srv/lgmed-imms/venv/bin/python manage.py migrate --plan   # review what will run
 /srv/lgmed-imms/venv/bin/python manage.py migrate
 /srv/lgmed-imms/venv/bin/python manage.py collectstatic --noinput
+/srv/lgmed-imms/venv/bin/python manage.py setup_reference_data --dry-run   # review
+/srv/lgmed-imms/venv/bin/python manage.py setup_reference_data             # sections, categories, document types, LGUs
 /srv/lgmed-imms/venv/bin/python manage.py createsuperuser  # first System Administrator (is_superuser counts as one)
 ```
 
@@ -123,7 +129,9 @@ sudo cp deploy/nginx/lgmed-imms.conf /etc/nginx/sites-available/
 sudo ln -s /etc/nginx/sites-available/lgmed-imms.conf /etc/nginx/sites-enabled/
 # edit hostnames, certificate paths, /srv paths in both files
 sudo nginx -t && sudo systemctl reload nginx
+sudo cp deploy/systemd/lgmed-submission-reminders.* deploy/systemd/lgmed-weekly-summary.* /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now lgmed-imms
+sudo systemctl enable --now lgmed-submission-reminders.timer lgmed-weekly-summary.timer
 ```
 
 TLS certificate: from the agency CA or Let's Encrypt (`certbot --nginx`). Private keys `chmod 600`, owned by root.

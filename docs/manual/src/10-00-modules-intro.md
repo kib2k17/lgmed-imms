@@ -66,7 +66,7 @@ My Profile and Notifications, reached from the top bar, come first because every
 **Steps:**
 
 1. Install an authenticator app on your phone (for example Google Authenticator or Microsoft Authenticator).
-2. On **My Profile**, click **Set up two-step verification** (marker 5).
+2. On **My Profile**, scroll to the **Two-Step Verification** panel near the bottom and click **Set up two-step verification**.
 3. Under **Connect your authenticator app**, follow the steps on the page: in the app, add an account and scan the QR code. If you cannot scan it, choose *enter a setup key* in the app and type the key shown.
 4. Type the six-digit code the app now shows into the **Authentication code** field and click **Turn on two-step verification**.
 5. The system shows your **recovery codes**. Print them or write them down and keep them somewhere safe.

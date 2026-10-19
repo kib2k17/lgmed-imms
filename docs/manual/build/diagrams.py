@@ -138,3 +138,23 @@ def render_all(browser, out_dir):
         page.set_content(html(key))
         page.locator("#d").screenshot(path=str(out_dir / f"{key}.png"))
     page.close()
+
+
+def browser_channel():
+    """
+    The installed browser Playwright drives: LGDOCS_BROWSER if set, else Google
+    Chrome where it is installed, else Microsoft Edge (always on Windows 11).
+    Both render the same Chromium engine, so the screenshots match.
+    """
+    import os
+    from pathlib import Path
+
+    chosen = os.environ.get("LGDOCS_BROWSER")
+    if chosen:
+        return chosen
+    candidates = [
+        Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")) / "Google/Chrome/Application/chrome.exe",
+        Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")) / "Google/Chrome/Application/chrome.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe",
+    ]
+    return "chrome" if any(path.exists() for path in candidates) else "msedge"

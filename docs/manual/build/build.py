@@ -41,11 +41,20 @@ SYSTEM = "LGMED-IMMS"
 SYSTEM_LONG = ("Local Government Monitoring and Evaluation Division - "
                "Information Management and Monitoring System")
 OFFICE = "Department of the Interior and Local Government\nRegional Office XIII - Caraga"
-MANUAL_VERSION = "1.0"
+MANUAL_VERSION = "1.1"
 HISTORY = [
     ("1.0", "8 October 2026", "First edition, generated from the system as built "
-     "(commit {commit}). Screenshots captured from the live application on "
+     "(commit ad041fe). Screenshots captured from the live application on "
      "demonstration data.", "Documentation team / LGMED-IMMS"),
+    ("1.1", "17 October 2026", "Updated for the security and usability release "
+     "(commit {commit}): choosing your own password at first sign-in, changing "
+     "it, and signing out other devices (6.4-6.6); two-step verification for LGMED "
+     "Staff and certificate holders; light and dark appearance (7.10); My Work on "
+     "the Dashboard; acknowledging several assignments at once; confidential "
+     "documents (10.12.9); generated password resets (10.17.2); e-SIRA "
+     "certificate protections; instant and bulk notifications and the weekly "
+     "summary (12); new questions and troubleshooting entries. All screenshots "
+     "recaptured.", "Documentation team / LGMED-IMMS"),
 ]
 TOKEN = re.compile(r"\{\{(figure|diagram|ref):([a-z0-9-]+)\}\}")
 CALLOUTS = ("NOTE", "TIP", "IMPORTANT", "WARNING")
@@ -788,7 +797,7 @@ def main(targets):
     if problems:
         print("Problems found:\n  " + "\n  ".join(problems))
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome")
+        browser = p.chromium.launch(channel=diagrams.browser_channel())
         diagrams.render_all(browser, ASSETS / "diagrams")
         if "md" in targets:
             build_md(figures, chapters, numbers, commit)

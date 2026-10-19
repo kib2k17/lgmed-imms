@@ -1589,8 +1589,9 @@ page carries the site key and never the secret.
 
 ## Before deployment
 
-The full procedure, checklist, backup and incident documents are in
-[docs/security/](docs/security/) - start with
+Going from demonstration to real use, in order, is
+[docs/GO_LIVE.md](docs/GO_LIVE.md). The full procedure, checklist, backup and
+incident documents are in [docs/security/](docs/security/) - start with
 [PRODUCTION_DEPLOYMENT.md](docs/security/PRODUCTION_DEPLOYMENT.md). Every
 environment variable is listed, with placeholders, in [.env.example](.env.example).
 

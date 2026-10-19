@@ -82,6 +82,45 @@ def rename_persona():
     print(f"Persona renamed; {changed} stored text value(s) updated.")
 
 
+def add_manual_fixtures():
+    """
+    The few states a screenshot needs that demonstration data does not reach
+    by itself: an account still on its temporary password, and a second
+    signed-in device for the LGMED Staff account.
+    """
+    import datetime
+    from importlib import import_module
+
+    from django.conf import settings as conf
+    from django.contrib.auth import BACKEND_SESSION_KEY, HASH_SESSION_KEY, SESSION_KEY
+    from django.utils import timezone
+
+    from accounts.models import Role, User
+    from accounts.sessions import DEVICE_KEY
+    from figures import DEMO_PASSWORD, NEW, ST
+
+    User.objects.filter(username=NEW).delete()
+    newcomer = User.objects.create_user(
+        username=NEW, password=DEMO_PASSWORD, role=Role.ENCODER,
+        first_name="Ana", last_name="Dela Cruz", email="ana.delacruz@example.com",
+    )
+    newcomer.must_change_password = True
+    newcomer.save(update_fields=["must_change_password"])
+
+    staff = User.objects.get(username=ST)
+    store = import_module(conf.SESSION_ENGINE).SessionStore()
+    store[SESSION_KEY] = str(staff.pk)
+    store[BACKEND_SESSION_KEY] = "django.contrib.auth.backends.ModelBackend"
+    store[HASH_SESSION_KEY] = staff.get_session_auth_hash()
+    store[DEVICE_KEY] = {
+        "agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36",
+        "ip": "10.13.1.48",
+        "since": (timezone.now() - datetime.timedelta(days=2)).isoformat(),
+    }
+    store.create()
+    print("Manual fixtures: a temporary-password account and a second staff session.")
+
+
 def tiny_pdf(lines):
     """A valid one-page PDF with plain text - no PDF library needed."""
     text = "BT /F1 13 Tf 72 760 Td 18 TL " + " ".join(
@@ -148,6 +187,7 @@ if __name__ == "__main__":
     reset_workdir()
     seed()
     rename_persona()
+    add_manual_fixtures()
     call_command("refresh_notifications")
     sample_files()
     print("Documentation instance ready.")

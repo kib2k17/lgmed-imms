@@ -52,6 +52,7 @@ LGMED-IMMS tells you about work in four ways:
 | **Confirmation messages** | A coloured message at the top of the page after you act | *Signed in as …*; record saved; record deleted. |
 | **System notice** | A banner on every page (or, when urgent, a full-screen notice with an alert sound), set by the administrator in **System Settings** | Scheduled maintenance. |
 | **Session warning** | A dialog shortly before your session expires | Save your work, then continue or sign in again. |
+| **Weekly summary e-mail** | The Division Chief's and Administrators' e-mail, once a week (Monday morning) | Items requiring attention, the most overdue incoming documents, who has not yet submitted the month's MMIA or DTR. |
 
 **Notification categories:** Awaiting review, Overdue, Awaiting publication, Assigned to you, Account, System.
 **Priority levels:** Information, Needs action, Urgent.
@@ -59,6 +60,8 @@ LGMED-IMMS tells you about work in four ways:
 How notifications behave:
 
 - They are addressed to **you personally**, so the unread count means *things you have not yet dealt with*.
+- A new notification reaches an open page **within seconds**; the bell's count changes without reloading.
+- On the **Notifications** page, tick several notifications and click **Mark read** or **Dismiss** to deal with them together.
 - Two kinds exist. **Event** notifications are raised when something happens (for example, a document is assigned to you). **Standing** notifications are raised for conditions that persist (for example, a follow-up past its due date); these are refreshed by a scheduled task each working morning.
 - A standing problem is notified **once**, not every day.
 - A notification **withdraws itself** when the work is done.
@@ -144,6 +147,15 @@ An item is public only when it is cleared **and** its week is published **and** 
 **Why can the Division Chief see my private calendar activity?**
 Supervisors (Administrators) can read every activity so they can monitor the office's workload. They cannot change it.
 
+**Why am I asked to choose a new password when I sign in?**
+You signed in with a temporary password - a new account, or a reset by an administrator. Choose your own (Procedure 6.4); the system lets you continue once you have.
+
+**Why am I asked to set up two-step verification?**
+Your role now requires it: System Administrators, Administrators and LGMED Staff, and anyone with a verified e-SIRA certificate. Install Google Authenticator or Microsoft Authenticator on your phone and follow the setup page.
+
+**A colleague can open a document I cannot find.**
+It may be **Confidential**: only its owner, its focal person, whoever registered it and Administrators can see it (Procedure 10.12.9).
+
 **I lost my phone and cannot sign in.**
 Use one of your recovery codes. If you have none, ask an administrator to **Reset two-step verification** on your account.
 
@@ -164,7 +176,9 @@ No. Only the screen design and an offline notice are stored on the device.
 | *Sign-in unsuccessful.* | Wrong username or password; Caps Lock on; account deactivated. | Retype carefully (use the eye button); check Caps Lock; ask an administrator to reset your password or reactivate your account. |
 | Sign-in is refused even with the correct password, or a notice says JavaScript is off. | JavaScript disabled, or the browser cannot reach Google for the sign-in security check. | Switch JavaScript on; try another browser; report to the administrator if the office network blocks `www.google.com`. |
 | The authentication code is rejected. | Phone clock wrong; code expired; wrong account in the app. | Set the phone's time automatically; type the newest code; use a recovery code; ask an administrator to reset two-step verification. |
-| I am signed out unexpectedly. | The browser was closed, or the session expired after inactivity. | Sign in again. Save work when the session warning appears. |
+| I am signed out unexpectedly. | The browser was closed; the session expired after inactivity; your password was changed (which signs out every other device); or someone used **Sign out other devices**. | Sign in again. Save work when the session warning appears. If you did not change your password yourself, change it now and tell the administrator. |
+| Every page sends me to *Choose a New Password*. | The account is on a temporary password. | Choose your own password (Procedure 6.4). |
+| The page is dark and I want it light (or the reverse). | The **Appearance** choice. | Account menu › **Appearance** › **Light** (Procedure 7.2). |
 | The Privacy Notice keeps appearing. | The notice has not been accepted, or it was updated. | Tick the agreement box and click **I Agree and Continue**. |
 | *Access denied* on a page. | Not permitted for your role or by menu permissions. | Use the sidebar; ask an administrator if you need access. |
 | A record I expect is not in the list. | A filter, search or date range is still applied; archived records are hidden; it is not visible to you. | Clear the search and filters; choose **View: Archived** where applicable; check with the record's owner. |
@@ -184,13 +198,16 @@ LGMED-IMMS holds personal information about local government officials, focal pe
 
 - Never share your username, password, authentication codes or recovery codes. Nobody from the office will ask for them.
 - Use a strong password that you do not use elsewhere.
-- Set up two-step verification (mandatory for Administrators).
+- Set up two-step verification (mandatory for System Administrators, Administrators, LGMED Staff and certificate holders; recommended for everyone).
+- Change a temporary password at once, and change your password whenever you think someone else may know it (Procedure 6.5).
+- Check **Where You Are Signed In** on My Profile now and then, and sign out any session you do not recognise (Procedure 6.6).
 - Sign out when you leave your computer, and always on shared computers.
 - Keep your e-SIRA certificate file and password private, and leave **Require .p12 password when signing** switched on.
 
 **Records**
 
 - Access and use records only as your official duties require.
+- Mark sensitive documents **Confidential** when you register them (Procedure 10.12.9).
 - Check every file before uploading it, especially anything intended for the public website. The automated screening helps but is **not** a guarantee: *Low risk* means nothing was found.
 - Clear items for the public website deliberately; never tick public options by habit.
 - Prefer **Archive**, **Cancel** or **Deactivate** to deletion.

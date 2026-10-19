@@ -246,3 +246,14 @@ Tests: `core/tests.py` (`RoleAwareDashboardTests`, `PhoneLayoutAndPlaceholderTes
 | 5.6b | `notifications/management/commands/send_weekly_summary.py` (new), `templates/emails/weekly_summary.*`, `deploy/systemd/lgmed-weekly-summary.*`, `deploy/windows/register-weekly-summary.ps1` | Weekly summary email to everyone who reviews incoming documents: the "requires attention" counts, the ten most overdue incoming documents, who still owes the open month's MMIA/DTR. Run daily; sent once per ISO week per person (marked by a deduplicated notification, which also puts it on the bell); a failed send is retried on the next run; `--force` resends |
 
 Tests: `documents/tests.py` (`ConfidentialDocumentTests`), `accounts/test_password.py` (`SignedInSessionTests`), `notifications/tests.py` (`WeeklySummaryTests`).
+
+## 9. Go-live preparation (2026-10-17)
+
+| File | Change |
+|---|---|
+| `core/reference_data.py` (new) | The sections, programme categories and document types (with retention) a fresh installation starts from, in one place, each marked with what must be confirmed. The retention periods are placeholders until the records officer confirms them from the Records Disposition Schedule |
+| `core/management/commands/setup_reference_data.py` (new) | Loads only that reference data and the Region XIII LGUs into a real installation - no demonstration records, no accounts. Creates what is missing, never overwrites a value changed since, reports differences, `--dry-run`, warns if demonstration accounts or records are present |
+| `core/management/commands/seed_records.py` | Reads the same lists, so the demonstration and a real installation cannot drift apart |
+| `docs/GO_LIVE.md` (new), `docs/security/PRODUCTION_DEPLOYMENT.md`, `README.md` | The order of go-live, from decisions to first sign-in; the deployment guide gains the new settings (`LGMED_MFA_KEY`, `LGMED_SITE_URL`, `LGMED_ACCEL_REDIRECT`, `LGMED_CLAMAV_ADDRESS`), the reference-data step and the two scheduled jobs |
+
+Tests: `core/tests.py` (`SetupReferenceDataTests`).

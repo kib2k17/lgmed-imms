@@ -24,9 +24,12 @@ SAMPLES = Path(os.environ.get("LGDOCS_WORKDIR", r"C:\lgdt")) / "samples"
 
 SA, AD, ST, EN, VW = ("lgmed.superadmin", "lgmed.admin", "lgmed.staff",
                       "lgmed.encoder", "lgmed.viewer")
+# An account still on its temporary password (setup_instance.add_manual_fixtures).
+NEW = "lgmed.newstaff"
 ROLE_LABELS = {
     SA: "System Administrator", AD: "Administrator (Division Chief)",
     ST: "LGMED Staff", EN: "Encoder", VW: "Viewer", None: "Public visitor",
+    NEW: "New account (temporary password)",
 }
 
 SIDEBAR = "#sidebar"
@@ -83,8 +86,24 @@ FIGURES = [
          ('[data-menu-panel] >> role=button[name="Sign out"]', "Sign out", "Ends your session. Always sign out on a shared computer."),
      ],
      "after": [("press", "Escape")]},
+    {"id": "access-password-change", "module": "access", "user": NEW, "url": "/accounts/profile/password/",
+     "caption": "Choosing your own password at first sign-in",
+     "markers": [
+         ("field:Current password", "Current password", "The temporary password from your e-mail."),
+         ("field:New password", "New password", "At least 12 characters; not like your name, not a common password, not only numbers."),
+         ("field:New password confirmation", "Confirm", "The new password again."),
+         (button("Save new password"), "Save new password", "Saves it and takes you on to the page you were going to."),
+     ]},
 
     # --------------------------------------------------------------- interface
+    {"id": "ui-appearance", "module": "interface", "user": AD, "url": "/app/",
+     "ops": [("click", 'button:has-text("Account menu")')],
+     "crop": (840, 0, 600, 560),
+     "caption": "Choosing light or dark in the account menu",
+     "markers": [
+         ('[data-menu-panel] [role=group]', "Appearance", "Light, Dark, or Device (follows your computer's setting). Remembered by this browser."),
+     ],
+     "after": [("press", "Escape")]},
     {"id": "ui-layout", "module": "interface", "user": AD, "url": "/app/",
      "caption": "Parts of the LGMED-IMMS screen (Dashboard, signed in as the Division Chief)",
      "markers": [
@@ -133,7 +152,13 @@ FIGURES = [
          (button("Upload"), "Profile photo", "Choose a JPEG, PNG or WebP picture (up to 5 MB) and click Upload."),
          (link("Request a correction"), "Request a correction", "Opens an e-mail to the office to correct your account details."),
          ("card:System Access", "System Access", "Your role and the permissions it carries."),
-         (link("Set up two-step verification"), "Two-step verification", "Protect your account with an authenticator app (required for administrators)."),
+     ]},
+    {"id": "profile-sessions", "module": "profile", "user": ST, "url": "/accounts/profile/",
+     "clip": "card:Where You Are Signed In", "pad": 40,
+     "caption": "Where you are signed in, on My Profile",
+     "markers": [
+         ("card:Where You Are Signed In", "Signed-in devices", "Every browser signed in to your account; This device is the one you are using."),
+         (button("Sign out other devices"), "Sign out other devices", "Ends every other session at once, after confirming."),
      ]},
     {"id": "profile-mfa-setup", "module": "profile", "user": ST, "url": "/accounts/mfa/setup/", "height": 1000,
      "caption": "Setting up two-step verification",

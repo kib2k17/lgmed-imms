@@ -73,17 +73,19 @@ The **Administration** group in the sidebar is shown to Administrators and the S
 4. Under **Access**, choose the **Role\*** and keep **Active** ticked.
 5. Click **Save**.
 
-**Expected Result:** The account is created and listed. Where e-mail is configured, the system sends the new user an account notice.
+**Expected Result:** The account is created and listed. The new user receives an e-mail with their username, role and a **temporary password**, and must choose their own password at their first sign-in (Procedure 6.4). If the e-mail cannot be sent, the temporary password is shown to you **once**, on screen: give it to the person in person or by phone.
 
 **Visual Reference:** Figure {{ref:users-new}}.
 
-**Important Notes:** Give each person the **lowest role** that lets them do their work. Administrator accounts must set up two-step verification at their first sign-in.
+**Important Notes:** Give each person the **lowest role** that lets them do their work. Administrator and LGMED Staff accounts must set up two-step verification at their first sign-in, so tell them to have a phone with an authenticator app ready.
 
 {{figure:users-new}}
 
 ### Procedure 10.17.2: Reset a user's password
 
-**Steps:** Open the user, click **Reset password**, enter and confirm the new password, and click **Set new password**. Give the password to the user privately and ask them to keep it secret. Weak or mismatched passwords are refused.
+**Steps:** Open the user, click **Reset password**, read the explanation and click **Reset password** again. The system generates a temporary password and e-mails it to the user; you do not see it. The user's old password stops working at once, and they must choose a new one at their next sign-in.
+
+**Important Notes:** If the e-mail cannot be sent, the temporary password is shown to you once: pass it on in person or by phone, never by the same e-mail as the username. Administrators never choose another person's password, so nobody but the user ever knows the password they actually use. Only a System Administrator can reset a System Administrator's password.
 
 ### Procedure 10.17.3: Edit an account or change a role
 
@@ -195,7 +197,12 @@ The **Administration** group in the sidebar is shown to Administrators and the S
 
 **Expected Result:** The certificate appears under **My Registered Certificates** as awaiting verification. You can sign once it is verified.
 
-**Important Notes:** The file and password are stored encrypted. Until your certificate is verified you can still approve, review and acknowledge documents, but not sign.
+**Important Notes:**
+
+- The file and password are stored encrypted. Until your certificate is verified you can still approve, review and acknowledge documents, but not sign.
+- Once your certificate is verified, your account must use **two-step verification** (you are asked to set it up at your next sign-in).
+- **Require .p12 password when signing** can be switched off only if two-step verification is on for your account.
+- **Show my certificate password** asks for a code from your authenticator app before it reveals the stored password.
 
 {{figure:esira-certificate}}
 
@@ -280,7 +287,7 @@ The **Administration** group in the sidebar is shown to Administrators and the S
 2. Under **Awaiting Verification**, compare the certificate's name, e-mail and serial number with the DICT PNPKI issuance record for that employee.
 3. Click **Verify**, or **Reject**. A verified certificate can later be withdrawn with **Revoke**.
 
-**Important Notes:** An administrator cannot verify their own certificate.
+**Important Notes:** Nobody can verify their own certificate, the System Administrator included: a second person must vouch for it.
 
 {{figure:esira-verification}}
 

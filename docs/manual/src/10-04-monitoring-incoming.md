@@ -163,6 +163,8 @@
 
 **Visual Reference:** Figure {{ref:incoming-acknowledge}}.
 
+**Important Notes:** To acknowledge several assignments at once, choose **View: Assigned to me** on the Incoming register, tick the documents waiting for you (a tick box appears only beside documents you may acknowledge), click **Acknowledge ticked** below the list and confirm. Each one is acknowledged exactly as with the button on its own page; any that is not yours, or no longer waiting, is skipped and reported.
+
 {{figure:incoming-acknowledge}}
 
 ### Procedure 10.5.4: Monitor the caseload (Division Chief)

@@ -58,33 +58,10 @@ from updates.models import (
     week_bounds,
 )
 
-CATEGORIES = [
-    ("Governance", "Local governance performance and oversight"),
-    ("Capacity Development", "Training and technical assistance for LGUs"),
-    ("Monitoring and Evaluation", "Assessment, validation and reporting"),
-    ("Fiscal Administration", "Local revenue, budgeting and expenditure"),
-    ("Disaster Risk Reduction", "Preparedness and resilience programs"),
-    ("Social Services", "Programs supporting local social service delivery"),
-]
-
-SECTIONS = [
-    ("Local Government Capability Development Section", "LGCDS"),
-    ("Local Government Monitoring and Evaluation Section", "LGMES"),
-    ("Field Operations Section", "FOS"),
-    ("Administrative and Records Section", "ARS"),
-]
-
-# (name, code, retention years, action at end of retention). The periods are
-# illustrative demo values - the Division sets its own in System Settings.
-DOCUMENT_TYPES = [
-    ("Memorandum", "MEMO", 5, "REVIEW"),
-    ("Memorandum Circular", "MC", 10, "REVIEW"),
-    ("Advisory", "ADV", 3, "DISPOSE"),
-    ("Guidelines", "GUID", 10, "PERMANENT"),
-    ("Monitoring Report", "MR", 5, "REVIEW"),
-    ("Minutes of Meeting", "MIN", 10, "PERMANENT"),
-    ("Certification", "CERT", 3, "DISPOSE"),
-]
+# Sections, categories and document types are shared with
+# `setup_reference_data`, so the demonstration and a real installation start
+# from the same lists (core/reference_data.py).
+from core.reference_data import CATEGORIES, DOCUMENT_TYPES, SECTIONS  # noqa: E402
 
 # (headline, category, days before today, lead paragraph, location, featured)
 NEWS = [

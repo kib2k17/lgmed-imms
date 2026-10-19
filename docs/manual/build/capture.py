@@ -25,6 +25,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from playwright.sync_api import sync_playwright
 
+import diagrams
 import figures as spec
 
 HERE = Path(__file__).resolve().parent
@@ -306,7 +307,7 @@ def main(prefixes):
     todo = [f for f in spec.FIGURES if not prefixes or f["id"].startswith(tuple(prefixes))]
     problems = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome")
+        browser = p.chromium.launch(channel=diagrams.browser_channel())
         session = Session(browser)
         for fig in todo:
             try:

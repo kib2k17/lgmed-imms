@@ -1,6 +1,8 @@
 # 8. Dashboard Guide
 
-The **Dashboard** is the first page after sign-in (**Sidebar › Dashboard**). Every figure, chart and list on it is calculated from the records at the moment the page opens; when there is nothing to count, the panel says so.
+The **Dashboard** is the first page after sign-in (**Sidebar › Dashboard**). Its figures are calculated from the records and refreshed every minute - *Figures as of* under the summary says when. When there is nothing to count, the panel says so.
+
+The Dashboard shows each person only what they may open: a module that is closed to you contributes no figure, chart or count, and a queue only one role can work (for example the Division Chief's review of incoming documents) appears only to that role.
 
 {{figure:dashboard-overview}}
 
@@ -10,6 +12,7 @@ The **Dashboard** is the first page after sign-in (**Sidebar › Dashboard**). E
 | **Analytics charts** | Program Status, Monitoring Activities (per month), LGU Monitoring Coverage and Report Submissions. |
 | **View figures** | Each chart has a **View figures** disclosure that shows the same numbers as a table — useful for printing and for screen readers. |
 | **Recent Monitoring Activities** | The most recent monitoring records. **View all** opens the Monitoring register. |
+| **My Work** | What is waiting on **you**: incoming documents assigned to you (and any you have not acknowledged), register documents assigned to you, e-SIRA documents waiting for your signature or action, and your MMIA or DTR still missing for the open month. Shown only when something is waiting. |
 | **Requires Attention** | Work waiting on the Division, for example incoming documents awaiting the Division Chief's review, overdue documents, monitoring records awaiting review, documents awaiting review and overdue follow-ups. Each line is a link to exactly those records. |
 | **Upcoming Activities** | Calendar activities coming up that you are allowed to see. |
 
@@ -24,8 +27,9 @@ The **Dashboard** is the first page after sign-in (**Sidebar › Dashboard**). E
 **Steps:**
 
 1. Click **Dashboard** in the sidebar.
-2. Scroll to **Requires Attention**.
-3. Click a line, for example *Incoming documents awaiting Division Chief review*.
+2. Look at **My Work** first: it lists only what is waiting on you.
+3. Then scroll to **Requires Attention** for the Division's queues.
+4. Click a line, for example *Incoming documents assigned to you* or *Incoming documents awaiting Division Chief review*.
 
 **Expected Result:** The module opens, already filtered to the records that were counted.
 
@@ -40,8 +44,8 @@ Every account has one of five roles. The role decides which modules appear in th
 | Role | Typical holder | In short |
 |---|---|---|
 | **System Administrator** | Information Technology Officer | Everything an Administrator can do, plus **Menu Permissions** and editing or deleting any employee's calendar activities. |
-| **Administrator** | Division Chief and designated administrators | Reviews and assigns incoming documents and registered documents; supervises the calendar; publishes PPAs; manages users, settings and the audit log; verifies e-SIRA certificates. Two-step verification is mandatory. |
-| **LGMED Staff** | Technical staff | Encodes records; reviews PPAs; approves reports and the public website content; archives documents; acts as focal person on assigned documents. |
+| **Administrator** | Division Chief and designated administrators | Reviews and assigns incoming documents and registered documents; supervises the calendar; publishes PPAs; manages users, settings and the audit log; verifies e-SIRA certificates; reads every confidential document. Two-step verification is mandatory. |
+| **LGMED Staff** | Technical staff | Encodes records; reviews PPAs; approves reports and the public website content; archives documents; acts as focal person on assigned documents. Two-step verification is mandatory. |
 | **Encoder** | Administrative staff | Records and edits operational records (incoming documents, monitoring, documents, updates, etc.). Cannot review, assign, approve or publish. |
 | **Viewer** | Read-only users | Reads the modules. No Add, Edit or Delete buttons. Can still receive, sign and act on documents routed to them in e-SIRA. |
 

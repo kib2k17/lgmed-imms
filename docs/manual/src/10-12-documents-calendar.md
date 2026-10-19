@@ -45,7 +45,7 @@
 2. Under **Document Information**, enter the **Document title\***, choose the **Document type\***, and enter the **Document / reference / control number**, **Subject** and **Sender / source** as applicable.
 3. Under **Dates**, enter the **Date received**, **Date of document**, **Action due date** and **Year**.
 4. Under **Ownership and Unit**, choose the **Owner / responsible personnel\***, the **Division / unit** and the **Office / division\***.
-5. Under **File and Details**, choose the **Document file** and add a **Description** and **Remarks**.
+5. Under **File and Details**, choose the **Document file**, add a **Description** and **Remarks**, and choose the **Classification**: **Internal** (the default - every signed-in account may read it) or **Confidential** (Procedure 10.12.9).
 6. Click **Save**.
 
 **Expected Result:** The document is registered with a control number (for example *LGMED-2026-0010*) and its file becomes **version 1**.
@@ -153,6 +153,22 @@
 **Expected Result:** The document's files are destroyed. The record, its ownership, its version list and its complete trail are kept as proof of the disposal.
 
 **Important Notes:** **WARNING:** Disposal is the only irreversible action in the module. The files cannot be recovered.
+
+### Procedure 10.12.9: Keep a document confidential
+
+**Purpose:** Restrict a sensitive document - a complaint, a personnel matter - to the people answerable for it.
+
+**Who can do this:** Anyone who may register or edit the document.
+
+**Steps:**
+
+1. Register the document (Procedure 10.12.1), or open it and click **Edit**.
+2. Under **File and Details**, set **Classification** to **Confidential**.
+3. Click **Save**.
+
+**Expected Result:** The document shows a red **Confidential** label in the register and on its page. From then on only its **owner**, its **focal person**, **whoever registered it** and **Administrators** can find it, open it, view or download its file, or act on it. For everyone else it does not appear in the register, the retention register or the file library at all.
+
+**Important Notes:** A confidential document can **never** be offered on the public website; the form refuses the combination. Changing the classification is recorded in the document's audit trail.
 
 ### D. Workflow
 

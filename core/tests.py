@@ -584,3 +584,58 @@ class AppearanceSwitchTests(TestCase):
     def test_the_public_website_stays_light(self):
         response = self.client.get(reverse("core:home"))
         self.assertNotContains(response, "css/dark.css")
+
+
+class SetupReferenceDataTests(TestCase):
+    """A real installation's reference data, without any demonstration records."""
+
+    def run_command(self, *args):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("setup_reference_data", *args, stdout=out)
+        return out.getvalue()
+
+    def test_an_empty_installation_gets_the_lists_and_nothing_else(self):
+        from accounts.models import Section
+        from core.reference_data import CATEGORIES, DOCUMENT_TYPES, SECTIONS
+        from documents.models import Document, DocumentType
+        from programs.models import ProgramCategory
+
+        self.run_command()
+        self.assertEqual(Section.objects.count(), len(SECTIONS))
+        self.assertEqual(ProgramCategory.objects.count(), len(CATEGORIES))
+        self.assertEqual(DocumentType.objects.count(), len(DOCUMENT_TYPES))
+        self.assertEqual(DocumentType.objects.get(code="MIN").retention_action, "PERMANENT")
+        self.assertEqual(LGU.objects.count(), 78)
+        # No demonstration records, no accounts.
+        self.assertFalse(Document.objects.exists())
+        self.assertFalse(MonitoringActivity.objects.exists())
+        self.assertFalse(User.objects.exists())
+
+    def test_running_again_changes_nothing_and_keeps_local_edits(self):
+        from documents.models import DocumentType
+
+        self.run_command()
+        memo = DocumentType.objects.get(code="MEMO")
+        memo.retention_years = 7                       # the records officer's figure
+        memo.save()
+        output = self.run_command()
+        memo.refresh_from_db()
+        self.assertEqual(memo.retention_years, 7)
+        self.assertIn("kept as it is", output)
+        self.assertIn("Created 0 reference record(s)", output)
+
+    def test_a_dry_run_creates_nothing(self):
+        from documents.models import DocumentType
+
+        output = self.run_command("--dry-run")
+        self.assertIn("Would create", output)
+        self.assertFalse(DocumentType.objects.exists())
+        self.assertFalse(LGU.objects.exists())
+
+    def test_demonstration_accounts_are_pointed_out(self):
+        User.objects.create_user(username="lgmed.admin", password="x", role=Role.ADMIN)
+        self.assertIn("Demonstration accounts exist", self.run_command("--dry-run"))
