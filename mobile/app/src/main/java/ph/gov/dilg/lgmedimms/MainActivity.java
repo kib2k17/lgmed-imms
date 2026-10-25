@@ -60,9 +60,14 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
-        settings.setSupportZoom(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
+        // Honour the site's <meta name="viewport"> as phone Chrome does - the
+        // WebView ignores it by default, which let the page zoom out to a
+        // shrunken desktop-like view instead of the responsive mobile layout.
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(false);
+        // The layout is built for the screen; pinch-zoom only knocks it askew.
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
         // Lets the website tell the app apart from a phone browser if it ever needs to.
         settings.setUserAgentString(settings.getUserAgentString() + " LGMEDIMMSApp");
 
