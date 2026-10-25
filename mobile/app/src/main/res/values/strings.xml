@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LGMED IMMS</string>
+    <string name="shortcut_change_server">Change server address</string>
+
+    <string name="server_title">Server address</string>
+    <string name="server_message">Enter the address of the LGMED IMMS server, for example http://192.168.1.10:8000 on the office network.</string>
+    <string name="server_hint">http://192.168.1.10:8000</string>
+    <string name="server_invalid">That is not a valid address.</string>
+    <string name="connect">Connect</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="offline_title">Can\'t reach the system</string>
+    <string name="offline_message">%1$s\n\n%2$s\n\nCheck that this phone is online (on the office Wi-Fi if the address starts with 192.168.) and that the server is running.</string>
+    <string name="retry">Retry</string>
+    <string name="change_address">Change address</string>
+
+    <string name="downloading">Downloading %1$s</string>
+    <string name="download_unsupported">This file can\'t be downloaded in the app. Open the system in a browser instead.</string>
+    <string name="storage_denied">Storage permission is needed to save downloads.</string>
+    <string name="no_file_picker">No app is available to pick a file.</string>
+</resources>

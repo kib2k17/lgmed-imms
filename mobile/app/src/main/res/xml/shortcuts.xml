@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="change_server"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_change_server">
+        <intent
+            android:action="ph.gov.dilg.lgmedimms.CHANGE_SERVER"
+            android:targetPackage="ph.gov.dilg.lgmedimms"
+            android:targetClass="ph.gov.dilg.lgmedimms.MainActivity" />
+    </shortcut>
+</shortcuts>
