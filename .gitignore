@@ -55,3 +55,10 @@ backups/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Internal documentation - the user manual, security audit and incident
+# procedures, deployment notes, proposals and briefings. Kept on the office
+# machines only. docs/brand/ (logo design rounds) is not sensitive and is
+# tracked.
+docs/*
+!docs/brand/
