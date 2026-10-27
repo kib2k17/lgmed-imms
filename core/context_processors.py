@@ -33,13 +33,14 @@ AGENCY = {
     "address": "Purok 1-A, Brgy. Doongan, Butuan City, 8600",
     "telephone": "(085) 975-9830 to 34",
     "email": "RegionalOffice@caraga.dilg.gov.ph",
-    "logo_static_path": "img/dilg-logo.png",
+    "logo_static_path": "img/brand/lgmed-imms-mark.svg",
+    "logo_dark_static_path": "img/brand/lgmed-imms-mark-dark.svg",
 }
 
 
 def _logo_is_available():
     """
-    Whether the official seal has actually been supplied.
+    Whether the system mark is present in static files.
 
     Checked through the staticfiles finders rather than by guessing a path, so
     it works the same in development and behind collectstatic. Cached outside

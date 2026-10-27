@@ -5,14 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Temporarily unavailable &middot; LGMED &mdash; {{ agency.office_short }}</title>
-  {% comment %}
-   The agency's own seal is the tab icon. Offering a second icon in another
-   format is not a fallback: a browser given both picks whichever it prefers -
-   Chrome takes the SVG - and the generic mark won, so the seal is now the only
-   icon declared.
-  {% endcomment %}
-  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
-  <link rel="apple-touch-icon" href="{% static 'img/dilg-logo.png' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/pwa/favicon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/pwa/favicon-16.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/pwa/apple-touch-icon.png' %}" sizes="180x180">
   <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
 </head>
 <body class="flex h-full flex-col bg-slate-100 font-sans">

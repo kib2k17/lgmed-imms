@@ -184,11 +184,11 @@ class PublicSiteTests(TestCase):
         self.assertContains(response, "Department of the Interior and Local Government")
         self.assertContains(response, "RegionalOffice@caraga.dilg.gov.ph")
 
-    def test_the_official_seal_is_used_where_it_is_available(self):
+    def test_the_system_mark_is_used_where_it_is_available(self):
         for name in ("core:home", "accounts:login"):
             with self.subTest(page=name):
                 response = self.client.get(reverse(name))
-                self.assertContains(response, "img/dilg-logo.png")
+                self.assertContains(response, "img/brand/lgmed-imms-mark")
 
 
 class AuthenticatedShellTests(TestCase):

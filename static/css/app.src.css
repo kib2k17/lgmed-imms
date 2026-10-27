@@ -439,11 +439,12 @@
     @apply relative grid size-36 place-items-center;
     animation: launch-in 400ms ease-out both;
   }
+  /* The mark is not round, so its shadow follows its outline. */
   .launch-seal {
-    @apply relative size-28 rounded-full;
-    box-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
+    @apply relative size-24;
+    filter: drop-shadow(0 8px 20px rgb(0 0 0 / 0.35));
   }
-  /* A ring turning round the seal: the loading indicator itself. */
+  /* A ring turning round the mark: the loading indicator itself. */
   .launch-ring {
     @apply absolute inset-0 rounded-full border-[3px] border-white/10 border-t-accent-400;
     animation: launch-spin 0.9s linear infinite;

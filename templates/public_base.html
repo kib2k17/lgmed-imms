@@ -6,13 +6,6 @@
   <title>{% block title %}{{ meta_title|default:"Home" }}{% endblock %} &middot; LGMED &mdash; {{ agency.office_short }}</title>
   <meta name="description" content="{% block meta_description %}{{ agency.division }}, {{ agency.office_short }}. Programs, frontline services, monitoring reports and public documents.{% endblock %}">
 
-  {% comment %}
-   The agency's own seal is the tab icon. Offering a second icon in another
-   format is not a fallback: a browser given both picks whichever it prefers -
-   Chrome takes the SVG - and the generic mark won, so the seal is now the only
-   icon declared.
-  {% endcomment %}
-  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
   {% include "includes/pwa_head.html" %}
   <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">

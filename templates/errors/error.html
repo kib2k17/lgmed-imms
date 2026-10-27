@@ -4,13 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} &middot; {{ agency.system_name|default:"LGMED-IMMS" }}</title>
-  {% comment %}
-   The agency's own seal is the tab icon. Offering a second icon in another
-   format is not a fallback: a browser given both picks whichever it prefers -
-   Chrome takes the SVG - and the generic mark won, so the seal is now the only
-   icon declared.
-  {% endcomment %}
-  <link rel="icon" href="{% static 'img/dilg-logo.png' %}" type="image/png" sizes="447x447">
   {% include "includes/pwa_head.html" %}
   <link rel="stylesheet" href="{% static 'css/app.css' %}{% if asset_version %}?v={{ asset_version }}{% endif %}">
 </head>

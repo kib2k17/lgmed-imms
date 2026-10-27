@@ -41,9 +41,8 @@
       </button>
 
       {% comment %}
- Agency mark. Replace static img/dilg-logo.png with the official seal
-         when the office provides the asset; the wordmark below is a neutral
-         placeholder, not a reproduction of any seal. 
+ System mark (includes/agency_logo.html). The LGMED-iMMS identity is
+         the system's own; it does not reproduce or replace the DILG seal. 
 {% endcomment %}
       <a href="{% url 'core:dashboard' %}" class="flex min-w-0 items-center gap-3 rounded-md py-1">
         {% include "includes/agency_logo.html" with size="size-9" %}
