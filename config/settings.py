@@ -282,7 +282,12 @@ DATABASES = {
         "PASSWORD": env("MYSQL_PASSWORD"),
         "HOST": env("MYSQL_HOST", "127.0.0.1"),
         "PORT": env("MYSQL_PORT", "3306"),
-        "CONN_MAX_AGE": 60,
+        # Closed at the end of every request, never kept. Under Daphne each
+        # request runs in a thread of its own, so a connection kept for reuse
+        # is stranded with that thread and never closed: one leaks per
+        # request until MySQL refuses everyone with "Too many connections"
+        # (production, 2026-10-30). Django's docs say the same for ASGI.
+        "CONN_MAX_AGE": 0,
         "OPTIONS": {
             "charset": "utf8mb4",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
