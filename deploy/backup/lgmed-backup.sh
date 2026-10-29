@@ -32,7 +32,9 @@ stamp="$(date +%Y%m%d-%H%M%S)"
 target="$BACKUP_ROOT/$stamp"
 mkdir -p "$target"
 
-mysqldump --single-transaction --quick --routines --triggers \
+# --no-tablespaces: MySQL 8 otherwise demands the global PROCESS privilege,
+# which the read-only backup account rightly does not have.
+mysqldump --single-transaction --quick --routines --triggers --no-tablespaces \
     --default-character-set=utf8mb4 "$DB_NAME" | gzip -9 > "$target/database.sql.gz"
 tar -C "$APP_DIR" -czf "$target/media.tar.gz" media
 tar -C "$APP_DIR" -czf "$target/protected.tar.gz" protected
