@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Temporarily unavailable &middot; LGMED &mdash; {{ agency.office_short }}</title>
+  <title>Temporarily unavailable &middot; {{ agency.system_name }}</title>
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/pwa/favicon-32.png' %}">
   <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/pwa/favicon-16.png' %}">
   <link rel="apple-touch-icon" href="{% static 'img/pwa/apple-touch-icon.png' %}" sizes="180x180">
@@ -14,7 +14,7 @@
 
   <div class="bg-brand-950 text-brand-200">
     <div class="mx-auto flex h-8 max-w-6xl items-center px-4 text-[0.6875rem] sm:px-6">
-      <p class="truncate">{{ agency.department }} <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span> {{ agency.office }}</p>
+      <p class="truncate">{{ agency.system_full_name }}</p>
     </div>
   </div>
 
@@ -50,7 +50,7 @@
   </main>
 
   <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-meta text-slate-500 sm:px-6">
-    <p>&copy; {% now "Y" %} {{ agency.office_short }} &mdash; {{ agency.division }}</p>
+    <p>&copy; {% now "Y" %} {{ agency.system_name }} &mdash; {{ agency.division }}</p>
   </footer>
 </body>
 </html>

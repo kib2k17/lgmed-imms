@@ -16,7 +16,7 @@
       {% include "includes/agency_logo.html" with size="size-8" on_dark=True %}
       <div class="min-w-0">
         <p class="truncate text-[0.9375rem] leading-tight font-bold text-white">{{ agency.system_name }}</p>
-        <p class="truncate text-[0.6875rem] leading-tight text-brand-300">{{ agency.office_short }}</p>
+        <p class="truncate text-[0.6875rem] leading-tight text-brand-300">{{ agency.division_short }}</p>
       </div>
     </div>
     <button type="button" id="sidebar-close" class="-mr-1 rounded-md p-1.5 text-brand-200 hover:bg-white/10 hover:text-white lg:hidden">
@@ -80,9 +80,6 @@
   <div class="shrink-0 border-t border-white/10 px-4 py-2.5">
     <p class="text-[0.6875rem] leading-snug text-brand-300">
       {{ agency.division }}
-    </p>
-    <p class="mt-1 text-[0.6875rem] leading-snug text-brand-400 sm:hidden">
-      {{ agency.department }}
     </p>
   </div>
 </aside>

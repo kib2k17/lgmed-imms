@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ meta_title|default:"Home" }}{% endblock %} &middot; LGMED &mdash; {{ agency.office_short }}</title>
-  <meta name="description" content="{% block meta_description %}{{ agency.division }}, {{ agency.office_short }}. Programs, frontline services, monitoring reports and public documents.{% endblock %}">
+  <title>{% block title %}{{ meta_title|default:"Home" }}{% endblock %} &middot; {{ agency.system_name }}</title>
+  <meta name="description" content="{% block meta_description %}{{ agency.system_full_name }}. Programs, frontline services, monitoring reports and public documents.{% endblock %}">
 
   {% include "includes/pwa_head.html" %}
   <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
@@ -18,7 +18,7 @@
   {# ---- Government band ---------------------------------------------- #}
   <div class="bg-brand-950 text-brand-200">
     <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-1.5 text-[0.6875rem] sm:px-6 lg:px-8">
-      <p>{{ agency.department }} <span class="mx-1 text-brand-500" aria-hidden="true">&bull;</span> {{ agency.office }}</p>
+      <p>{{ agency.system_full_name }}</p>
       <p class="flex items-center gap-4">
         <a href="tel:{{ agency.telephone_link }}" class="inline-flex items-center gap-1.5 hover:text-white hover:underline">
           {% icon "phone" "size-3" %}{{ agency.telephone }}
@@ -40,7 +40,7 @@
             Local Government Monitoring and Evaluation Division
           </span>
           <span class="block truncate text-meta leading-tight text-slate-600">
-            {{ agency.department }} &mdash; {{ agency.office }}
+            {{ agency.system_name }}
           </span>
         </span>
       </a>

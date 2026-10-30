@@ -181,7 +181,7 @@ class PublicSiteTests(TestCase):
         """
         response = self.client.get(reverse("accounts:login"))
         self.assertContains(response, "LGMED-IMMS")
-        self.assertContains(response, "Department of the Interior and Local Government")
+        self.assertContains(response, "Information Management and Monitoring System")
         self.assertContains(response, "RegionalOffice@caraga.dilg.gov.ph")
 
     def test_the_system_mark_is_used_where_it_is_available(self):

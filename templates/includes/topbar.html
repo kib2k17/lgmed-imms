@@ -11,9 +11,7 @@
   <div class="hidden bg-brand-950 text-brand-200 sm:block">
     <div class="flex h-7 items-center justify-between gap-4 px-4 text-[0.6875rem] sm:px-6 lg:px-8">
       <p class="truncate">
-        {{ agency.department }}
-        <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span>
-        {{ agency.office }}
+        {{ agency.system_full_name }}
       </p>
       <p class="hidden items-center gap-1.5 md:flex">
         {% icon "lock" "size-3" %}
@@ -52,7 +50,6 @@
           </span>
           <span class="block truncate text-[0.9375rem] leading-tight font-bold text-brand-900">
             {{ agency.system_name }}
-            <span class="font-medium text-slate-500 md:hidden">&mdash; {{ agency.office_short }}</span>
           </span>
         </span>
         <span class="sr-only">{{ agency.system_full_name }} &mdash; go to dashboard</span>

@@ -9,8 +9,7 @@
       {% if agency.system_version %}
         <span class="text-slate-400">v{{ agency.system_version }}</span>
       {% endif %}
-      &mdash; {{ agency.division }},
-      {{ agency.office_short }}
+      &mdash; {{ agency.division }}
     </p>
     <ul class="flex flex-wrap items-center gap-x-4 gap-y-1">
       <li><a href="{% url 'core:public_contact' %}" class="hover:text-brand-700 hover:underline">Contact</a></li>

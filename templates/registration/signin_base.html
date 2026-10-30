@@ -14,7 +14,7 @@
 
   <div class="bg-brand-950 text-brand-200">
     <div class="mx-auto flex h-8 max-w-6xl items-center px-4 text-[0.6875rem] sm:px-6">
-      <p class="truncate">{{ agency.department }} <span class="mx-1.5 text-brand-500" aria-hidden="true">&bull;</span> {{ agency.office }}</p>
+      <p class="truncate">{{ agency.system_full_name }}</p>
     </div>
   </div>
 
@@ -38,7 +38,7 @@
         {% include "includes/agency_logo.html" with size="size-14" %}
         <div class="min-w-0">
           <h1 class="text-xl font-bold tracking-tight text-brand-900">{{ agency.system_name }}</h1>
-          <p class="text-meta font-medium text-slate-500">{{ agency.division_short }} &middot; {{ agency.office_short }}</p>
+          <p class="text-meta font-medium text-slate-500">{{ agency.division }}</p>
         </div>
       </div>
 
@@ -56,7 +56,7 @@
             {% include "includes/agency_logo.html" with size="size-14" on_dark=True %}
             <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-tight text-white">{{ agency.system_name }}</h1>
-              <p class="text-meta font-medium text-brand-300">{{ agency.office_short }}</p>
+              <p class="text-meta font-medium text-brand-300">{{ agency.division_short }}</p>
             </div>
           </div>
           <p class="relative mt-5 text-[0.8125rem] leading-relaxed">{{ agency.system_full_name }}</p>
@@ -112,7 +112,7 @@
   </main>
 
   <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-meta text-slate-500 sm:px-6">
-    <p>&copy; {% now "Y" %} {{ agency.office_short }} &mdash; {{ agency.division }}</p>
+    <p>&copy; {% now "Y" %} {{ agency.system_name }} &mdash; {{ agency.division }}</p>
   </footer>
 
   {% include "includes/page_loading.html" %}

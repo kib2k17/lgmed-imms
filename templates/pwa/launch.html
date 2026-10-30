@@ -38,8 +38,7 @@
   </main>
 
   <footer class="launch-footer">
-    {{ agency.department|default:"Department of the Interior and Local Government" }}<br>
-    {{ agency.office|default:"Regional Office XIII - Caraga" }}
+    {{ agency.system_full_name|default:"Local Government Monitoring and Evaluation Division - Information Management and Monitoring System" }}
   </footer>
 
   <script nonce="{{ csp_nonce }}">

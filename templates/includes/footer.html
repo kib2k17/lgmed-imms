@@ -14,7 +14,7 @@
         <div class="flex items-start gap-3">
           {% include "includes/agency_logo.html" with size="size-11" on_dark=True %}
           <div>
-            <p class="text-sm font-bold text-white">{{ agency.office_short }}</p>
+            <p class="text-sm font-bold text-white">{{ agency.system_name }}</p>
             <p class="mt-0.5 text-[0.8125rem] leading-snug">{{ agency.division }}</p>
           </div>
         </div>
@@ -98,7 +98,7 @@
 
     <div class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-meta">
       <p class="flex flex-wrap items-center gap-x-2">
-        <span>&copy; {% now "Y" %} {{ agency.office_short }}. All rights reserved.</span>
+        <span>&copy; {% now "Y" %} {{ agency.system_name }}. All rights reserved.</span>
         {% if agency.system_version %}
           <span aria-hidden="true" class="text-brand-500">&middot;</span>
           <span>Version {{ agency.system_version }}</span>
