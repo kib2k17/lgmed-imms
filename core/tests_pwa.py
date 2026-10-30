@@ -143,7 +143,7 @@ class NotificationStatusTests(TestCase):
         self.assertIn("no-store", response["Cache-Control"])
 
     def test_the_check_does_not_extend_the_session(self):
-        """A tab left open must still time out after a working day."""
+        """A tab left open must still time out when nobody uses it."""
         self.client.force_login(self.user)
         key = self.client.session.session_key
         before = Session.objects.get(session_key=key).expire_date
@@ -154,7 +154,7 @@ class NotificationStatusTests(TestCase):
     def test_ordinary_pages_still_extend_the_session(self):
         self.client.force_login(self.user)
         key = self.client.session.session_key
-        soon = timezone.now() + datetime.timedelta(hours=1)
+        soon = timezone.now() + datetime.timedelta(minutes=1)
         Session.objects.filter(session_key=key).update(expire_date=soon)
 
         self.client.get(reverse("notifications:list"))

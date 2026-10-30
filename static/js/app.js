@@ -1097,6 +1097,130 @@ window.LGMED.initCharts = function (data) {
 })();
 
 /* --------------------------------------------------------------------------
+   Sign-out after inactivity
+   When nobody has used the system for SESSION_IDLE_TIMEOUT, the page signs
+   out by itself, so a screen left unattended does not stay open on anyone's
+   records. A minute before, "Are you still there?" counts down
+   (templates/includes/idle_signout.html).
+
+   Keyboard, mouse, touch and scrolling count as use, in any open tab: the
+   time of the last use is shared through localStorage, so a tab left in the
+   background does not sign out someone busy in another. While the person is
+   busy the server is told so, at most once a minute
+   (accounts.views.session_keepalive) - typing a long report sends nothing
+   until it is saved, and the session must not run out under them.
+
+   Time is read from the clock rather than counted in timer ticks, so a
+   laptop that slept through the deadline signs out the moment it wakes.
+   -------------------------------------------------------------------------- */
+
+(function () {
+  "use strict";
+
+  var dialog = document.getElementById("idle-signout");
+  if (!dialog || typeof dialog.showModal !== "function") return;
+
+  var TIMEOUT = (parseInt(dialog.getAttribute("data-idle-timeout"), 10) || 600) * 1000;
+  var WARNING = Math.min(60 * 1000, TIMEOUT / 2);
+  var KEEPALIVE_EVERY = 60 * 1000;
+  var SHARE_EVERY = 5 * 1000;
+  var SHARED_KEY = "lgmed.lastActivity";
+
+  var form = dialog.querySelector("[data-idle-form]");
+  var countdown = dialog.querySelector("[data-idle-countdown]");
+  var stayButton = dialog.querySelector("[data-idle-stay]");
+  var keepaliveUrl = dialog.getAttribute("data-keepalive-url");
+  var loginUrl = dialog.getAttribute("data-login-url");
+
+  var lastActivity = Date.now();
+  var lastShared = 0;
+  var lastKeepalive = Date.now();   // loading this page already extended the session
+  var signingOut = false;
+
+  var readShared = function () {
+    try { return parseInt(window.localStorage.getItem(SHARED_KEY), 10) || 0; } catch (error) { return 0; }
+  };
+  var share = function (at) {
+    lastShared = at;
+    try { window.localStorage.setItem(SHARED_KEY, String(at)); } catch (error) { /* private mode */ }
+  };
+
+  var keepalive = function () {
+    lastKeepalive = Date.now();
+    var token = form.querySelector("input[name=csrfmiddlewaretoken]");
+    window.fetch(keepaliveUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": token ? token.value : "", "X-Requested-With": "XMLHttpRequest" },
+    }).then(function (response) {
+      // Signed out already - in another tab, by "sign out other sessions",
+      // or by a password change.
+      if (response.status === 401) window.location.assign(loginUrl);
+    }).catch(function () { /* offline: the next activity tries again */ });
+  };
+
+  var activity = function () {
+    // Once the warning is up, only "Stay signed in" keeps the session.
+    if (signingOut || dialog.open) return;
+    var at = Date.now();
+    lastActivity = at;
+    if (at - lastShared >= SHARE_EVERY) share(at);
+    if (at - lastKeepalive >= KEEPALIVE_EVERY) keepalive();
+  };
+
+  var stay = function () {
+    dialog.close();
+    lastKeepalive = 0;
+    activity();
+  };
+
+  var signOut = function () {
+    signingOut = true;
+    form.querySelector("[data-idle-reason]").value = "idle";
+    form.submit();
+  };
+
+  var tick = function () {
+    if (signingOut) return;
+    var idle = Date.now() - Math.max(lastActivity, readShared());
+    if (idle >= TIMEOUT) {
+      signOut();
+    } else if (idle >= TIMEOUT - WARNING) {
+      countdown.textContent = String(Math.ceil((TIMEOUT - idle) / 1000));
+      if (!dialog.open) {
+        dialog.showModal();
+        stayButton.focus();
+      }
+    } else if (dialog.open) {
+      dialog.close();   // used in another tab meanwhile
+    }
+  };
+
+  ["pointerdown", "pointermove", "keydown", "wheel", "scroll", "touchstart"].forEach(function (name) {
+    document.addEventListener(name, activity, { capture: true, passive: true });
+  });
+  stayButton.addEventListener("click", stay);
+  dialog.addEventListener("cancel", function (event) {
+    event.preventDefault();
+    stay();
+  });
+
+  document.addEventListener("visibilitychange", tick);
+  window.addEventListener("pageshow", function (event) {
+    // Brought back with the Back button after signing out: the page in the
+    // browser's memory must not show the records again.
+    if (event.persisted && signingOut) {
+      window.location.assign(loginUrl);
+      return;
+    }
+    tick();
+  });
+
+  share(lastActivity);
+  window.setInterval(tick, 1000);
+})();
+
+/* --------------------------------------------------------------------------
    Declarative actions
    The Content-Security-Policy refuses inline event handlers (onclick=...),
    so the few one-line behaviours the templates need are declared as data

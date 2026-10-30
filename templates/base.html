@@ -92,6 +92,7 @@
   {% if privacy_notice_pending %}{% include "includes/privacy_notice.html" %}{% endif %}
   {% include "includes/pdf_viewer.html" %}
   {% include "includes/page_loading.html" %}
+  {% if user.is_authenticated %}{% include "includes/idle_signout.html" %}{% endif %}
   {% include "includes/bottom_nav.html" %}
   {% include "includes/pwa.html" %}
 

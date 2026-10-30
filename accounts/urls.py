@@ -8,6 +8,7 @@ urlpatterns = [
     # Authentication
     path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
+    path("session/keepalive/", views.session_keepalive, name="session_keepalive"),
     path("profile/", views.profile, name="profile"),
     path("profile/password/", views.password_change, name="password_change"),
     path("profile/sessions/sign-out/", views.sign_out_other_sessions,

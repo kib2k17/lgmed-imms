@@ -106,7 +106,7 @@ def system_information():
             "Debug mode",
             "On - development only" if django_settings.DEBUG else "Off",
         ),
-        ("Session length", f"{django_settings.SESSION_COOKIE_AGE // 3600} hours"),
+        ("Idle sign-out", f"{django_settings.SESSION_IDLE_TIMEOUT // 60} minutes"),
         ("Media storage", str(django_settings.MEDIA_ROOT)),
         ("Audit entries held", AuditEvent.objects.count()),
         (

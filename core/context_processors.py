@@ -94,6 +94,11 @@ def site_identity(request):
     }
 
 
+def idle_timeout(request):
+    """Seconds without activity before the open page signs the person out."""
+    return {"idle_timeout": settings.SESSION_IDLE_TIMEOUT}
+
+
 def privacy_notice(request):
     """Whether the Data Privacy Act notice is still owed this sign-in."""
     user = getattr(request, "user", None)

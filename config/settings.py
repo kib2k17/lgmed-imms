@@ -247,6 +247,7 @@ TEMPLATES = [
                 "core.context_processors.notifications",
                 "core.context_processors.asset_version",
                 "core.context_processors.privacy_notice",
+                "core.context_processors.idle_timeout",
             ],
         },
     },
@@ -385,7 +386,13 @@ LOGIN_REDIRECT_URL = "core:dashboard"
 # staff-only system and the public pages carry no way back in.
 LOGOUT_REDIRECT_URL = "accounts:login"
 
-SESSION_COOKIE_AGE = 60 * 60 * 8          # one working day
+# Signed out after ten minutes without using the system. static/js/app.js
+# watches the open page, warns a minute ahead and signs out at
+# SESSION_IDLE_TIMEOUT. The session itself lasts five minutes longer, so the
+# page's own sign-out always finds it still there - and a tab that was
+# closed, or a browser without scripting, still loses it soon after.
+SESSION_IDLE_TIMEOUT = 60 * 10
+SESSION_COOKIE_AGE = SESSION_IDLE_TIMEOUT + 60 * 5
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 

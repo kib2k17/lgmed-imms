@@ -5,7 +5,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -97,7 +97,40 @@ class LogoutView(auth_views.LogoutView):
     # No next_page: LOGOUT_REDIRECT_URL decides where signing out lands, and it
     # points at the login page. Hard-coding it here silently overrode the
     # setting.
-    pass
+
+    def post(self, request, *args, **kwargs):
+        # Sent by the page itself (static/js/app.js) when nobody has used it
+        # for SESSION_IDLE_TIMEOUT. The audit log and the sign-in page say so,
+        # so the person knows why they are looking at the sign-in form.
+        idle = request.POST.get("reason") == "idle"
+        request.idle_sign_out = idle
+        response = super().post(request, *args, **kwargs)
+        if idle:
+            minutes = settings.SESSION_IDLE_TIMEOUT // 60
+            messages.info(
+                request,
+                f"You were signed out after {minutes} minutes without activity. "
+                "Sign in again to continue.",
+            )
+        return response
+
+
+@require_POST
+@never_cache
+def session_keepalive(request):
+    """
+    Tell the server the person is still at work on an open page.
+
+    Typing into a long form sends nothing until it is saved, so the session
+    could run out under someone who is busy. static/js/app.js posts here, at
+    most once a minute, while there is keyboard, mouse or touch activity;
+    the request saves the session (SESSION_SAVE_EVERY_REQUEST) and so
+    pushes its expiry back. Not @login_required: a page whose session has
+    already gone must be told so, not handed the sign-in page's HTML.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({"authenticated": False}, status=401)
+    return HttpResponse(status=204)
 
 
 @login_required

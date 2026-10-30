@@ -541,6 +541,65 @@ class PrivacyNoticeTests(TestCase):
         )
 
 
+class IdleSignOutTests(TestCase):
+    """Signing out by itself after SESSION_IDLE_TIMEOUT without activity."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username="staff", password="pw", role=Role.LGMED_STAFF,
+        )
+
+    def test_signed_in_pages_carry_the_timeout(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'id="idle-signout"')
+        self.assertContains(response, 'data-idle-timeout="600"')
+
+    def test_the_session_outlives_the_page_timeout(self):
+        # The page's own sign-out must still find the session there.
+        from django.conf import settings
+        self.assertEqual(settings.SESSION_IDLE_TIMEOUT, 600)
+        self.assertGreater(settings.SESSION_COOKIE_AGE, settings.SESSION_IDLE_TIMEOUT)
+
+    def test_keepalive_extends_a_live_session(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("accounts:session_keepalive"))
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("no-store", response["Cache-Control"])
+
+    def test_keepalive_reports_a_session_already_gone(self):
+        response = self.client.post(reverse("accounts:session_keepalive"))
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"authenticated": False})
+
+    def test_keepalive_refuses_get(self):
+        self.client.force_login(self.user)
+        self.assertEqual(
+            self.client.get(reverse("accounts:session_keepalive")).status_code, 405,
+        )
+
+    def test_idle_sign_out_says_why_and_is_audited(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("accounts:logout"), {"reason": "idle"}, follow=True,
+        )
+        self.assertContains(response, "signed out after 10 minutes without activity")
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+        self.assertTrue(AuditEvent.objects.filter(
+            action=Action.LOGOUT, actor=self.user,
+            detail__startswith="Signed out automatically",
+        ).exists())
+
+    def test_an_ordinary_sign_out_is_not_called_idle(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("accounts:logout"), follow=True)
+        self.assertNotContains(response, "without activity")
+        self.assertTrue(AuditEvent.objects.filter(
+            action=Action.LOGOUT, actor=self.user, detail="Signed out",
+        ).exists())
+
+
 class ProfilePhotoTests(TestCase):
     """Uploading, replacing, serving and removing a profile photo."""
 

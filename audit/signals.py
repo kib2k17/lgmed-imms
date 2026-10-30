@@ -170,7 +170,11 @@ def record_login(sender, request, user, **kwargs):
 @receiver(user_logged_out)
 def record_logout(sender, request, user, **kwargs):
     if user is not None:
-        record(Action.LOGOUT, actor=user, request=request, detail="Signed out")
+        detail = (
+            "Signed out automatically after a period without activity"
+            if getattr(request, "idle_sign_out", False) else "Signed out"
+        )
+        record(Action.LOGOUT, actor=user, request=request, detail=detail)
 
 
 @receiver(user_login_failed)

@@ -1,0 +1,39 @@
+{% load ui %}
+{% comment %}
+ Sign-out after inactivity. static/js/app.js opens this a minute before
+ `idle_timeout` (SESSION_IDLE_TIMEOUT) runs out with nobody using the page,
+ counts down, and then submits the form below. "Stay signed in" closes it
+ and counts as activity. Without scripting the dialog never opens and the
+ server's own session expiry still signs the person out.
+{% endcomment %}
+<dialog id="idle-signout" aria-labelledby="idle-signout-title" aria-describedby="idle-signout-message"
+        data-idle-timeout="{{ idle_timeout }}"
+        data-keepalive-url="{% url 'accounts:session_keepalive' %}"
+        data-login-url="{% url 'accounts:login' %}"
+        class="m-auto w-[calc(100vw-2rem)] max-w-md rounded-lg border-0 bg-transparent p-0 shadow-overlay backdrop:bg-slate-900/70 no-print">
+  <div class="overflow-hidden rounded-lg border-t-8 border-amber-500 bg-white">
+    <div class="flex flex-col items-center gap-3 px-6 pb-6 pt-7 text-center">
+      <span aria-hidden="true" class="grid size-14 place-items-center rounded-full bg-amber-100 text-amber-700">
+        {% icon "clock" "size-7" %}
+      </span>
+      <h2 id="idle-signout-title" class="text-lg font-semibold text-slate-900">Are you still there?</h2>
+      <p id="idle-signout-message" class="text-sm text-slate-600">
+        For security, you will be signed out in
+        <strong class="font-semibold text-slate-900"><span data-idle-countdown>60</span> seconds</strong>
+        because the system has not been used for a while.
+      </p>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}" data-idle-form data-no-loading
+          class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+      {% csrf_token %}
+      {# Set to "idle" only when the countdown runs out, not by "Sign out now". #}
+      <input type="hidden" name="reason" value="" data-idle-reason>
+      <button type="submit" class="btn btn-secondary justify-center">
+        {% icon "logout" "size-4" %}Sign out now
+      </button>
+      <button type="button" class="btn btn-primary justify-center" data-idle-stay>
+        {% icon "check" "size-4" %}Stay signed in
+      </button>
+    </form>
+  </div>
+</dialog>
